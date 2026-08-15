@@ -53,13 +53,8 @@ body {
   pointer-events: none;
 }
 
-.hud-row {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 6px;
-  text-shadow: 2px 2px 0 #000;
-  font-size: 8px;
-  line-height: 1.6;
+#clock-label {
+  color: #ffd166;
 }
 
 #hint-label {
@@ -78,6 +73,20 @@ body {
   background: #1a1028;
 }
 
+.hud-row {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 #000;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.care-row {
+  gap: 22px;
+  font-size: 7px;
+}
+
 #action-bar button {
   font-family: inherit;
   font-size: 7px;
@@ -86,9 +95,9 @@ body {
   background: #4a2c7a;
   border: 3px solid #ffd166;
   border-radius: 4px;
-  padding: 8px 10px;
+  padding: 8px 8px;
   cursor: pointer;
-  min-width: 108px;
+  min-width: 86px;
   user-select: none;
 }
 

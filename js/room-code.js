@@ -95,6 +95,11 @@ export function mountRoomBadge(code) {
 }
 
 export function gateGame(gameId) {
+  const local = location.hostname === '127.0.0.1'
+    || location.hostname === 'localhost'
+    || location.hostname === '[::1]';
+  if (local) return true;
+
   const params = new URLSearchParams(window.location.search);
   const result = consumeRoomCode(params.get('room')?.toUpperCase(), gameId);
 

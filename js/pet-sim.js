@@ -18,8 +18,13 @@ const panel = document.getElementById('panel');
 const panelContent = document.getElementById('panel-content');
 const coinsLabel = document.getElementById('coins-label');
 const multLabel = document.getElementById('mult-label');
+const clockLabel = document.getElementById('clock-label');
 const areaLabel = document.getElementById('area-label');
 const hintLabel = document.getElementById('hint-label');
+const foodLabel = document.getElementById('food-label');
+const waterLabel = document.getElementById('water-label');
+const REAL_SEC_PER_GAME_MIN = 5;
+const CARE_SECONDS = 120;
 
 const RARITY = {
   common: { id: 'common', label: 'Common', color: '#cfc7c0', mult: 1.2 },
@@ -50,19 +55,19 @@ const PET_RARITY = {
 
 const EGGS = [
   {
-    id: 'common', name: 'Common Egg', price: 80, color: '#c4b7a6',
+    id: 'common', name: 'Common Egg', price: 12, color: '#c4b7a6',
     weights: { common: 70, uncommon: 25, rare: 5 },
   },
   {
-    id: 'rare', name: 'Rare Egg', price: 900, color: '#4cc9f0',
+    id: 'rare', name: 'Rare Egg', price: 60, color: '#4cc9f0',
     weights: { uncommon: 40, rare: 42, epic: 15, legendary: 3 },
   },
   {
-    id: 'legend', name: 'Legendary Egg', price: 14000, color: '#ffd166',
+    id: 'legend', name: 'Legendary Egg', price: 220, color: '#ffd166',
     weights: { rare: 30, epic: 42, legendary: 22, mythic: 6 },
   },
   {
-    id: 'mythic', name: 'Mythic Egg', price: 120000, color: '#ff6bcb',
+    id: 'mythic', name: 'Mythic Egg', price: 800, color: '#ff6bcb',
     weights: { epic: 20, legendary: 40, mythic: 40 },
   },
 ];
@@ -74,21 +79,46 @@ const AREAS = [
     accent: '#e9c46a', hint: 'Coins everywhere. Shop is north. Portal is to the right.',
   },
   {
-    id: 'beach', name: 'Pearl Beach', unlock: 2500, coin: 8, count: 34,
+    id: 'beach', name: 'Pearl Beach', unlock: 40, coin: 8, count: 34,
     ground: ['#f4e4b0', '#ead89a', '#f6d58a'], dark: '#d4a373', sky: '#4cc9f0',
     accent: '#4cc9f0', hint: 'Shells are worth more. Keep hatching!',
   },
   {
-    id: 'candy', name: 'Candy Kingdom', unlock: 28000, coin: 48, count: 38,
+    id: 'candy', name: 'Candy Kingdom', unlock: 180, coin: 48, count: 38,
     ground: ['#f8b4d4', '#f48fb1', '#fce4ec'], dark: '#e07a9a', sky: '#c77dff',
     accent: '#e63946', hint: 'Sugar coins melt into your bag. Go mythic.',
   },
   {
-    id: 'space', name: 'Star Harbor', unlock: 220000, coin: 240, count: 42,
+    id: 'space', name: 'Star Harbor', unlock: 700, coin: 240, count: 42,
     ground: ['#1a1a40', '#2d2d6a', '#16213e'], dark: '#0d0d24', sky: '#0b1026',
     accent: '#c77dff', hint: 'Star shards! Rebirth when you are ready.',
   },
 ];
+
+const WILD_KINDS = {
+  meadow: [
+    { id: 'rabbit', tame: true }, { id: 'fox', tame: false },
+    { id: 'finch', tame: true }, { id: 'hedgehog', tame: true },
+    { id: 'mouse', tame: true }, { id: 'frog', tame: true },
+  ],
+  beach: [
+    { id: 'hermit-crab', tame: true }, { id: 'turtle', tame: true },
+    { id: 'duck', tame: true }, { id: 'otter', tame: true },
+    { id: 'snake', tame: false },
+  ],
+  candy: [
+    { id: 'pig', tame: true }, { id: 'frog', tame: true },
+    { id: 'gecko', tame: true }, { id: 'snail', tame: true },
+    { id: 'raccoon', tame: false },
+  ],
+  space: [
+    { id: 'owl', tame: false }, { id: 'lizard', tame: true },
+    { id: 'chameleon', tame: true }, { id: 'raccoon', tame: false },
+    { id: 'fox', tame: false },
+  ],
+};
+
+const BOWLS = { food: { x: 168, y: 430 }, water: { x: 248, y: 430 } };
 
 const keys = new Set();
 let lastTime = 0;
@@ -100,6 +130,11 @@ let hatch = null;
 let hintTimer = 6;
 let toast = '';
 let toastTimer = 0;
+let clockAcc = 0;
+let careWarn = 0;
+let careFlash = null;
+let wild = [];
+let treats = [];
 
 const state = {
   coins: 0,
@@ -107,6 +142,8 @@ const state = {
   area: 0,
   pets: [],
   equipped: [],
+  hour: 8,
+  minute: 0,
 };
 
 const player = { x: 220, y: 480, dir: 1, walk: 0 };
@@ -166,11 +203,52 @@ function totalMult() {
   const pets = equippedPets();
   if (!pets.length) return rebirthMult();
   const petSum = pets.reduce((sum, p) => sum + RARITY[p.rarity].mult, 0);
-  return rebirthMult() * petSum;
+  const weak = pets.some((p) => p.food < 18 || p.water < 18);
+  return rebirthMult() * petSum * (weak ? 0.4 : 1);
 }
 
 function rebirthCost() {
-  return Math.floor(800000 * (2 ** state.rebirths));
+  return Math.floor(2500 * (2 ** state.rebirths));
+}
+
+function formatClock() {
+  const h24 = ((state.hour % 24) + 24) % 24;
+  const suffix = h24 >= 12 ? 'PM' : 'AM';
+  let h12 = h24 % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(state.minute).padStart(2, '0')} ${suffix}`;
+}
+
+function timeOfDay() {
+  const h = state.hour;
+  if (h >= 5 && h < 7) return 'dawn';
+  if (h >= 7 && h < 17) return 'day';
+  if (h >= 17 && h < 20) return 'dusk';
+  return 'night';
+}
+
+function updateClock(dt) {
+  clockAcc += dt;
+  let hourChanged = false;
+  while (clockAcc >= REAL_SEC_PER_GAME_MIN) {
+    clockAcc -= REAL_SEC_PER_GAME_MIN;
+    state.minute += 1;
+    if (state.minute >= 60) {
+      state.minute = 0;
+      state.hour = (state.hour + 1) % 24;
+      hourChanged = true;
+    }
+  }
+  if (hourChanged) {
+    const tod = timeOfDay();
+    const stamp = formatClock();
+    if (tod === 'dawn') say(`Sunrise! It's ${stamp}.`);
+    else if (tod === 'dusk') say(`Sunset. It's ${stamp}.`);
+    else if (tod === 'night' && state.hour === 20) say(`Night falls. It's ${stamp}.`);
+    else if (tod === 'day' && state.hour === 7) say(`Morning! It's ${stamp}.`);
+    else say(`It's ${stamp}.`);
+    save();
+  }
 }
 
 function say(text, seconds = 3.2) {
@@ -186,6 +264,8 @@ function save() {
     area: state.area,
     pets: state.pets,
     equipped: state.equipped,
+    hour: state.hour,
+    minute: state.minute,
     uid,
   }));
 }
@@ -200,7 +280,13 @@ function load() {
     state.area = clamp(data.area || 0, 0, AREAS.length - 1);
     state.pets = Array.isArray(data.pets) ? data.pets : [];
     state.equipped = Array.isArray(data.equipped) ? data.equipped : [];
+    state.hour = Number.isFinite(data.hour) ? clamp(data.hour, 0, 23) : 8;
+    state.minute = Number.isFinite(data.minute) ? clamp(data.minute, 0, 59) : 0;
     uid = data.uid || state.pets.length + 1;
+    for (const pet of state.pets) {
+      if (!Number.isFinite(pet.food)) pet.food = 100;
+      if (!Number.isFinite(pet.water)) pet.water = 100;
+    }
   } catch {
     /* ignore bad saves */
   }
@@ -212,6 +298,8 @@ function addPet(species, rarity) {
     speciesId: species.id,
     rarity,
     name: species.name,
+    food: 100,
+    water: 100,
   };
   state.pets.push(pet);
   if (state.equipped.length < MAX_EQUIP) state.equipped.push(pet.uid);
@@ -264,6 +352,8 @@ function enterArea(index, fromLeft) {
   seedTrail();
   spawnCoins();
   buildDecor();
+  spawnWild();
+  treats = [];
   say(AREAS[index].hint);
   save();
 }
@@ -313,6 +403,158 @@ function finishHatch() {
 
 function magnetRange() {
   return 36 + equippedPets().length * 16;
+}
+
+function careAvg(stat) {
+  const pets = equippedPets();
+  if (!pets.length) return 100;
+  return pets.reduce((sum, p) => sum + p[stat], 0) / pets.length;
+}
+
+function updateCare(dt) {
+  const drain = (100 / CARE_SECONDS) * dt;
+  for (const pet of state.pets) {
+    pet.food = clamp((pet.food ?? 100) - drain, 0, 100);
+    pet.water = clamp((pet.water ?? 100) - drain, 0, 100);
+  }
+  if (careFlash) {
+    careFlash.t -= dt;
+    if (careFlash.t <= 0) careFlash = null;
+  }
+  careWarn -= dt;
+  const food = careAvg('food');
+  const water = careAvg('water');
+  if (careWarn <= 0 && equippedPets().length) {
+    if (food <= 0) {
+      say('Your pets are starving! Press Z for food.');
+      careWarn = 8;
+    } else if (water <= 0) {
+      say('Your pets are thirsty! Press X for water.');
+      careWarn = 8;
+    } else if (food < 28) {
+      say('Your pets need food soon.');
+      careWarn = 10;
+    } else if (water < 28) {
+      say('Your pets need water soon.');
+      careWarn = 10;
+    }
+  }
+}
+
+function giveCare(type) {
+  if (!equippedPets().length) {
+    say('Equip a pet first.');
+    return;
+  }
+  for (const pet of equippedPets()) {
+    pet[type] = 100;
+  }
+  careFlash = { type, t: 1.1 };
+  burstCare(type);
+  say(type === 'food' ? 'Nom nom! Pets are full.' : 'Slurp! Pets had a drink.');
+  save();
+}
+
+function burstCare(type) {
+  const color = type === 'food' ? '#e07a5f' : '#4cc9f0';
+  for (let i = 0; i < 8; i++) {
+    sparkles.push({
+      x: player.x + (Math.random() - 0.5) * 40,
+      y: player.y + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 60,
+      vy: -30 - Math.random() * 40,
+      life: 0.5 + Math.random() * 0.3,
+      color,
+    });
+  }
+}
+
+function nearBowl(kind) {
+  const b = BOWLS[kind];
+  return Math.hypot(player.x - b.x, player.y - b.y) < 46;
+}
+
+function spawnWild() {
+  const area = AREAS[state.area];
+  const kinds = WILD_KINDS[area.id] || WILD_KINDS.meadow;
+  wild = [];
+  const count = 8 + state.area;
+  for (let i = 0; i < count; i++) {
+    const kind = pick(kinds);
+    wild.push({
+      speciesId: kind.id,
+      tame: kind.tame,
+      x: 80 + Math.random() * (WORLD_W - 160),
+      y: 80 + Math.random() * (WORLD_H - 160),
+      vx: 0,
+      vy: 0,
+      wait: Math.random() * 2,
+      cool: 0,
+    });
+  }
+}
+
+function spawnTreat(x, y, kind) {
+  treats.push({ x, y, kind, life: 12 });
+}
+
+function updateWild(dt) {
+  const hungry = equippedPets().some((p) => p.food < 18 || p.water < 18);
+  for (const w of wild) {
+    w.wait -= dt;
+    w.cool -= dt;
+    const dx = player.x - w.x;
+    const dy = player.y - w.y;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    if (!w.tame && (hungry || timeOfDay() === 'night') && dist < 220) {
+      w.vx = (dx / dist) * 92;
+      w.vy = (dy / dist) * 92;
+    } else if (w.tame && dist < 90) {
+      w.vx = -(dx / dist) * 110;
+      w.vy = -(dy / dist) * 110;
+    } else if (w.wait <= 0) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 28 + Math.random() * 36;
+      w.vx = Math.cos(ang) * spd;
+      w.vy = Math.sin(ang) * spd;
+      w.wait = 1.4 + Math.random() * 2.4;
+    }
+
+    w.x = clamp(w.x + w.vx * dt, 40, WORLD_W - 40);
+    w.y = clamp(w.y + w.vy * dt, 50, WORLD_H - 40);
+
+    if (dist < 30 && w.cool <= 0) {
+      w.cool = 6;
+      if (w.tame) {
+        const kind = Math.random() < 0.5 ? 'food' : 'water';
+        spawnTreat(w.x, w.y, kind);
+        say(kind === 'food' ? 'A wild animal left a snack!' : 'A wild animal left a drink!');
+        w.x = 80 + Math.random() * (WORLD_W - 160);
+        w.y = 80 + Math.random() * (WORLD_H - 160);
+      } else if (hungry) {
+        const steal = Math.min(state.coins, 8 + state.area * 4);
+        state.coins -= steal;
+        say(steal ? `A wild ${speciesById(w.speciesId).name} stole ${formatCoins(steal)} coins!` : `A wild ${speciesById(w.speciesId).name} snarls. Feed your pets!`);
+        player.x = clamp(player.x - Math.sign(dx) * 28, 28, WORLD_W - 28);
+        player.y = clamp(player.y - Math.sign(dy) * 28, 40, WORLD_H - 28);
+      } else {
+        say(`A wild ${speciesById(w.speciesId).name} watches you.`);
+      }
+    }
+  }
+
+  treats = treats.filter((t) => {
+    t.life -= dt;
+    if (Math.hypot(player.x - t.x, player.y - t.y) < 26) {
+      for (const pet of equippedPets()) {
+        pet[t.kind] = clamp(pet[t.kind] + 40, 0, 100);
+      }
+      say(t.kind === 'food' ? 'Snack time!' : 'Fresh water!');
+      return false;
+    }
+    return t.life > 0;
+  });
 }
 
 function collectCoin(coin) {
@@ -368,6 +610,14 @@ function tryPortal() {
 
 function interact() {
   if (menu || hatch || paused) return;
+  if (nearBowl('food')) {
+    giveCare('food');
+    return;
+  }
+  if (nearBowl('water')) {
+    giveCare('water');
+    return;
+  }
   if (nearShop()) {
     openShop();
     return;
@@ -423,6 +673,7 @@ function openPets() {
             <span class="pet-emoji">${spec.emoji}</span>
             ${spec.name}
             <span class="rarity" style="color:${RARITY[pet.rarity].color}">${RARITY[pet.rarity].label} ×${RARITY[pet.rarity].mult}</span>
+            🍖 ${Math.floor(pet.food ?? 100)} · 💧 ${Math.floor(pet.water ?? 100)}
             ${on ? 'Equipped' : 'Click to equip'}
           </button>
         `;
@@ -492,8 +743,17 @@ function showPause() {
 function updateHud() {
   coinsLabel.textContent = `🪙 ${formatCoins(state.coins)}`;
   multLabel.textContent = `×${totalMult().toFixed(1)}`;
+  clockLabel.textContent = `🕒 ${formatClock()}`;
   areaLabel.textContent = AREAS[state.area].name;
+  const food = Math.floor(careAvg('food'));
+  const water = Math.floor(careAvg('water'));
+  foodLabel.textContent = `🍖 ${food}`;
+  waterLabel.textContent = `💧 ${water}`;
+  foodLabel.style.color = food < 25 ? '#e63946' : '#fff8ef';
+  waterLabel.style.color = water < 25 ? '#4cc9f0' : '#fff8ef';
   if (toastTimer > 0) return;
+  if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
+  else if (nearBowl('water')) hintLabel.textContent = 'Space: fill water bowls';
   if (nearShop()) hintLabel.textContent = 'Space: open the egg shop';
   else if (nearPortal('next')) hintLabel.textContent = 'Space: next world';
   else if (nearPortal('prev') && state.area > 0) hintLabel.textContent = 'Space: previous world';
@@ -569,7 +829,14 @@ function cam() {
 
 function drawGround(c) {
   const area = AREAS[state.area];
-  ctx.fillStyle = area.sky;
+  const tod = timeOfDay();
+  let sky = area.sky;
+  if (area.id !== 'space') {
+    if (tod === 'night') sky = '#151b2b';
+    else if (tod === 'dawn') sky = '#f4a261';
+    else if (tod === 'dusk') sky = '#e76f51';
+  }
+  ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
   const tile = 32;
   const x0 = Math.floor(c.x / tile) * tile;
@@ -674,6 +941,34 @@ function drawShop(c) {
   ctx.textAlign = 'left';
 }
 
+function drawBowls(c) {
+  const food = BOWLS.food;
+  const water = BOWLS.water;
+  const drawOne = (bowl, fill, label) => {
+    const x = bowl.x - c.x;
+    const y = bowl.y - c.y;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 8, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6b4226';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 16, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.ellipse(x, y - 2, 11, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff8ef';
+    ctx.font = '5px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y + 20);
+    ctx.textAlign = 'left';
+  };
+  drawOne(food, '#e07a5f', 'Food');
+  drawOne(water, '#4cc9f0', 'Water');
+}
+
 function drawPortal(c, side) {
   const px = (side === 'next' ? WORLD_W - 48 : 48) - c.x;
   const py = WORLD_H / 2 - c.y;
@@ -752,18 +1047,64 @@ function drawFollowers(c) {
     ctx.translate(x, y);
     ctx.scale(0.28, 0.28);
     ctx.translate(-400, -318);
-    drawSpecies(ctx, { species: spec, blink: 0, actionTime: clock }, clock, {
-      mood: 88,
+    const hungry = pet.food < 28 || pet.water < 28;
+    const eating = careFlash?.type === 'food';
+    const drinking = careFlash?.type === 'water';
+    drawSpecies(ctx, { species: spec, blink: hungry ? 0.1 : 0, actionTime: clock }, clock, {
+      mood: hungry ? 22 : 88,
       sleeping: false,
-      playing: true,
-      eating: false,
-      drinking: false,
+      playing: !hungry,
+      eating,
+      drinking,
       loving: false,
-      sad: false,
-      crying: false,
+      sad: hungry,
+      crying: pet.food < 10 || pet.water < 10,
     });
     ctx.restore();
   });
+}
+
+function drawPetSprite(c, speciesId, x, y, scale, extra) {
+  const spec = speciesById(speciesId);
+  const sx = x - c.x;
+  const sy = y - c.y;
+  if (sx < -40 || sy < -40 || sx > W + 40 || sy > H + 40) return;
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.scale(scale, scale);
+  ctx.translate(-400, -318);
+  drawSpecies(ctx, { species: spec, blink: 0, actionTime: clock }, clock, extra);
+  ctx.restore();
+}
+
+function drawWild(c) {
+  for (const w of wild) {
+    drawPetSprite(c, w.speciesId, w.x, w.y, 0.22, {
+      mood: w.tame ? 70 : 35,
+      sleeping: false,
+      playing: w.tame,
+      eating: false,
+      drinking: false,
+      loving: false,
+      sad: !w.tame,
+      crying: false,
+    });
+    const x = w.x - c.x;
+    const y = w.y - c.y - 22;
+    ctx.fillStyle = w.tame ? '#52b788' : '#e63946';
+    ctx.font = '5px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(w.tame ? 'wild' : 'wild!', x, y);
+    ctx.textAlign = 'left';
+  }
+  for (const t of treats) {
+    const x = t.x - c.x;
+    const y = t.y - c.y;
+    ctx.fillStyle = t.kind === 'food' ? '#e07a5f' : '#4cc9f0';
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawHatch() {
@@ -809,17 +1150,52 @@ function drawFx(c) {
   ctx.textAlign = 'left';
 }
 
+function drawLighting() {
+  if (AREAS[state.area].id === 'space') return;
+  const tod = timeOfDay();
+  if (tod === 'night') ctx.fillStyle = 'rgba(12, 14, 40, 0.42)';
+  else if (tod === 'dusk') ctx.fillStyle = 'rgba(90, 30, 20, 0.22)';
+  else if (tod === 'dawn') ctx.fillStyle = 'rgba(255, 140, 50, 0.14)';
+  else return;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawSkyBody() {
+  const tod = timeOfDay();
+  const x = W - 48;
+  const y = 78;
+  if (tod === 'night') {
+    ctx.fillStyle = '#f4e4c1';
+    ctx.beginPath();
+    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff8ef';
+    ctx.fillRect(x + 10, y - 16, 2, 2);
+    ctx.fillRect(x - 18, y - 8, 2, 2);
+    ctx.fillRect(x + 16, y + 6, 2, 2);
+  } else {
+    ctx.fillStyle = tod === 'dusk' ? '#e76f51' : '#ffd166';
+    ctx.beginPath();
+    ctx.arc(x, y, 15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function render() {
   const c = cam();
   ctx.clearRect(0, 0, W, H);
   drawGround(c);
   drawDecor(c);
   drawShop(c);
+  drawBowls(c);
   drawPortal(c, 'prev');
   drawPortal(c, 'next');
   for (const coin of coins) drawCoin(coin, c);
+  drawWild(c);
   drawFollowers(c);
   drawPlayer(c);
+  drawLighting();
+  drawSkyBody();
   drawFx(c);
   drawHatch();
 }
@@ -828,10 +1204,15 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000 || 0.016);
   lastTime = now;
   clock += dt;
+  if (!paused) {
+    updateClock(dt);
+    updateCare(dt);
+  }
   const blocked = paused || menu || hatch || !overlay.classList.contains('hidden');
   if (!blocked) {
     updatePlayer(dt);
     updateCoins(dt);
+    updateWild(dt);
     updateFx(dt);
     hintTimer -= dt;
     toastTimer -= dt;
@@ -866,7 +1247,13 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (key === 'e') {
+  if (key === 'z') {
+    e.preventDefault();
+    giveCare('food');
+  } else if (key === 'x') {
+    e.preventDefault();
+    giveCare('water');
+  } else if (key === 'e') {
     e.preventDefault();
     openPets();
   } else if (key === 'f') {
@@ -888,6 +1275,10 @@ window.addEventListener('keyup', (e) => {
 document.querySelectorAll('#action-bar button').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (hatch || paused) return;
+    if (btn.dataset.care) {
+      giveCare(btn.dataset.care);
+      return;
+    }
     const id = btn.dataset.panel;
     if (menu === id) closeMenus();
     else if (id === 'pets') openPets();
@@ -898,7 +1289,10 @@ document.querySelectorAll('#action-bar button').forEach((btn) => {
 
 load();
 const fresh = !state.pets.length;
-if (fresh) addPet(speciesById('dog'), 'uncommon');
+if (fresh) {
+  addPet(speciesById('dog'), 'uncommon');
+  state.coins = 20;
+}
 enterArea(state.area, true);
 if (fresh || state.area === 0) {
   player.x = 220;

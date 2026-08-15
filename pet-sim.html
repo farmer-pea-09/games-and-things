@@ -18,11 +18,18 @@
       <div class="hud-row">
         <span id="coins-label">🪙 0</span>
         <span id="mult-label">×1.0</span>
+        <span id="clock-label">8:00 AM</span>
         <span id="area-label">Sunny Meadow</span>
+      </div>
+      <div class="hud-row care-row">
+        <span id="food-label">🍖 100</span>
+        <span id="water-label">💧 100</span>
       </div>
       <div id="hint-label">Collect coins. Buy eggs. Hatch rare pets!</div>
     </div>
     <div id="action-bar">
+      <button type="button" data-care="food"><kbd>Z</kbd> Food</button>
+      <button type="button" data-care="water"><kbd>X</kbd> Water</button>
       <button type="button" data-panel="pets"><kbd>E</kbd> Pets</button>
       <button type="button" data-panel="shop"><kbd>F</kbd> Shop</button>
       <button type="button" data-panel="rebirth"><kbd>R</kbd> Rebirth</button>
@@ -34,7 +41,7 @@
       <div id="overlay-content"></div>
     </div>
     <div id="controls-help">
-      <kbd>WASD</kbd> move · <kbd>Space</kbd> interact · <kbd>E</kbd> pets · <kbd>F</kbd> shop · <kbd>Esc</kbd> pause
+      <kbd>WASD</kbd> move · <kbd>Z</kbd> food · <kbd>X</kbd> water · <kbd>Space</kbd> interact · <kbd>Esc</kbd> pause
     </div>
   </div>
   <script type="module">
