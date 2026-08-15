@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chameleon World</title>
-  <link rel="stylesheet" href="css/style.css">
+  <title>North Pole Night</title>
+  <link rel="stylesheet" href="css/christmas.css">
   <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,25 +16,24 @@
     <canvas id="game" width="800" height="480"></canvas>
     <div id="hud">
       <div class="hud-row">
-        <span id="score-label">★ 000000</span>
-        <span id="coins-label">🪙 0</span>
-        <span id="lives-label">💚 × 5</span>
-        <span id="time-label">⏱ 300</span>
-        <span id="world-label">World Map</span>
+        <span id="night-label">Night 1</span>
+        <span id="score-label">★ 0</span>
+        <span id="phase-label">Workshop</span>
       </div>
+      <div id="quest-label">Make toys for the list</div>
       <div id="message-box"></div>
     </div>
-    <div id="overlay" class="hidden">
+    <div id="overlay">
       <div id="overlay-content"></div>
     </div>
     <div id="controls-help">
-      <kbd>←→</kbd> move · <kbd>Space</kbd> jump · <kbd>Z</kbd> tongue · <kbd>↓</kbd> camouflage · <kbd>Shift</kbd> run · <kbd>Esc</kbd> pause
+      <kbd>Click</kbd> make & wrap · <kbd>WASD</kbd> fly · <kbd>Space</kbd> drop · <kbd>1-5</kbd> pick present · <kbd>Esc</kbd> pause
     </div>
   </div>
   <script type="module">
     import { gateGame } from './js/room-code.js';
-    if (gateGame('chameleon')) {
-      await import('./js/main.js');
+    if (gateGame('christmas')) {
+      await import('./js/christmas.js');
     }
   </script>
 </body>

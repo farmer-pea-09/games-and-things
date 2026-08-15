@@ -50,6 +50,7 @@ const PET_RARITY = {
   alpaca: 'epic', koala: 'epic', raccoon: 'epic', penguin: 'epic',
   chameleon: 'legendary', axolotl: 'legendary', fox: 'legendary',
   owl: 'legendary', llama: 'legendary', capybara: 'legendary',
+  bear: 'epic',
   panda: 'mythic', 'sugar-glider': 'mythic', chinchilla: 'mythic',
 };
 
@@ -99,7 +100,7 @@ const WILD_KINDS = {
   meadow: [
     { id: 'rabbit', tame: true }, { id: 'fox', tame: false },
     { id: 'finch', tame: true }, { id: 'hedgehog', tame: true },
-    { id: 'mouse', tame: true }, { id: 'frog', tame: true },
+    { id: 'mouse', tame: true }, { id: 'bear', tame: false },
   ],
   beach: [
     { id: 'hermit-crab', tame: true }, { id: 'turtle', tame: true },
@@ -135,6 +136,7 @@ let careWarn = 0;
 let careFlash = null;
 let wild = [];
 let treats = [];
+let battle = null;
 
 const state = {
   coins: 0,
@@ -498,21 +500,353 @@ function spawnTreat(x, y, kind) {
   treats.push({ x, y, kind, life: 12 });
 }
 
+function nearestWild(range) {
+  let best = null;
+  let bestD = range;
+  for (const w of wild) {
+    const d = Math.hypot(player.x - w.x, player.y - w.y);
+    if (d < bestD) {
+      best = w;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+function movesFor(species) {
+  if (species.kind === 'bird') {
+    return [
+      { name: 'Peck', pow: 18 },
+      { name: 'Gust', pow: 14 },
+      { name: 'Screech', pow: 0, drop: true },
+      { name: 'Dive', pow: 22 },
+    ];
+  }
+  if (species.id === 'bear' || species.id === 'fox' || species.id === 'raccoon' || species.id === 'snake') {
+    return [
+      { name: 'Bite', pow: 20 },
+      { name: 'Scratch', pow: 16 },
+      { name: 'Growl', pow: 0, drop: true },
+      { name: 'Pounce', pow: 24 },
+    ];
+  }
+  if (species.kind === 'water' || species.id === 'otter' || species.id === 'turtle' || species.id === 'duck') {
+    return [
+      { name: 'Splash', pow: 12 },
+      { name: 'Nibble', pow: 16 },
+      { name: 'Bubble', pow: 14 },
+      { name: 'Tackle', pow: 18 },
+    ];
+  }
+  return [
+    { name: 'Tackle', pow: 16 },
+    { name: 'Nuzzle', pow: 12 },
+    { name: 'Stare', pow: 0, drop: true },
+    { name: 'Dash', pow: 20 },
+  ];
+}
+
+function maxHpFor(species, rarity, aggressive) {
+  const base = { common: 36, uncommon: 44, rare: 54, epic: 68, legendary: 82, mythic: 96 };
+  return (base[rarity] || 40) + (aggressive ? 14 : 0);
+}
+
+function startBattle(wildPet, startedBy) {
+  const pack = equippedPets();
+  if (!pack.length) {
+    say('Equip a pet before you battle.');
+    return false;
+  }
+  const pet = pack[0];
+  const youSpec = speciesById(pet.speciesId);
+  const foeSpec = speciesById(wildPet.speciesId);
+  const youMax = maxHpFor(youSpec, pet.rarity, false);
+  const foeMax = maxHpFor(foeSpec, rarityOf(foeSpec.id), !wildPet.tame);
+  const name = foeSpec.name.toUpperCase();
+  battle = {
+    wild: wildPet,
+    pet,
+    youSpec,
+    foeSpec,
+    youHp: youMax,
+    youMax,
+    foeHp: foeMax,
+    foeMax,
+    youAtk: 1,
+    foeAtk: 1,
+    phase: 'text',
+    menu: 0,
+    move: 0,
+    line: startedBy === 'wild'
+      ? `A wild ${name} wants to fight!`
+      : `You challenged the wild ${name}!`,
+    queue: [],
+    snack: true,
+    cageCaught: false,
+    cageShakes: 0,
+    cageFailKind: 0,
+    caught: false,
+    flee: false,
+    hit: null,
+    shake: 0,
+    wait: 1.5,
+  };
+  return true;
+}
+
+function battleNext() {
+  if (!battle) return;
+  battle.queue.shift();
+  if (battle.queue.length) {
+    battle.line = battle.queue[0];
+    battle.wait = 1.15;
+    battle.phase = 'text';
+    return;
+  }
+  if (battle.foeHp <= 0) {
+    endBattle('win');
+    return;
+  }
+  if (battle.youHp <= 0) {
+    endBattle('lose');
+    return;
+  }
+  battle.phase = 'menu';
+  battle.line = `What will ${battle.youSpec.name.toUpperCase()} do?`;
+}
+
+function dealMove(fromYou, move) {
+  const actor = fromYou ? battle.youSpec.name.toUpperCase() : `Wild ${battle.foeSpec.name.toUpperCase()}`;
+  battle.queue.push(`${actor} used ${move.name.toUpperCase()}!`);
+  if (move.drop) {
+    if (fromYou) battle.foeAtk = Math.max(0.55, battle.foeAtk - 0.2);
+    else battle.youAtk = Math.max(0.55, battle.youAtk - 0.2);
+    battle.queue.push(`${fromYou ? `Wild ${battle.foeSpec.name.toUpperCase()}` : battle.youSpec.name.toUpperCase()}'s attack fell!`);
+    return;
+  }
+  const atk = fromYou ? battle.youAtk : battle.foeAtk;
+  const dmg = Math.max(4, Math.round(move.pow * atk * (0.85 + Math.random() * 0.3)));
+  if (fromYou) {
+    battle.foeHp = Math.max(0, battle.foeHp - dmg);
+    battle.hit = 'foe';
+  } else {
+    battle.youHp = Math.max(0, battle.youHp - dmg);
+    battle.hit = 'you';
+  }
+  battle.shake = 0.28;
+  if (fromYou && battle.foeHp <= 0) battle.queue.push(`Wild ${battle.foeSpec.name.toUpperCase()} fainted!`);
+  if (!fromYou && battle.youHp <= 0) battle.queue.push(`${battle.youSpec.name.toUpperCase()} fainted!`);
+}
+
+function enemyTurn() {
+  const moves = movesFor(battle.foeSpec);
+  dealMove(false, pick(moves));
+}
+
+function chooseMove(index) {
+  const moves = movesFor(battle.youSpec);
+  dealMove(true, moves[index] || moves[0]);
+  if (battle.foeHp > 0) enemyTurn();
+  battle.phase = 'text';
+  battle.line = battle.queue[0];
+  battle.wait = 1.05;
+}
+
+function useSnack() {
+  if (!battle.snack) {
+    battle.queue.push('No snacks left!');
+    battle.phase = 'text';
+    battle.line = battle.queue[0];
+    battle.wait = 0.9;
+    return;
+  }
+  battle.snack = false;
+  battle.youHp = Math.min(battle.youMax, battle.youHp + 22);
+  battle.queue.push(`You gave ${battle.youSpec.name.toUpperCase()} a snack!`);
+  enemyTurn();
+  battle.phase = 'text';
+  battle.line = battle.queue[0];
+  battle.wait = 1.05;
+}
+
+function tryCage() {
+  const hpRatio = battle.foeMax ? battle.foeHp / battle.foeMax : 1;
+  const hard = !battle.wild.tame;
+  const base = battle.foeSpec.id === 'bear' ? 0.14 : hard ? 0.26 : 0.48;
+  const chance = clamp(base + (1 - hpRatio) * 0.55, 0.08, 0.92);
+  battle.cageCaught = Math.random() < chance;
+  battle.cageShakes = battle.cageCaught ? 3 : 1 + Math.floor(Math.random() * 3);
+  battle.cageFailKind = battle.cageShakes;
+  battle.phase = 'cage';
+  battle.wait = 0.7;
+  battle.shake = 0.2;
+  battle.line = 'You threw a CAGE!';
+  battle.queue = [];
+}
+
+function cageFailLine() {
+  const name = battle.foeSpec.name.toUpperCase();
+  if (battle.cageFailKind >= 3) return `Shoot! The wild ${name} was so close!`;
+  if (battle.cageFailKind === 2) return `Aww! The wild ${name} appeared to be caught!`;
+  return `Oh no! The wild ${name} broke free!`;
+}
+
+function tryRun() {
+  const easy = battle.wild.tame || Math.random() < 0.62;
+  if (easy) {
+    battle.flee = true;
+    battle.queue = ['Got away safely!'];
+    battle.phase = 'text';
+    battle.line = battle.queue[0];
+    battle.wait = 0.9;
+    return;
+  }
+  battle.queue = ["Can't escape!"];
+  enemyTurn();
+  battle.phase = 'text';
+  battle.line = battle.queue[0];
+  battle.wait = 1.05;
+}
+
+function endBattle(result) {
+  const w = battle.wild;
+  const foe = battle.foeSpec.name;
+  const pet = battle.pet;
+  const petName = battle.youSpec.name;
+  if (result === 'catch') {
+    addPet(battle.foeSpec, rarityOf(battle.foeSpec.id));
+    const i = wild.indexOf(w);
+    if (i >= 0) wild.splice(i, 1);
+    say(`You caged the wild ${foe}! It's your pet now.`);
+    battle = null;
+    return;
+  }
+  if (result === 'win') {
+    spawnTreat(w.x, w.y, Math.random() < 0.5 ? 'food' : 'water');
+    say(`You beat the wild ${foe}! ${petName} is safe.`);
+  } else if (result === 'lose') {
+    if (!w.tame) {
+      state.equipped = state.equipped.filter((id) => id !== pet.uid);
+      state.pets = state.pets.filter((p) => p.uid !== pet.uid);
+      say(`The wild ${foe} took your ${petName}!`);
+      save();
+    } else {
+      say(`Your ${petName} fainted. The wild ${foe} hopped away.`);
+    }
+  } else {
+    say('You ran back to the meadow.');
+  }
+  w.x = 80 + Math.random() * (WORLD_W - 160);
+  w.y = 80 + Math.random() * (WORLD_H - 160);
+  w.cool = 10;
+  battle = null;
+}
+
+function updateBattle(dt) {
+  if (!battle) return;
+  if (battle.shake > 0) battle.shake -= dt;
+  if (battle.hit && battle.shake <= 0) battle.hit = null;
+  if (battle.phase === 'cage') {
+    battle.wait -= dt;
+    if (battle.wait > 0) return;
+    if (battle.cageShakes > 0) {
+      battle.cageShakes -= 1;
+      battle.shake = 0.35;
+      battle.line = 'The cage shakes...';
+      battle.wait = 0.7;
+      return;
+    }
+    if (battle.cageCaught) {
+      battle.caught = true;
+      battle.phase = 'text';
+      battle.line = `All right! Wild ${battle.foeSpec.name.toUpperCase()} was caught!`;
+      battle.wait = 1.3;
+      return;
+    }
+    battle.queue = [cageFailLine()];
+    enemyTurn();
+    battle.phase = 'text';
+    battle.line = battle.queue[0];
+    battle.wait = 1.05;
+    return;
+  }
+  if (battle.phase !== 'text') return;
+  battle.wait -= dt;
+  if (battle.wait > 0) return;
+  if (battle.flee) {
+    endBattle('run');
+    return;
+  }
+  if (battle.caught) {
+    endBattle('catch');
+    return;
+  }
+  battleNext();
+}
+
+function handleBattleKey(key) {
+  if (!battle) return;
+  if (battle.phase === 'text' || battle.phase === 'cage') {
+    if (key === ' ' || key === 'enter') {
+      battle.wait = 0;
+      if (battle.phase === 'text') {
+        if (battle.flee) endBattle('run');
+        else if (battle.caught) endBattle('catch');
+        else battleNext();
+      }
+    }
+    return;
+  }
+  if (battle.phase === 'menu') {
+    if (key === 'arrowright' || key === 'd') battle.menu = battle.menu % 2 === 0 ? battle.menu + 1 : battle.menu - 1;
+    if (key === 'arrowleft' || key === 'a') battle.menu = battle.menu % 2 === 0 ? battle.menu + 1 : battle.menu - 1;
+    if (key === 'arrowdown' || key === 's') battle.menu = (battle.menu + 2) % 4;
+    if (key === 'arrowup' || key === 'w') battle.menu = (battle.menu + 2) % 4;
+    if (key === ' ' || key === 'enter') {
+      if (battle.menu === 0) battle.phase = 'moves';
+      else if (battle.menu === 1) tryCage();
+      else if (battle.menu === 2) useSnack();
+      else tryRun();
+    }
+    return;
+  }
+  if (battle.phase === 'moves') {
+    if (key === 'escape' || key === 'backspace') {
+      battle.phase = 'menu';
+      return;
+    }
+    const col = battle.move % 2;
+    const row = Math.floor(battle.move / 2);
+    if (key === 'arrowright' || key === 'd') battle.move = row * 2 + ((col + 1) % 2);
+    if (key === 'arrowleft' || key === 'a') battle.move = row * 2 + ((col + 1) % 2);
+    if (key === 'arrowdown' || key === 's') battle.move = ((row + 1) % 2) * 2 + col;
+    if (key === 'arrowup' || key === 'w') battle.move = ((row + 1) % 2) * 2 + col;
+    if (key === ' ' || key === 'enter') chooseMove(battle.move);
+  }
+}
+
 function updateWild(dt) {
+  if (battle) return;
   const hungry = equippedPets().some((p) => p.food < 18 || p.water < 18);
+  const hunt = hungry || timeOfDay() === 'night';
   for (const w of wild) {
     w.wait -= dt;
     w.cool -= dt;
     const dx = player.x - w.x;
     const dy = player.y - w.y;
     const dist = Math.hypot(dx, dy) || 1;
+    const aggressive = !w.tame;
 
-    if (!w.tame && (hungry || timeOfDay() === 'night') && dist < 220) {
-      w.vx = (dx / dist) * 92;
-      w.vy = (dy / dist) * 92;
-    } else if (w.tame && dist < 90) {
-      w.vx = -(dx / dist) * 110;
-      w.vy = -(dy / dist) * 110;
+    if (aggressive && w.cool <= 0 && equippedPets().length && dist < (hunt ? 240 : 140)) {
+      w.vx = (dx / dist) * 96;
+      w.vy = (dy / dist) * 96;
+      if (dist < 34) {
+        startBattle(w, 'wild');
+        return;
+      }
+    } else if (!aggressive && dist < 88) {
+      w.vx = -(dx / dist) * 108;
+      w.vy = -(dy / dist) * 108;
     } else if (w.wait <= 0) {
       const ang = Math.random() * Math.PI * 2;
       const spd = 28 + Math.random() * 36;
@@ -524,23 +858,13 @@ function updateWild(dt) {
     w.x = clamp(w.x + w.vx * dt, 40, WORLD_W - 40);
     w.y = clamp(w.y + w.vy * dt, 50, WORLD_H - 40);
 
-    if (dist < 30 && w.cool <= 0) {
-      w.cool = 6;
-      if (w.tame) {
-        const kind = Math.random() < 0.5 ? 'food' : 'water';
-        spawnTreat(w.x, w.y, kind);
-        say(kind === 'food' ? 'A wild animal left a snack!' : 'A wild animal left a drink!');
-        w.x = 80 + Math.random() * (WORLD_W - 160);
-        w.y = 80 + Math.random() * (WORLD_H - 160);
-      } else if (hungry) {
-        const steal = Math.min(state.coins, 8 + state.area * 4);
-        state.coins -= steal;
-        say(steal ? `A wild ${speciesById(w.speciesId).name} stole ${formatCoins(steal)} coins!` : `A wild ${speciesById(w.speciesId).name} snarls. Feed your pets!`);
-        player.x = clamp(player.x - Math.sign(dx) * 28, 28, WORLD_W - 28);
-        player.y = clamp(player.y - Math.sign(dy) * 28, 40, WORLD_H - 28);
-      } else {
-        say(`A wild ${speciesById(w.speciesId).name} watches you.`);
-      }
+    if (aggressive && dist < 30 && w.cool <= 0 && !equippedPets().length) {
+      w.cool = 7;
+      const steal = Math.min(state.coins, 8 + state.area * 4);
+      state.coins -= steal;
+      say(steal
+        ? `A wild ${speciesById(w.speciesId).name} stole ${formatCoins(steal)} coins!`
+        : `A wild ${speciesById(w.speciesId).name} snarls. Equip a pet!`);
     }
   }
 
@@ -609,7 +933,12 @@ function tryPortal() {
 }
 
 function interact() {
-  if (menu || hatch || paused) return;
+  if (menu || hatch || paused || battle) return;
+  const foe = nearestWild(78);
+  if (foe) {
+    startBattle(foe, 'you');
+    return;
+  }
   if (nearBowl('food')) {
     giveCare('food');
     return;
@@ -751,10 +1080,20 @@ function updateHud() {
   waterLabel.textContent = `💧 ${water}`;
   foodLabel.style.color = food < 25 ? '#e63946' : '#fff8ef';
   waterLabel.style.color = water < 25 ? '#4cc9f0' : '#fff8ef';
+  if (battle) {
+    hintLabel.textContent = 'FIGHT · CAGE · ITEM · RUN  ·  lower HP to catch easier';
+    return;
+  }
   if (toastTimer > 0) return;
-  if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
+  const foe = nearestWild(78);
+  if (foe) {
+    const name = speciesById(foe.speciesId).name;
+    hintLabel.textContent = foe.tame
+      ? `Space: battle the shy wild ${name}`
+      : `Space: a wild ${name} is hunting!`;
+  } else if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
   else if (nearBowl('water')) hintLabel.textContent = 'Space: fill water bowls';
-  if (nearShop()) hintLabel.textContent = 'Space: open the egg shop';
+  else if (nearShop()) hintLabel.textContent = 'Space: open the egg shop';
   else if (nearPortal('next')) hintLabel.textContent = 'Space: next world';
   else if (nearPortal('prev') && state.area > 0) hintLabel.textContent = 'Space: previous world';
   else hintLabel.textContent = AREAS[state.area].hint;
@@ -1080,13 +1419,13 @@ function drawPetSprite(c, speciesId, x, y, scale, extra) {
 function drawWild(c) {
   for (const w of wild) {
     drawPetSprite(c, w.speciesId, w.x, w.y, 0.22, {
-      mood: w.tame ? 70 : 35,
+      mood: w.tame ? 70 : 28,
       sleeping: false,
-      playing: w.tame,
+      playing: !w.tame,
       eating: false,
       drinking: false,
       loving: false,
-      sad: !w.tame,
+      sad: false,
       crying: false,
     });
     const x = w.x - c.x;
@@ -1094,7 +1433,7 @@ function drawWild(c) {
     ctx.fillStyle = w.tame ? '#52b788' : '#e63946';
     ctx.font = '5px "Press Start 2P"';
     ctx.textAlign = 'center';
-    ctx.fillText(w.tame ? 'wild' : 'wild!', x, y);
+    ctx.fillText(w.tame ? 'shy' : 'HUNT!', x, y);
     ctx.textAlign = 'left';
   }
   for (const t of treats) {
@@ -1181,6 +1520,133 @@ function drawSkyBody() {
   }
 }
 
+function drawBattleCage(x, y) {
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(x - 40, y - 8, 80, 14);
+  ctx.fillStyle = '#8d5a3a';
+  ctx.fillRect(x - 34, y - 52, 68, 48);
+  ctx.strokeStyle = '#3d2914';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 34, y - 52, 68, 48);
+  ctx.fillStyle = '#3d2914';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(x - 26 + i * 16, y - 48, 5, 40);
+  }
+  ctx.fillStyle = '#c9a227';
+  ctx.fillRect(x + 18, y - 18, 12, 8);
+  ctx.fillStyle = '#fff8ef';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('CAGE', x, y + 18);
+  ctx.textAlign = 'left';
+}
+
+function drawHpBox(x, y, name, hp, max, level) {
+  ctx.fillStyle = '#fff8ef';
+  ctx.fillRect(x, y, 250, 58);
+  ctx.strokeStyle = '#1a1028';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x, y, 250, 58);
+  ctx.fillStyle = '#1a1028';
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillText(name, x + 10, y + 18);
+  ctx.font = '7px "Press Start 2P"';
+  ctx.fillText(`Lv${level}`, x + 186, y + 18);
+  ctx.fillText('HP', x + 10, y + 38);
+  ctx.fillStyle = '#3d2914';
+  ctx.fillRect(x + 36, y + 30, 196, 10);
+  const ratio = max ? hp / max : 0;
+  ctx.fillStyle = ratio > 0.5 ? '#52b788' : ratio > 0.25 ? '#ffd166' : '#e63946';
+  ctx.fillRect(x + 36, y + 30, 196 * ratio, 10);
+  ctx.fillStyle = '#1a1028';
+  ctx.fillText(`${Math.ceil(hp)}/${max}`, x + 150, y + 52);
+}
+
+function drawMenuGrid(labels, selected) {
+  const ox = 430;
+  const oy = 372;
+  labels.forEach((label, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = ox + col * 160;
+    const y = oy + row * 36;
+    ctx.fillStyle = selected === i ? '#ffd166' : '#fff8ef';
+    ctx.font = '9px "Press Start 2P"';
+    ctx.fillText((selected === i ? '> ' : '  ') + label, x, y);
+  });
+}
+
+function drawBattle() {
+  if (!battle) return;
+  ctx.fillStyle = '#f6e7c1';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#7cb342';
+  ctx.fillRect(0, 188, W, 88);
+  ctx.fillStyle = '#8bc34a';
+  ctx.beginPath();
+  ctx.ellipse(560, 214, 92, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(220, 308, 100, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const caging = battle.phase === 'cage' || battle.caught;
+  const foeShake = battle.hit === 'foe' || (caging && battle.shake > 0)
+    ? Math.sin(clock * 40) * 8
+    : 0;
+  const youShake = battle.hit === 'you' ? Math.sin(clock * 40) * 8 : 0;
+
+  if (caging) {
+    drawBattleCage(560 + foeShake, 118);
+  } else {
+    ctx.save();
+    ctx.translate(560 + foeShake, 118);
+    ctx.scale(0.42, 0.42);
+    ctx.translate(-400, -318);
+    drawSpecies(ctx, { species: battle.foeSpec, blink: 0, actionTime: clock }, clock, {
+      mood: 40, sleeping: false, playing: false, eating: false, drinking: false,
+      loving: false, sad: battle.foeHp < battle.foeMax * 0.3, crying: false,
+    });
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.translate(220 + youShake, 250);
+  ctx.scale(0.48, 0.48);
+  ctx.translate(-400, -318);
+  drawSpecies(ctx, { species: battle.youSpec, blink: 0, actionTime: clock }, clock, {
+    mood: 80, sleeping: false, playing: true, eating: false, drinking: false,
+    loving: false, sad: battle.youHp < battle.youMax * 0.3, crying: false,
+  });
+  ctx.restore();
+
+  const foeLv = battle.wild.tame ? 3 : 6;
+  drawHpBox(36, 28, `Wild ${battle.foeSpec.name.toUpperCase()}`, battle.foeHp, battle.foeMax, foeLv);
+  drawHpBox(430, 248, battle.youSpec.name.toUpperCase(), battle.youHp, battle.youMax, 5);
+
+  ctx.fillStyle = '#1a1028';
+  ctx.fillRect(8, 352, W - 16, 120);
+  ctx.strokeStyle = '#ffd166';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(8, 352, W - 16, 120);
+  ctx.fillStyle = '#fff8ef';
+  ctx.font = '9px "Press Start 2P"';
+  ctx.textAlign = 'left';
+
+  if (battle.phase === 'menu') {
+    ctx.fillText(battle.line, 24, 384);
+    drawMenuGrid(['FIGHT', 'CAGE', 'ITEM', 'RUN'], battle.menu);
+  } else if (battle.phase === 'moves') {
+    const moves = movesFor(battle.youSpec);
+    drawMenuGrid(moves.map((m) => m.name.toUpperCase()), battle.move);
+    ctx.fillStyle = '#d4b896';
+    ctx.font = '7px "Press Start 2P"';
+    ctx.fillText('Esc: back', 24, 448);
+  } else {
+    ctx.fillText(battle.line, 24, 400);
+  }
+}
+
 function render() {
   const c = cam();
   ctx.clearRect(0, 0, W, H);
@@ -1198,6 +1664,7 @@ function render() {
   drawSkyBody();
   drawFx(c);
   drawHatch();
+  drawBattle();
 }
 
 function loop(now) {
@@ -1208,7 +1675,8 @@ function loop(now) {
     updateClock(dt);
     updateCare(dt);
   }
-  const blocked = paused || menu || hatch || !overlay.classList.contains('hidden');
+  if (battle) updateBattle(dt);
+  const blocked = paused || menu || hatch || battle || !overlay.classList.contains('hidden');
   if (!blocked) {
     updatePlayer(dt);
     updateCoins(dt);
@@ -1233,12 +1701,22 @@ window.addEventListener('keydown', (e) => {
 
   if (key === 'escape') {
     e.preventDefault();
+    if (battle) {
+      if (battle.phase === 'moves') battle.phase = 'menu';
+      return;
+    }
     if (menu) closeMenus();
     else if (hatch) return;
     else if (paused) {
       paused = false;
       overlay.classList.add('hidden');
     } else showPause();
+    return;
+  }
+
+  if (battle) {
+    e.preventDefault();
+    handleBattleKey(key);
     return;
   }
 
@@ -1274,7 +1752,7 @@ window.addEventListener('keyup', (e) => {
 
 document.querySelectorAll('#action-bar button').forEach((btn) => {
   btn.addEventListener('click', () => {
-    if (hatch || paused) return;
+    if (hatch || paused || battle) return;
     if (btn.dataset.care) {
       giveCare(btn.dataset.care);
       return;

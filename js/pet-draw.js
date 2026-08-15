@@ -731,6 +731,26 @@ function drawRaccoon(ctx, cx, cy, st, s) {
   props(ctx, cx, y, st);
 }
 
+function drawBear(ctx, cx, cy, st, s) {
+  const y = cy + st.idle - st.hop;
+  shadow(ctx, cx, cy, 58, 14);
+  e(ctx, cx, y + 22, 58, 44, s.body);
+  e(ctx, cx, y + 34, 30, 20, s.belly);
+  e(ctx, cx - 30, y - 26, 16, 16, s.ear);
+  e(ctx, cx + 30, y - 26, 16, 16, s.ear);
+  e(ctx, cx - 30, y - 26, 8, 8, s.inner);
+  e(ctx, cx + 30, y - 26, 8, 8, s.inner);
+  e(ctx, cx, y - 10, 40, 34, s.body);
+  e(ctx, cx, y + 8, 16, 12, s.belly);
+  eyes(ctx, cx - 14, y - 12, cx + 14, y - 12, 8, st);
+  e(ctx, cx, y + 4, 10, 8, s.nose);
+  mouth(ctx, cx, y + 16, st);
+  e(ctx, cx - 26, y + 54, 16, 12, s.body);
+  e(ctx, cx + 26, y + 54, 16, 12, s.body);
+  blush(ctx, cx - 24, y, cx + 24, y, st);
+  props(ctx, cx, y, st);
+}
+
 function drawPanda(ctx, cx, cy, st) {
   const y = cy + st.idle - st.hop;
   shadow(ctx, cx, cy, 56, 13);
@@ -887,6 +907,7 @@ export function drawSpecies(ctx, p, t, extra = {}) {
   if (id === 'cow') return drawCow(ctx, cx, cy, st, s);
   if (id === 'alpaca') return drawAlpaca(ctx, cx, cy, st, s, false);
   if (id === 'llama') return drawAlpaca(ctx, cx, cy, st, s, true);
+  if (id === 'bear') return drawBear(ctx, cx, cy, st, s);
   if (id === 'fox') return drawFox(ctx, cx, cy, st, s);
   if (id === 'raccoon') return drawRaccoon(ctx, cx, cy, st, s);
   if (id === 'otter') return drawOtter(ctx, cx, cy, st, s);

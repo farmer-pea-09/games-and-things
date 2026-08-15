@@ -9,21 +9,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1b3a6b 0%, #0d2818 55%, #1a472a 100%);
+  background: linear-gradient(160deg, #0b1d36 0%, #1a0a14 45%, #3d0f18 100%);
   font-family: 'Press Start 2P', monospace;
-  color: #fff;
+  color: #fff8ef;
   image-rendering: pixelated;
 }
 
 #game-container {
   position: relative;
-  border: 4px solid #ffe566;
+  border: 4px solid #e8c36a;
   border-radius: 8px;
   box-shadow:
-    0 0 0 4px #081c15,
-    0 0 40px rgba(82, 183, 136, 0.4),
+    0 0 0 4px #14080c,
+    0 0 40px rgba(196, 30, 58, 0.35),
     inset 0 0 60px rgba(0, 0, 0, 0.3);
-  background: #081c15;
+  background: #14080c;
 }
 
 #home-link {
@@ -31,7 +31,7 @@ body {
   top: -28px;
   left: 0;
   font-size: 7px;
-  color: #74c69d;
+  color: #e8c36a;
   text-decoration: none;
 }
 
@@ -55,18 +55,25 @@ body {
 
 .hud-row {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 20px;
   margin-bottom: 6px;
   text-shadow: 2px 2px 0 #000;
   font-size: 8px;
   line-height: 1.6;
 }
 
+#quest-label {
+  font-size: 7px;
+  color: #ffd166;
+  text-shadow: 2px 2px 0 #000;
+  line-height: 1.6;
+  max-width: 78%;
+}
+
 #message-box {
   margin-top: 4px;
   font-size: 7px;
-  color: #ffd700;
+  color: #95d5b2;
   text-shadow: 2px 2px 0 #000;
   min-height: 16px;
 }
@@ -74,7 +81,7 @@ body {
 #overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(8, 4, 10, 0.86);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -86,27 +93,32 @@ body {
 }
 
 #overlay-content {
-  background: #1b4332;
-  border: 4px solid #52b788;
+  background: #2a1020;
+  border: 4px solid #e8c36a;
   padding: 24px;
-  max-width: 90%;
+  max-width: 92%;
   font-size: 8px;
   line-height: 2;
   text-align: center;
 }
 
 #overlay-content h2 {
-  color: #95d5b2;
+  color: #e8c36a;
   margin-bottom: 16px;
   font-size: 12px;
+}
+
+#overlay-content p {
+  color: #f4e4c8;
+  margin-bottom: 8px;
 }
 
 #overlay-content button {
   font-family: inherit;
   font-size: 8px;
   padding: 10px 20px;
-  margin-top: 12px;
-  background: #40916c;
+  margin: 8px;
+  background: #c41e3a;
   border: none;
   color: #fff;
   cursor: pointer;
@@ -114,7 +126,8 @@ body {
 }
 
 #overlay-content button:hover {
-  background: #52b788;
+  background: #e8c36a;
+  color: #1a120c;
 }
 
 #controls-help {
@@ -124,12 +137,12 @@ body {
   right: 0;
   text-align: center;
   font-size: 6px;
-  color: #74c69d;
+  color: #c9a227;
 }
 
 #controls-help kbd {
-  background: #1b4332;
+  background: #3d1020;
   padding: 2px 4px;
   border-radius: 2px;
-  border: 1px solid #40916c;
+  border: 1px solid #e8c36a;
 }

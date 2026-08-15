@@ -87,6 +87,10 @@ h1 {
   background: linear-gradient(180deg, #9b5de5 0%, #f15bb5 100%);
 }
 
+.game-card.christmas {
+  background: linear-gradient(180deg, #c41e3a 0%, #0b3d2e 100%);
+}
+
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;

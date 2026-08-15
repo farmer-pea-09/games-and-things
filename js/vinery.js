@@ -65,9 +65,9 @@ const MEALS = {
     quest: 'Click dishes to feed Leo. Fill his belly.',
     need: 70,
     intro: [
-      { who: 'Mayor Ben', text: 'We shall set camp here. If you have no supplies, Holly and I can help.' },
-      { who: 'Dori', text: 'Camping bag, please. I will get the eggs.' },
-      { who: 'Dori', text: 'The stone is set. What will you eat, Leo?' },
+      { who: 'Mayor Ben', text: 'We shall set camp here. Carts into the safer ditch!' },
+      { who: 'Dori', text: 'Hear that rumble? The whole convoy is parking along the bank.' },
+      { who: 'Dori', text: 'Camping bag, please. I will get the eggs. The stone is set. What will you eat, Leo?' },
     ],
     after: [
       { who: 'Leo', text: 'Not very homey, but we are together. Barny is tied to a grassy branch.' },
@@ -105,6 +105,7 @@ const MEALS = {
     quest: 'Feed Leo dinner. Tyler is watching too.',
     need: 70,
     intro: [
+      { who: 'Mayor Ben', text: 'Ditches, everyone! Carts off the path for the night.' },
       { who: 'Leo', text: 'Smells amazing, Dori!' },
       { who: 'Dori', text: 'Thanks. You pick your plate... and maybe save munchies for Tyler.' },
     ],
@@ -574,10 +575,14 @@ function drawMantis(x, y, t = 0) {
   ctx.fillRect(x + 23, y + 7 + b, 2, 2);
 }
 
-function drawCart(x, y) {
-  ctx.fillStyle = '#9c6644';
+function drawCart(x, y, color = '#9c6644') {
+  ctx.fillStyle = color;
   ctx.fillRect(x, y + 8, 54, 22);
-  ctx.fillStyle = '#7f4f24';
+  ctx.fillStyle = '#3d2914';
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(x + 4, y, 46, 10);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
   ctx.fillRect(x + 4, y, 46, 10);
   ctx.fillStyle = '#3d2914';
   ctx.beginPath();
@@ -589,6 +594,85 @@ function drawCart(x, y) {
   ctx.arc(x + 12, y + 32, 3, 0, Math.PI * 2);
   ctx.arc(x + 42, y + 32, 3, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawBeetle(x, y, t = 0) {
+  const b = Math.sin(t) * 1.2;
+  ctx.fillStyle = '#1d3557';
+  ctx.beginPath();
+  ctx.ellipse(x + 14, y + 12 + b, 12, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e63946';
+  ctx.fillRect(x + 8, y + 8 + b, 12, 4);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x + 20, y + 8 + b, 3, 3);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x + 21, y + 9 + b, 2, 2);
+}
+
+function drawCicada(x, y, t = 0) {
+  const b = Math.sin(t * 2) * 1.4;
+  ctx.fillStyle = '#90be6d';
+  ctx.beginPath();
+  ctx.ellipse(x + 14, y + 12 + b, 11, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillRect(x + 4, y + 6 + b, 10, 5);
+  ctx.fillRect(x + 16, y + 6 + b, 10, 5);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x + 20, y + 10 + b, 2, 2);
+}
+
+function drawMole(x, y) {
+  ctx.fillStyle = '#6c757d';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 12, 10, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffcad4';
+  ctx.fillRect(x + 16, y + 12, 5, 3);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x + 8, y + 10, 2, 2);
+}
+
+function drawSquirrel(x, y, t = 0) {
+  const b = Math.sin(t) * 1.2;
+  ctx.fillStyle = '#bc6c25';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 12 + b, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 2, y + 6 + b, 6, 8, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x + 14, y + 8 + b, 3, 3);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x + 15, y + 9 + b, 2, 2);
+}
+
+function drawFamilyCart(f, x, y) {
+  if (f.missing) return;
+  const pull = x - 30;
+  if (f.puller === 'beetle') drawBeetle(pull, y + 8, clock * 7 + f.gap);
+  else if (f.puller === 'cicada') drawCicada(pull, y + 8, clock * 7 + f.gap);
+  else drawMantis(pull, y + 8, clock * 7 + f.gap);
+  drawCart(x, y, f.color);
+  if (f.kind === 'mouse') {
+    drawMouse(x + 8, y + 2);
+    drawMouse(x + 24, y + 6);
+  } else if (f.kind === 'lemur') {
+    drawLemur(x + 12, y - 4, clock * 4);
+  } else if (f.kind === 'mole') {
+    drawMole(x + 16, y + 2);
+  } else if (f.kind === 'skink') {
+    drawSkink(x + 10, y + 6, false);
+  } else if (f.kind === 'parrot') {
+    drawMacaw(x + 8, y - 2, clock * 3);
+  } else if (f.kind === 'squirrel') {
+    drawSquirrel(x + 14, y + 2, clock * 5);
+  }
+  ctx.fillStyle = '#fff8ef';
+  ctx.font = '5px "Press Start 2P"';
+  ctx.fillText(f.name, x + 2, y - 2);
 }
 
 function drawFossa(x, y, facing, t = 0) {
@@ -1121,6 +1205,17 @@ function drawVillage() {
   ctx.fillText('Norman', 390, 178);
   ctx.fillText('Party', 390, 372);
 
+  drawMantis(300, 368, clock * 4);
+  drawCart(330, 364, '#9c6644');
+  drawLemur(344, 352, clock * 3);
+  drawBeetle(470, 372, clock * 5);
+  drawCart(500, 368, '#c08552');
+  drawMouse(512, 360);
+  drawMouse(528, 364);
+  drawCicada(200, 376, clock * 6);
+  drawCart(230, 372, '#6c757d');
+  drawMole(246, 366);
+
   if (game.hasBarny) drawMantis(player.x - 36, player.y + 4, clock * 5);
   drawChameleon(110, 210, 1, DORI_PAL, clock * 2);
   drawChameleon(player.x, player.y, player.facing, LEO_PAL, clock * 8);
@@ -1236,8 +1331,12 @@ function startConvoy() {
   convoy = {
     dist: 0,
     families: [
-      { name: 'Mice', x: 220, lane: 1, kind: 'mouse' },
-      { name: 'Furry Tail', x: 140, lane: 1, kind: 'lemur' },
+      { name: 'Furry Tail', gap: 132, lane: 1, kind: 'lemur', color: '#9c6644', puller: 'mantis', missing: false },
+      { name: 'Burrowing', gap: 250, lane: 0, kind: 'mouse', color: '#c08552', puller: 'beetle', missing: false },
+      { name: 'Sniffling', gap: 370, lane: 1, kind: 'mole', color: '#6c757d', puller: 'cicada', missing: false },
+      { name: 'Leaf Wing', gap: 490, lane: 0, kind: 'parrot', color: '#e76f51', puller: 'beetle', missing: false },
+      { name: 'Moss Ear', gap: -120, lane: 2, kind: 'squirrel', color: '#7f4f24', puller: 'mantis', missing: false },
+      { name: 'Blue Tail', gap: -230, lane: 1, kind: 'skink', color: '#2a9d8f', puller: 'mantis', missing: false },
     ],
     obstacles: spawnObstacles(),
     nuts: [],
@@ -1255,6 +1354,9 @@ function startConvoy() {
     fired: new Set(),
     cmdCd: 8,
     ollie: false,
+    camping: false,
+    settling: 0,
+    campMeal: null,
   };
   player.lane = 1;
   player.worldX = 40;
@@ -1273,13 +1375,16 @@ function startConvoy() {
 
 function fireEvent(id) {
   if (id === 'camp') {
-    talk(MEALS.camp.intro, () => startMeal('camp'));
+    startCampSettle('camp');
   } else if (id === 'missing') {
     talk([
       { who: 'Mayor Ben', text: 'Recall! The Blue Tail family!' },
       { who: 'Tiffany', text: 'They disappeared overnight!' },
       { who: 'Mayor Ben', text: 'Send mice and hares to find them. The rest of us keep moving.' },
-    ]);
+    ], () => {
+      const blue = convoy.families.find((f) => f.name === 'Blue Tail');
+      if (blue) blue.missing = true;
+    });
   } else if (id === 'nuts') {
     talk([{ who: 'Dori', text: 'I will hop off for nuts. Surprise for the eggs and Leo! Grab and go, the cart is still moving!' }], () => startGather());
   } else if (id === 'ollie') {
@@ -1303,9 +1408,16 @@ function fireEvent(id) {
       { who: 'Dori', text: 'Your sister is marching with your family. I must tell Mayor Ben.' },
       { who: 'Mayor Ben', text: 'Fusa sighting nearby! Stick close. Lemurs, no more circus acts!' },
       { who: 'Crowd', text: 'Awww!' },
-    ]);
+    ], () => {
+      const blue = convoy.families.find((f) => f.name === 'Blue Tail');
+      if (blue) {
+        blue.missing = false;
+        blue.gap = 200;
+        blue.lane = 1;
+      }
+    });
   } else if (id === 'dinner') {
-    talk(MEALS.dinner.intro, () => startMeal('dinner'));
+    startCampSettle('dinner');
   } else if (id === 'cave') {
     startFade('cave', () => {
       mode = 'cave';
@@ -1343,9 +1455,65 @@ function fireEvent(id) {
   }
 }
 
+function startCampSettle(mealId) {
+  convoy.camping = true;
+  convoy.settling = 1.7;
+  convoy.campMeal = mealId;
+  player.lane = 2;
+  player.speed = 0;
+  cmd = null;
+  const visible = convoy.families.filter((f) => !f.missing);
+  visible.forEach((f, i) => {
+    f.homeGap = f.gap;
+    f.homeLane = f.lane;
+    f.campGap = 90 + i * 112;
+    f.lane = 2;
+  });
+  convoy.families.filter((f) => f.missing).forEach((f) => {
+    f.homeGap = f.gap;
+    f.homeLane = f.lane;
+  });
+  game.chapter = mealId === 'dinner' ? 'Dinner' : 'Camp';
+  setQuest('The convoy is rumbling into the safer ditch...');
+  flash('Carts settle in the ditch.');
+}
+
+function endCamp() {
+  if (!convoy) return;
+  convoy.camping = false;
+  convoy.settling = 0;
+  convoy.campMeal = null;
+  convoy.families.forEach((f) => {
+    if (f.homeGap != null) f.gap = f.homeGap;
+    if (f.homeLane != null) f.lane = f.homeLane;
+    f.homeGap = null;
+    f.homeLane = null;
+    f.campGap = null;
+  });
+  player.lane = 1;
+}
+
 function updateConvoy(dt) {
   prompt = '';
-  if (!convoy || dlg) return;
+  if (!convoy) return;
+
+  if (convoy.settling > 0) {
+    convoy.settling -= dt;
+    player.lane = 2;
+    player.speed = 0;
+    convoy.families.forEach((f) => {
+      if (f.missing || f.campGap == null) return;
+      f.lane = 2;
+      f.gap += (f.campGap - f.gap) * Math.min(1, 5 * dt);
+    });
+    prompt = 'The travel party parks in the ditch...';
+    if (convoy.settling <= 0) {
+      talk(MEALS[convoy.campMeal].intro, () => startMeal(convoy.campMeal));
+    }
+    return;
+  }
+
+  if (dlg || convoy.camping) return;
 
   if (pressed('arrowup') || pressed('w')) player.lane = clamp(player.lane - 1, 0, 2);
   if (pressed('arrowdown') || pressed('s')) player.lane = clamp(player.lane + 1, 0, 2);
@@ -1394,51 +1562,112 @@ function updateConvoy(dt) {
     }
   });
 
-  if (!cmd) prompt = 'Left/Right speed  Up/Down lanes  Dodge rocks, logs, roots, puddles';
+  convoy.families.forEach((f) => {
+    if (f.missing) return;
+    if (cmd) {
+      f.lane = 2;
+    } else if (Math.random() < 0.004) {
+      f.lane = clamp(f.lane + (Math.random() < 0.5 ? -1 : 1), 0, 2);
+    }
+    const cartX = 148 + f.gap;
+    if (f.lane === player.lane && cartX > 100 && cartX < 210) {
+      player.speed *= 0.7;
+      if (!f.bumped) {
+        f.bumped = true;
+        hurtEggs(3);
+        flash(`Watch the ${f.name} cart!`);
+      }
+    } else {
+      f.bumped = false;
+    }
+  });
+
+  if (!cmd) prompt = 'Left/Right speed  Up/Down lanes  Stay with the other carts';
+}
+
+function drawCampfire(x, y) {
+  ctx.fillStyle = '#3d2914';
+  ctx.fillRect(x - 8, y + 6, 6, 8);
+  ctx.fillRect(x + 2, y + 6, 6, 8);
+  const flicker = 10 + Math.sin(clock * 10 + x) * 3;
+  ctx.fillStyle = '#e76f51';
+  ctx.beginPath();
+  ctx.arc(x, y, flicker, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffba08';
+  ctx.beginPath();
+  ctx.arc(x, y - 2, flicker * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTent(x, y) {
+  ctx.fillStyle = '#6b4226';
+  ctx.beginPath();
+  ctx.moveTo(x, y + 28);
+  ctx.lineTo(x + 22, y);
+  ctx.lineTo(x + 44, y + 28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#1a120c';
+  ctx.fillRect(x + 18, y + 16, 10, 12);
 }
 
 function drawPathScene(dist, showOllie = false) {
-  drawCanopy(dist, false);
+  const camping = convoy && convoy.camping;
+  drawCanopy(dist, camping);
   drawVines(dist);
   ctx.fillStyle = '#6b4226';
-  ctx.fillRect(0, 268, W, 96);
+  ctx.fillRect(0, 268, W, camping ? 40 : 96);
   ctx.fillStyle = '#52796f';
   ctx.fillRect(0, 268, W, 8);
-  ctx.fillRect(0, 356, W, 8);
-  ctx.fillStyle = '#3d2914';
-  ctx.fillRect(0, 360, W, 50);
+  if (!camping) ctx.fillRect(0, 356, W, 8);
+  ctx.fillStyle = camping ? '#2b2118' : '#3d2914';
+  ctx.fillRect(0, camping ? 308 : 360, W, camping ? 172 : 50);
+  if (camping) {
+    ctx.fillStyle = '#3d2914';
+    ctx.fillRect(0, 308, W, 12);
+  }
 
   for (let i = 0; i < 20; i++) {
     const x = ((i * 70 - dist) % (W + 70));
     ctx.fillStyle = '#7f4f24';
-    ctx.fillRect(x, 310, 18, 4);
+    ctx.fillRect(x, camping ? 286 : 310, 18, 4);
   }
 
   if (convoy) {
-    convoy.obstacles.forEach((ob) => {
-      const x = ob.x - dist + 120;
-      if (x < -40 || x > W + 20) return;
-      drawObstacle(x, laneY(ob.lane), ob.type);
-    });
-    convoy.families.forEach((f, i) => {
-      const x = 200 + i * 90;
-      if (f.kind === 'mouse') {
-        drawMouse(x, laneY(1) + 8);
-        drawMouse(x + 18, laneY(1) + 12);
-      } else drawLemur(x, laneY(1), clock * 5);
+    if (!camping) {
+      convoy.obstacles.forEach((ob) => {
+        const x = ob.x - dist + 120;
+        if (x < -40 || x > W + 20) return;
+        drawObstacle(x, laneY(ob.lane), ob.type);
+      });
+    }
+    convoy.families.forEach((f) => {
+      const lane = camping ? 2 : f.lane;
+      drawFamilyCart(f, 148 + f.gap, camping ? 318 : laneY(lane));
     });
   }
 
   drawMacaw(80, 120, clock);
   if (showOllie) drawSkink(500, 300, true);
 
-  drawMantis(118, laneY(player.lane) + 8, clock * 8);
-  drawCart(148, laneY(player.lane));
-  drawChameleon(168, laneY(player.lane) - 8, 1, LEO_PAL, clock * 6);
-  drawChameleon(188, laneY(player.lane) - 6, 1, DORI_PAL, clock * 5);
-  drawEgg(200, laneY(player.lane) - 18, '#fff8ef', 0.6);
-  drawEgg(212, laneY(player.lane) - 16, '#fff8ef', 0.6);
-  drawEgg(224, laneY(player.lane) - 18, '#fff8ef', 0.6);
+  const pLaneY = camping ? 318 : laneY(player.lane);
+  if (camping) {
+    drawTent(20, 330);
+    drawCampfire(90, 400);
+    drawCampfire(280, 408);
+    drawCampfire(520, 398);
+    drawCampfire(700, 404);
+    drawMantis(40, 300, clock * 2);
+  } else {
+    drawMantis(118, pLaneY + 8, clock * 8);
+  }
+  drawCart(148, pLaneY);
+  drawChameleon(168, pLaneY - 8, 1, LEO_PAL, clock * 6);
+  drawChameleon(188, pLaneY - 6, 1, DORI_PAL, clock * 5);
+  drawEgg(200, pLaneY - 18, '#fff8ef', 0.6);
+  drawEgg(212, pLaneY - 16, '#fff8ef', 0.6);
+  drawEgg(224, pLaneY - 18, '#fff8ef', 0.6);
 
   if (cmd) {
     ctx.fillStyle = 'rgba(155,34,38,0.85)';
@@ -1515,7 +1744,8 @@ function drawObstacle(x, y, type) {
 }
 
 function foodRect(i) {
-  return { x: 40 + (i % 2) * 250, y: 300 + Math.floor(i / 2) * 52, w: 230, h: 44 };
+  const top = meal && meal.id !== 'lunch' ? 102 : 300;
+  return { x: 40 + (i % 2) * 250, y: top + Math.floor(i / 2) * 38, w: 230, h: 34 };
 }
 
 function startMeal(id) {
@@ -1553,9 +1783,11 @@ function finishMeal() {
   const spec = MEALS[meal.id];
   const extra = [];
   if (meal.fedTyler) extra.push({ who: 'Dori', text: 'Good. Tyler ate his mealworm munchies.' });
+  const wasCamp = meal.id === 'camp' || meal.id === 'dinner';
   meal = null;
   mode = 'convoy';
   game.chapter = 'Convoy';
+  if (wasCamp) endCamp();
   talk(spec.after.concat(extra), () => {
     setQuest('Keep moving with the travel party');
   });
@@ -1589,40 +1821,28 @@ function drawMeal() {
     return;
   }
   const spec = MEALS[meal.id];
-  const night = meal.id !== 'lunch';
-  drawCanopy(convoy ? convoy.dist : 0, night);
-  ctx.fillStyle = night ? 'rgba(10,8,4,0.35)' : 'rgba(255,255,255,0.08)';
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.fillStyle = '#6b4226';
-  ctx.fillRect(220, 210, 220, 16);
-  ctx.fillStyle = '#3d2914';
-  ctx.fillRect(250, 226, 16, 28);
-  ctx.fillRect(394, 226, 16, 28);
-
-  if (night) {
-    ctx.fillStyle = '#e76f51';
-    ctx.beginPath();
-    ctx.arc(160, 250, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffba08';
-    ctx.beginPath();
-    ctx.arc(160, 246, 8, 0, Math.PI * 2);
-    ctx.fill();
+  if (meal.id !== 'lunch' && convoy) {
+    drawPathScene(convoy.dist, false);
+  } else {
+    drawCanopy(convoy ? convoy.dist : 0, false);
+    ctx.fillStyle = '#6b4226';
+    ctx.fillRect(220, 210, 220, 16);
+    ctx.fillStyle = '#3d2914';
+    ctx.fillRect(250, 226, 16, 28);
+    ctx.fillRect(394, 226, 16, 28);
+    drawChameleon(430, 168, -1, DORI_PAL, clock * 2);
+    drawChameleon(300, 176, 1, LEO_PAL, meal.chew > 0 ? clock * 18 : clock * 2);
+    drawEgg(470, 196, '#fff8ef', 0.55);
+    drawEgg(484, 200, '#fff8ef', 0.55);
+    drawEgg(477, 186, '#fff8ef', 0.55);
   }
-
-  drawChameleon(430, 168, -1, DORI_PAL, clock * 2);
-  drawChameleon(300, 176, 1, LEO_PAL, meal.chew > 0 ? clock * 18 : clock * 2);
-  drawEgg(470, 196, '#fff8ef', 0.55);
-  drawEgg(484, 200, '#fff8ef', 0.55);
-  drawEgg(477, 186, '#fff8ef', 0.55);
 
   ctx.fillStyle = '#e9c46a';
   ctx.font = '12px "Press Start 2P"';
-  ctx.fillText(spec.title, 40, 40);
+  ctx.fillText(spec.title, 40, 36);
   ctx.fillStyle = '#fff8ef';
   ctx.font = '7px "Press Start 2P"';
-  ctx.fillText('You choose every bite Leo takes.', 40, 62);
+  ctx.fillText(meal.id === 'lunch' ? 'You choose every bite Leo takes.' : 'Carts rest in the ditch. Feed Leo.', 40, 56);
 
   ctx.fillStyle = '#1a120c';
   ctx.fillRect(40, 78, 240, 14);
