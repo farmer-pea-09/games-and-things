@@ -1584,6 +1584,10 @@ function updateMeal(dt) {
 }
 
 function drawMeal() {
+  if (!meal) {
+    drawConvoy();
+    return;
+  }
   const spec = MEALS[meal.id];
   const night = meal.id !== 'lunch';
   drawCanopy(convoy ? convoy.dist : 0, night);

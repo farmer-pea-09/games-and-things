@@ -1,0 +1,286 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #2d1b4e 0%, #5a189a 48%, #ff6d00 100%);
+  font-family: 'Press Start 2P', monospace;
+  color: #fff8ef;
+  image-rendering: pixelated;
+}
+
+#game-container {
+  position: relative;
+  border: 4px solid #ffd166;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 4px #1a1028,
+    0 0 40px rgba(255, 209, 102, 0.35),
+    inset 0 0 60px rgba(0, 0, 0, 0.3);
+  background: #1a1028;
+}
+
+#home-link {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 7px;
+  color: #ffd166;
+  text-decoration: none;
+}
+
+#home-link:hover {
+  color: #fff;
+}
+
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  pointer-events: none;
+}
+
+.hud-row {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 #000;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+#hint-label {
+  font-size: 7px;
+  color: #ffd166;
+  text-shadow: 2px 2px 0 #000;
+  line-height: 1.6;
+  max-width: 78%;
+}
+
+#action-bar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  background: #1a1028;
+}
+
+#action-bar button {
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 1.5;
+  color: #fff8ef;
+  background: #4a2c7a;
+  border: 3px solid #ffd166;
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  min-width: 108px;
+  user-select: none;
+}
+
+#action-bar button:hover {
+  background: #ffd166;
+  color: #1a1028;
+}
+
+#action-bar kbd {
+  display: inline-block;
+  background: #1a1028;
+  color: #ffd166;
+  padding: 2px 5px;
+  border-radius: 2px;
+  margin-right: 4px;
+  border: 1px solid #ffd166;
+}
+
+#action-bar button:hover kbd {
+  background: #fff8ef;
+  color: #1a1028;
+  border-color: #1a1028;
+}
+
+#panel {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: rgba(18, 8, 32, 0.94);
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+#panel.hidden {
+  display: none;
+}
+
+#panel-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+#panel-content h2 {
+  color: #ffd166;
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+#panel-content .panel-sub {
+  font-size: 7px;
+  color: #d4b896;
+  text-align: center;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.panel-grid button,
+.egg-card,
+.pet-card {
+  font-family: inherit;
+  font-size: 6px;
+  line-height: 1.6;
+  color: #fff8ef;
+  background: #4a2c7a;
+  border: 3px solid #c77dff;
+  border-radius: 4px;
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.egg-card:hover,
+.pet-card:hover,
+.pet-card.equipped {
+  background: #ffd166;
+  color: #1a1028;
+  border-color: #ffd166;
+}
+
+.pet-card .pet-emoji,
+.egg-card .pet-emoji {
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 8px;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+
+.rarity {
+  display: block;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+
+.panel-actions button,
+#overlay-content button {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 16px;
+  background: #ffd166;
+  border: none;
+  color: #1a1028;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.panel-actions button.ghost,
+#overlay-content button.ghost {
+  background: #4a2c7a;
+  color: #fff8ef;
+  border: 2px solid #c77dff;
+}
+
+.panel-actions button:hover,
+#overlay-content button:hover {
+  background: #fff3b0;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 6, 22, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+#overlay-content {
+  background: #4a2c7a;
+  border: 4px solid #ffd166;
+  padding: 24px;
+  max-width: 90%;
+  font-size: 8px;
+  line-height: 2;
+  text-align: center;
+}
+
+#overlay-content h2 {
+  color: #ffd166;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+#overlay-content .hatch-emoji {
+  font-size: 42px;
+  line-height: 1;
+  margin-bottom: 12px;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+
+#controls-help {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 6px;
+  color: #e0c3fc;
+  line-height: 1.6;
+}
+
+#controls-help kbd {
+  background: #1a1028;
+  border: 1px solid #ffd166;
+  color: #ffd166;
+  padding: 1px 4px;
+  border-radius: 2px;
+}

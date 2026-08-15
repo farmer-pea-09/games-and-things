@@ -830,14 +830,16 @@ function drawGlider(ctx, cx, cy, st, s) {
   props(ctx, cx, y, st);
 }
 
-export function drawSpecies(ctx, p, t, extra) {
+export function drawSpecies(ctx, p, t, extra = {}) {
   const s = p.species;
   const st = stateOf(p, t, extra);
-  const cx = 400;
-  const cy = 318;
+  const cx = extra.x ?? 400;
+  const cy = extra.y ?? 318;
+  const scale = extra.scale ?? 1;
   const id = s.id;
 
-  if (id === 'cat') return drawCat(ctx, cx, cy, st, s);
+  const paint = () => {
+    if (id === 'cat') return drawCat(ctx, cx, cy, st, s);
   if (id === 'dog') return drawDog(ctx, cx, cy, st, s);
   if (id === 'rabbit') return drawRabbit(ctx, cx, cy, st, s);
   if (id === 'hamster') return drawRodent(ctx, cx, cy, st, s, { small: true, cheeks: true, ear: 10 });
@@ -888,7 +890,19 @@ export function drawSpecies(ctx, p, t, extra) {
   if (id === 'fox') return drawFox(ctx, cx, cy, st, s);
   if (id === 'raccoon') return drawRaccoon(ctx, cx, cy, st, s);
   if (id === 'otter') return drawOtter(ctx, cx, cy, st, s);
-  if (id === 'panda') return drawPanda(ctx, cx, cy, st);
-  if (id === 'koala') return drawKoala(ctx, cx, cy, st, s);
-  return drawCat(ctx, cx, cy, st, s);
+    if (id === 'panda') return drawPanda(ctx, cx, cy, st);
+    if (id === 'koala') return drawKoala(ctx, cx, cy, st, s);
+    return drawCat(ctx, cx, cy, st, s);
+  };
+
+  if (scale !== 1) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx, -cy);
+    paint();
+    ctx.restore();
+    return;
+  }
+  paint();
 }

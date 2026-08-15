@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pet Simulator</title>
+  <link rel="stylesheet" href="css/pet-sim.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="coins-label">🪙 0</span>
+        <span id="mult-label">×1.0</span>
+        <span id="area-label">Sunny Meadow</span>
+      </div>
+      <div id="hint-label">Collect coins. Buy eggs. Hatch rare pets!</div>
+    </div>
+    <div id="action-bar">
+      <button type="button" data-panel="pets"><kbd>E</kbd> Pets</button>
+      <button type="button" data-panel="shop"><kbd>F</kbd> Shop</button>
+      <button type="button" data-panel="rebirth"><kbd>R</kbd> Rebirth</button>
+    </div>
+    <div id="panel" class="hidden">
+      <div id="panel-content"></div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>WASD</kbd> move · <kbd>Space</kbd> interact · <kbd>E</kbd> pets · <kbd>F</kbd> shop · <kbd>Esc</kbd> pause
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('petsim')) {
+      await import('./js/pet-sim.js');
+    }
+  </script>
+</body>
+</html>

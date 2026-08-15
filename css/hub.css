@@ -83,6 +83,10 @@ h1 {
   background: linear-gradient(180deg, #e76f51 0%, #2a9d8f 100%);
 }
 
+.game-card.petsim {
+  background: linear-gradient(180deg, #9b5de5 0%, #f15bb5 100%);
+}
+
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;
