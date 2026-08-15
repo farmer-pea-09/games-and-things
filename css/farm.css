@@ -9,7 +9,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0d2818 0%, #1a472a 50%, #2d6a4f 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   font-family: 'Press Start 2P', monospace;
   color: #fff;
   image-rendering: pixelated;
@@ -17,13 +17,13 @@ body {
 
 #game-container {
   position: relative;
-  border: 4px solid #52b788;
+  border: 4px solid #e94560;
   border-radius: 8px;
   box-shadow:
-    0 0 0 4px #081c15,
-    0 0 40px rgba(82, 183, 136, 0.4),
+    0 0 0 4px #1a1a2e,
+    0 0 40px rgba(233, 69, 96, 0.4),
     inset 0 0 60px rgba(0, 0, 0, 0.3);
-  background: #081c15;
+  background: #0a0a14;
 }
 
 #home-link {
@@ -31,7 +31,7 @@ body {
   top: -28px;
   left: 0;
   font-size: 7px;
-  color: #74c69d;
+  color: #e94560;
   text-decoration: none;
 }
 
@@ -53,21 +53,84 @@ body {
   pointer-events: none;
 }
 
+#hud .tool-btn,
+#hud .seed-btn {
+  pointer-events: auto;
+}
+
 .hud-row {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   margin-bottom: 6px;
   text-shadow: 2px 2px 0 #000;
   font-size: 8px;
   line-height: 1.6;
 }
 
+#tool-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.tool-btn {
+  font-family: inherit;
+  font-size: 7px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #555;
+  color: #aaa;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+
+.tool-btn:hover {
+  border-color: #e94560;
+  color: #fff;
+}
+
+.tool-btn.active {
+  background: rgba(233, 69, 96, 0.3);
+  border-color: #e94560;
+  color: #fff;
+}
+
+#seed-picker {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#seed-picker.hidden {
+  display: none;
+}
+
+.seed-btn {
+  font-family: inherit;
+  font-size: 6px;
+  padding: 6px 8px;
+  background: rgba(34, 139, 34, 0.4);
+  border: 2px solid #2d8a2d;
+  color: #cfc;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.seed-btn:hover {
+  background: rgba(34, 139, 34, 0.7);
+  border-color: #5f5;
+}
+
 #message-box {
-  margin-top: 4px;
+  margin-top: 8px;
   font-size: 7px;
   color: #ffd700;
   text-shadow: 2px 2px 0 #000;
-  min-height: 16px;
+  min-height: 20px;
 }
 
 #overlay {
@@ -85,8 +148,8 @@ body {
 }
 
 #overlay-content {
-  background: #1b4332;
-  border: 4px solid #52b788;
+  background: #1a1a2e;
+  border: 4px solid #e94560;
   padding: 24px;
   max-width: 90%;
   font-size: 8px;
@@ -95,7 +158,7 @@ body {
 }
 
 #overlay-content h2 {
-  color: #95d5b2;
+  color: #e94560;
   margin-bottom: 16px;
   font-size: 12px;
 }
@@ -104,8 +167,8 @@ body {
   font-family: inherit;
   font-size: 8px;
   padding: 10px 20px;
-  margin-top: 12px;
-  background: #40916c;
+  margin-top: 16px;
+  background: #e94560;
   border: none;
   color: #fff;
   cursor: pointer;
@@ -113,7 +176,7 @@ body {
 }
 
 #overlay-content button:hover {
-  background: #52b788;
+  background: #ff6b8a;
 }
 
 #controls-help {
@@ -123,12 +186,12 @@ body {
   right: 0;
   text-align: center;
   font-size: 6px;
-  color: #74c69d;
+  color: #888;
 }
 
 #controls-help kbd {
-  background: #1b4332;
+  background: #333;
   padding: 2px 4px;
   border-radius: 2px;
-  border: 1px solid #40916c;
+  border: 1px solid #555;
 }

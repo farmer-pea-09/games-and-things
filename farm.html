@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Farmer's Life</title>
+  <link rel="stylesheet" href="css/farm.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <canvas id="game" width="640" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="day-label">Day 1</span>
+        <span id="season-label">Spring</span>
+        <span id="time-label">6:00 AM</span>
+      </div>
+      <div class="hud-row">
+        <span id="money-label">💰 100g</span>
+        <span id="energy-label">⚡ 100/100</span>
+      </div>
+      <div id="tool-bar">
+        <button class="tool-btn active" data-tool="0" title="Hoe (1)">⛏️ Hoe</button>
+        <button class="tool-btn" data-tool="1" title="Water (2)">💧 Water</button>
+        <button class="tool-btn" data-tool="2" title="Seeds (3)">🌱 Seeds</button>
+        <button class="tool-btn" data-tool="3" title="Harvest (4)">🧺 Harvest</button>
+        <button class="tool-btn" data-tool="4" title="Talk (5)">💬 Talk</button>
+      </div>
+      <div id="seed-picker" class="hidden">
+        <button class="seed-btn" data-seed="turnip">Turnip (20g) — 4 days</button>
+        <button class="seed-btn" data-seed="potato">Potato (40g) — 6 days</button>
+        <button class="seed-btn" data-seed="pumpkin">Pumpkin (80g) — 9 days</button>
+      </div>
+      <div id="message-box"></div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>WASD</kbd> move · <kbd>1-5</kbd> tools · <kbd>Space</kbd> use · <kbd>E</kbd> sleep · <kbd>Esc</kbd> pause
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('farm')) {
+      const script = document.createElement('script');
+      script.src = 'js/game.js';
+      document.body.appendChild(script);
+    }
+  </script>
+</body>
+</html>

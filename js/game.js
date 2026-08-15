@@ -58,7 +58,8 @@
   const MAX_ENERGY = 100;
 
   const MINUTES_PER_DAY = 840; // 6 AM to 8 PM
-  const TIME_SPEED = 0.5; // game minutes per real frame at 60fps ~ 28 sec per day
+  const REAL_MS_PER_GAME_HOUR = 5 * 60 * 1000; // each clock hour = 5 real minutes
+  const GAME_MINUTES_PER_MS = 60 / REAL_MS_PER_GAME_HOUR;
 
   const TILE_TYPES = {
     GRASS: 0,
@@ -81,7 +82,7 @@
 
   const NPC_DIALOGUE = {
     shopkeeper: [
-      "Welcome to Sunny Vale General Store!",
+      "Welcome to the general store!",
       "Seeds are flying off the shelves today!",
       "A good farmer knows when to rest. Don't forget to sleep!",
       "Pumpkins sell for a fortune, but they take patience.",
@@ -337,11 +338,11 @@
     player.messageTimer = 180;
   }
 
-  function updatePlayer(player, world, keys, actionPressed) {
+  function updatePlayer(player, world, keys, actionPressed, deltaMs = 16) {
     if (player.paused) return;
 
-    // Time
-    player.gameMinutes += TIME_SPEED;
+    // Time — 1 game hour passes every 5 real minutes
+    player.gameMinutes += GAME_MINUTES_PER_MS * deltaMs;
     if (player.gameMinutes >= 360 + MINUTES_PER_DAY) {
       endDay(player, world);
     }
@@ -781,15 +782,13 @@
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(0, 0, 640, 480);
     ctx.fillStyle = '#e94560';
-    ctx.font = '24px "Press Start 2P"';
+    ctx.font = '18px "Press Start 2P"';
     ctx.textAlign = 'center';
-    ctx.fillText('SUNNY VALE FARM', 320, 180);
+    ctx.fillText("A FARMER'S", 320, 175);
+    ctx.fillText('LIFE', 320, 205);
     ctx.fillStyle = '#ffd700';
-    ctx.font = '10px "Press Start 2P"';
-    ctx.fillText('A Harvest Moon tribute', 320, 220);
-    ctx.fillStyle = '#fff';
     ctx.font = '8px "Press Start 2P"';
-    ctx.fillText('Till · Plant · Water · Harvest · Sell', 320, 280);
+    ctx.fillText('Till · Plant · Water · Harvest · Sell', 320, 260);
     ctx.fillText('Press SPACE or ENTER to start', 320, 340);
     ctx.textAlign = 'left';
   }
@@ -937,6 +936,7 @@
   let actionPressed = false;
   let gameStarted = false;
   let lastShopCheck = false;
+  let lastFrameTime = performance.now();
 
   function initGame() {
     world = createWorld();
@@ -944,17 +944,20 @@
     gameStarted = true;
     player.paused = false;
     hideOverlay();
-    showMessage(player, 'Welcome to Sunny Vale Farm! Till soil, plant seeds, and harvest!');
+    showMessage(player, "Welcome to A Farmer's Life! Till soil, plant seeds, and harvest!");
+    lastFrameTime = performance.now();
   }
 
-  function gameLoop() {
+  function gameLoop(now = performance.now()) {
+    const deltaMs = gameStarted ? Math.min(now - lastFrameTime, 100) : 0;
+    lastFrameTime = now;
     ctx.clearRect(0, 0, 640, 480);
 
     if (!gameStarted) {
       renderTitle(ctx);
       updateHUD({ day: 1, seasonIndex: 0, gameMinutes: 360, money: 100, energy: 100, maxEnergy: 100, currentMessage: '', tool: 0, inventory: {} });
     } else {
-      updatePlayer(player, world, keys, actionPressed);
+      updatePlayer(player, world, keys, actionPressed, deltaMs);
       actionPressed = false;
 
       render(ctx, world, player);

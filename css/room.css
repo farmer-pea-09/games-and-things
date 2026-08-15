@@ -1,0 +1,109 @@
+.room-gate {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  color: #fff8ef;
+  background: radial-gradient(ellipse at top, #3d2914 0%, #1a120c 70%);
+}
+
+.room-gate--fail .room-gate-kicker {
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: #e9c46a;
+  margin-bottom: 16px;
+}
+
+.room-gate h1 {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: #e76f51;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.room-gate-msg {
+  font-size: 8px;
+  line-height: 1.8;
+  max-width: 420px;
+  margin-bottom: 12px;
+}
+
+.room-gate-hint {
+  font-size: 6px;
+  line-height: 1.8;
+  color: #d4b896;
+  margin-bottom: 24px;
+}
+
+.room-gate-link {
+  font-size: 8px;
+  color: #e9c46a;
+  text-decoration: none;
+  border: 2px solid #e9c46a;
+  padding: 10px 14px;
+}
+
+.room-gate-link:hover {
+  background: #e9c46a;
+  color: #1a120c;
+}
+
+.room-badge {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid #e9c46a;
+  padding: 8px 10px;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  pointer-events: none;
+  animation: roomBadgeIn 0.35s ease;
+}
+
+.room-badge-label {
+  display: block;
+  font-size: 6px;
+  color: #d4b896;
+  margin-bottom: 4px;
+}
+
+.room-badge-code {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #ffd700;
+  margin-bottom: 4px;
+}
+
+.room-badge-note {
+  display: block;
+  font-size: 5px;
+  line-height: 1.6;
+  color: #888;
+}
+
+@keyframes roomBadgeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .room-badge {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+  }
+}

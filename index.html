@@ -3,30 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chameleon Quest</title>
-  <link rel="stylesheet" href="css/style.css">
+  <title>Games and Things</title>
+  <link rel="stylesheet" href="css/hub.css">
+  <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="game-container">
-    <canvas id="game" width="800" height="480"></canvas>
-    <div id="hud">
-      <div class="hud-row">
-        <span id="score-label">🦗 0</span>
-        <span id="lives-label">💚 × 3</span>
-        <span id="world-label">World 1-1</span>
-      </div>
-      <div id="message-box"></div>
+  <main class="hub">
+    <p class="hub-kicker">Games and Things</p>
+    <h1>Pick a game</h1>
+    <p class="hub-sub">Four little worlds. Each play gets a one-time room code.</p>
+    <div class="game-grid">
+      <a class="game-card farm" href="farm.html" data-game="farm">
+        <span class="game-art" aria-hidden="true">🌾</span>
+        <h2>A Farmer's Life</h2>
+        <p>Till the soil, plant seeds, water crops, and sell your harvest. Seasons change every week.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card pet" href="pet.html" data-game="pet">
+        <span class="game-art" aria-hidden="true">🐾</span>
+        <h2>Take Care of a Pet</h2>
+        <p>Pick any animal, then feed, love, water, sleep, and play so your pet stays happy.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card chameleon" href="chameleon.html" data-game="chameleon">
+        <span class="game-art" aria-hidden="true">🦎</span>
+        <h2>Chameleon Quest</h2>
+        <p>Run, jump, and catch bugs with your tongue. Reach the flag vine.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card vinery" href="vinery.html" data-game="vinery">
+        <span class="game-art" aria-hidden="true">🥚</span>
+        <h2>Vinery Village</h2>
+        <p>Help Leo and Dori pack up, join the convoy, and keep three little eggs safe from fossas.</p>
+        <span class="play-label">Play</span>
+      </a>
     </div>
-    <div id="overlay" class="hidden">
-      <div id="overlay-content"></div>
-    </div>
-    <div id="controls-help">
-      <kbd>←→</kbd> move · <kbd>Space</kbd> jump · <kbd>Z</kbd> tongue · <kbd>Shift</kbd> run · <kbd>Esc</kbd> pause
-    </div>
-  </div>
-  <script type="module" src="js/main.js"></script>
+  </main>
+  <script type="module" src="js/hub.js"></script>
 </body>
 </html>
