@@ -1,5 +1,6 @@
 import { PETS } from './pets.js';
 import { drawSpecies } from './pet-draw.js';
+import { netHost, netJoin, netBroadcast, netStop, netRoom, netRole, makeRoomCode, inviteUrl } from './net.js';
 
 const W = 800;
 const H = 480;
@@ -157,6 +158,10 @@ const state = {
 
 const player = { x: 220, y: 480, dir: 1, walk: 0 };
 const trail = [];
+const remotes = new Map();
+const REMOTE_COLORS = ['#e63946', '#9b5de5', '#52b788', '#f15bb5', '#ff6d00'];
+let netAcc = 0;
+let netBusy = false;
 let coins = [];
 let decor = [];
 let popups = [];
@@ -1266,11 +1271,194 @@ function showPause() {
   };
 }
 
+function remoteName(id) {
+  const names = ['Pip', 'Jo', 'Sam', 'Ren', 'Kit', 'Ash', 'Bo', 'Nix'];
+  let h = 0;
+  for (const ch of String(id)) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  return names[h % names.length];
+}
+
+function remoteColor(id) {
+  let h = 0;
+  for (const ch of String(id)) h = (h * 17 + ch.charCodeAt(0)) >>> 0;
+  return REMOTE_COLORS[h % REMOTE_COLORS.length];
+}
+
+function netPayload() {
+  return {
+    t: 'p',
+    x: Math.round(player.x),
+    y: Math.round(player.y),
+    dir: player.dir,
+    walk: player.walk,
+    area: state.area,
+    name: 'You',
+    pets: equippedPets().map((p) => ({ speciesId: p.speciesId, rarity: p.rarity })),
+  };
+}
+
+function applyRemote(msg) {
+  if (!msg || msg.t === 'welcome') return;
+  const id = msg.id;
+  if (!id || id === 'host' && netRole() === 'host') return;
+  if (msg.t === 'leave') {
+    remotes.delete(id);
+    return;
+  }
+  if (msg.t !== 'p') return;
+  const prev = remotes.get(id) || { trail: [] };
+  const next = {
+    id,
+    x: msg.x,
+    y: msg.y,
+    dir: msg.dir || 1,
+    walk: msg.walk || 0,
+    area: msg.area || 0,
+    name: remoteName(id),
+    color: remoteColor(id),
+    pets: Array.isArray(msg.pets) ? msg.pets.slice(0, MAX_EQUIP) : [],
+    trail: prev.trail || [],
+    last: performance.now(),
+  };
+  next.trail.unshift({ x: next.x, y: next.y });
+  if (next.trail.length > 80) next.trail.length = 80;
+  remotes.set(id, next);
+}
+
+function wireNet() {
+  return {
+    onMessage: applyRemote,
+    onJoin: (id) => {
+      say(`${remoteName(id)} joined the meadow!`);
+      netBroadcast(netPayload());
+    },
+    onLeave: (id) => {
+      remotes.delete(id);
+      say(`${remoteName(id)} left.`);
+    },
+    onHostGone: () => {
+      remotes.clear();
+      netStop();
+      say('Host left. Room closed.');
+    },
+  };
+}
+
+async function hostMultiplayer() {
+  if (netBusy) return;
+  netBusy = true;
+  const code = makeRoomCode();
+  overlayContent.innerHTML = `<h2>Online</h2><p>Opening room...</p>`;
+  overlay.classList.remove('hidden');
+  try {
+    await netHost(code, wireNet());
+    remotes.clear();
+    showMultiStatus();
+    say(`Room ${code} is open. Friends can join!`);
+  } catch (err) {
+    overlay.classList.add('hidden');
+    say(err.message || 'Could not host. Try again.');
+  }
+  netBusy = false;
+}
+
+async function joinMultiplayer(code) {
+  const clean = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (clean.length !== 6) {
+    say('Need a 6-letter room code.');
+    return;
+  }
+  if (netBusy) return;
+  netBusy = true;
+  overlayContent.innerHTML = `<h2>Online</h2><p>Joining ${clean}...</p>`;
+  overlay.classList.remove('hidden');
+  try {
+    await netJoin(clean, wireNet());
+    remotes.clear();
+    netBroadcast(netPayload());
+    overlay.classList.add('hidden');
+    say(`Joined room ${clean}!`);
+  } catch (err) {
+    overlay.classList.add('hidden');
+    say(err.message || 'Could not join. Check the code.');
+  }
+  netBusy = false;
+}
+
+function showMultiStatus() {
+  const code = netRoom();
+  const link = inviteUrl(code);
+  overlay.classList.remove('hidden');
+  overlayContent.innerHTML = `
+    <h2>Play together</h2>
+    <p>Room <strong>${code}</strong></p>
+    <p class="panel-sub">Send this link to a friend</p>
+    <p style="font-size:6px;line-height:1.6;word-break:break-all;max-width:340px">${link}</p>
+    <div class="panel-actions">
+      <button id="copy-link" type="button">Copy link</button>
+      <button class="ghost" id="leave-room" type="button">Leave</button>
+      <button class="ghost" id="close-multi" type="button">Play</button>
+    </div>
+  `;
+  overlayContent.querySelector('#copy-link').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      say('Invite link copied!');
+    } catch {
+      say(link);
+    }
+  };
+  overlayContent.querySelector('#leave-room').onclick = () => {
+    netStop();
+    remotes.clear();
+    overlay.classList.add('hidden');
+    say('You left the room.');
+  };
+  overlayContent.querySelector('#close-multi').onclick = () => overlay.classList.add('hidden');
+}
+
+function openMultiplayer() {
+  sitRail.classList.add('hidden');
+  panel.classList.add('hidden');
+  menu = null;
+  if (netRoom()) {
+    showMultiStatus();
+    return;
+  }
+  overlay.classList.remove('hidden');
+  overlayContent.innerHTML = `
+    <h2>Play together</h2>
+    <p>See friends in the same meadow. Your coins and pets stay yours.</p>
+    <div class="panel-actions">
+      <button id="host-room" type="button">Host room</button>
+    </div>
+    <p class="panel-sub">Or join a code</p>
+    <input id="join-code" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false">
+    <div class="panel-actions">
+      <button id="join-room" type="button">Join</button>
+      <button class="ghost" id="close-multi" type="button">Close</button>
+    </div>
+  `;
+  overlayContent.querySelector('#host-room').onclick = () => hostMultiplayer();
+  overlayContent.querySelector('#join-room').onclick = () => {
+    joinMultiplayer(overlayContent.querySelector('#join-code').value);
+  };
+  overlayContent.querySelector('#join-code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      joinMultiplayer(e.target.value);
+    }
+  });
+  overlayContent.querySelector('#close-multi').onclick = () => overlay.classList.add('hidden');
+}
+
 function updateHud() {
   coinsLabel.textContent = `🪙 ${formatCoins(state.coins)}`;
   multLabel.textContent = `×${totalMult().toFixed(1)}`;
   clockLabel.textContent = `🕒 ${formatClock()}`;
-  areaLabel.textContent = AREAS[state.area].name;
+  areaLabel.textContent = netRoom()
+    ? `${AREAS[state.area].name} · ${netRoom()}`
+    : AREAS[state.area].name;
   const pack = equippedPets();
   const shown = focusedCarePet();
   if (shown) ensurePetStats(shown);
@@ -1673,6 +1861,41 @@ function drawPlayer(c) {
   ctx.fillRect(x + 2 + player.dir * 3, y - 18, 3, 3);
 }
 
+function drawRemotePlayer(c, r) {
+  if (r.area !== state.area) return;
+  const x = r.x - c.x;
+  const y = r.y - c.y + Math.sin(r.walk) * 2;
+  if (x < -40 || y < -50 || x > W + 40 || y > H + 40) return;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(x, r.y - c.y + 16, 12, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1d3557';
+  ctx.fillRect(x - 8, y + 2, 16, 12);
+  ctx.fillStyle = r.color || '#e63946';
+  ctx.fillRect(x - 9, y - 8, 18, 12);
+  ctx.fillStyle = '#f4a261';
+  ctx.beginPath();
+  ctx.arc(x, y - 16, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3d2914';
+  ctx.fillRect(x - 8, y - 24, 16, 6);
+  ctx.fillRect(x - 4 + r.dir * 3, y - 18, 3, 3);
+  ctx.fillRect(x + 2 + r.dir * 3, y - 18, 3, 3);
+  ctx.fillStyle = r.color || '#ffd166';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText(r.name, x, y - 32);
+  ctx.textAlign = 'left';
+  r.pets.forEach((pet, i) => {
+    const node = r.trail[14 + i * 18] || { x: r.x - r.dir * (24 + i * 20), y: r.y };
+    drawPetSprite(c, pet.speciesId, node.x, node.y - 6, 0.22, {
+      mood: 80, sleeping: false, playing: true, eating: false, drinking: false,
+      loving: false, sad: false, crying: false,
+    });
+  });
+}
+
 function drawFollowers(c) {
   const pets = equippedPets();
   pets.forEach((pet, i) => {
@@ -1964,6 +2187,7 @@ function render() {
   for (const coin of coins) drawCoin(coin, c);
   drawWild(c);
   drawFollowers(c);
+  for (const r of remotes.values()) drawRemotePlayer(c, r);
   drawPlayer(c);
   drawLighting();
   drawSkyBody();
@@ -1982,6 +2206,17 @@ function loop(now) {
   }
   if (battle) updateBattle(dt);
   const blocked = paused || menu || hatch || battle || !overlay.classList.contains('hidden');
+  if (netRoom()) {
+    netAcc += dt;
+    if (netAcc >= 0.12) {
+      netAcc = 0;
+      netBroadcast(netPayload());
+    }
+    const nowMs = performance.now();
+    for (const [id, r] of remotes) {
+      if (nowMs - r.last > 8000) remotes.delete(id);
+    }
+  }
   if (!blocked) {
     updatePlayer(dt);
     updateCoins(dt);
@@ -2000,6 +2235,7 @@ function loop(now) {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea')) return;
   const key = e.key.toLowerCase();
   keys.add(key);
   if (e.repeat) return;
@@ -2011,8 +2247,10 @@ window.addEventListener('keydown', (e) => {
       return;
     }
     if (menu) closeMenus();
-    else if (hatch) return;
-    else if (paused) {
+    else if (!overlay.classList.contains('hidden')) {
+      overlay.classList.add('hidden');
+      paused = false;
+    } else if (paused) {
       paused = false;
       overlay.classList.add('hidden');
     } else showPause();
@@ -2026,7 +2264,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (menu || !overlay.classList.contains('hidden')) {
-    if (key === 'e' || key === 'f' || key === 'r' || key === 'b') closeMenus();
+    if (key === 'e' || key === 'f' || key === 'r' || key === 'b' || key === 'm') closeMenus();
     return;
   }
 
@@ -2045,6 +2283,9 @@ window.addEventListener('keydown', (e) => {
   } else if (key === 'f') {
     e.preventDefault();
     openShop();
+  } else if (key === 'm') {
+    e.preventDefault();
+    openMultiplayer();
   } else if (key === 'r') {
     e.preventDefault();
     openRebirth();
@@ -2076,6 +2317,7 @@ document.querySelectorAll('#action-bar button').forEach((btn) => {
     else if (id === 'pets') openPets();
     else if (id === 'home') openHome();
     else if (id === 'shop') openShop();
+    else if (id === 'multi') openMultiplayer();
     else openRebirth();
   });
 });
@@ -2095,3 +2337,8 @@ if (fresh || state.area === 0) {
 if (fresh) say('Your first pup is ready. Collect coins and hatch more eggs!');
 updateHud();
 requestAnimationFrame(loop);
+
+const invite = new URLSearchParams(location.search).get('play');
+if (invite) joinMultiplayer(invite);
+
+window.addEventListener('beforeunload', () => netStop());

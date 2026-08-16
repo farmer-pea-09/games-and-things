@@ -68,7 +68,8 @@ body {
 #action-bar {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   padding: 8px;
   background: #1a1028;
 }
@@ -89,15 +90,15 @@ body {
 
 #action-bar button {
   font-family: inherit;
-  font-size: 7px;
+  font-size: 6px;
   line-height: 1.5;
   color: #fff8ef;
   background: #4a2c7a;
   border: 3px solid #ffd166;
   border-radius: 4px;
-  padding: 8px 8px;
+  padding: 7px 6px;
   cursor: pointer;
-  min-width: 86px;
+  min-width: 74px;
   user-select: none;
 }
 
@@ -368,6 +369,24 @@ body {
   line-height: 1;
   margin-bottom: 12px;
   font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+
+#overlay-content input,
+#join-code {
+  display: block;
+  width: 180px;
+  margin: 8px auto 12px;
+  padding: 8px 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff8ef;
+  background: #1a1028;
+  border: 3px solid #ffd166;
+  border-radius: 4px;
+  outline: none;
 }
 
 #controls-help {

@@ -101,6 +101,8 @@ export function gateGame(gameId) {
   if (local) return true;
 
   const params = new URLSearchParams(window.location.search);
+  if (params.get('play')) return true;
+
   const result = consumeRoomCode(params.get('room')?.toUpperCase(), gameId);
 
   if (!result.ok) {
