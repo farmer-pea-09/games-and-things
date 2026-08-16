@@ -9,7 +9,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #0b1d36 0%, #1a0a14 45%, #3d0f18 100%);
+  background:
+    radial-gradient(ellipse at top, #1a3a6a 0%, transparent 55%),
+    radial-gradient(circle at 20% 80%, rgba(196, 30, 58, 0.35), transparent 40%),
+    linear-gradient(160deg, #0b1d36 0%, #1a0a14 45%, #3d0f18 100%);
   font-family: 'Press Start 2P', monospace;
   color: #fff8ef;
   image-rendering: pixelated;
@@ -37,6 +40,56 @@ body {
 
 #home-link:hover {
   color: #fff;
+}
+
+#fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 1;
+  padding: 8px 10px;
+  color: #fff8ef;
+  background: #c41e3a;
+  border: 2px solid #e8c36a;
+  border-radius: 4px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+
+#fullscreen-btn:hover,
+#fullscreen-btn:focus-visible {
+  background: #e8c36a;
+  color: #1a120c;
+  text-shadow: none;
+}
+
+#game-container:fullscreen,
+#game-container:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #0b0810;
+}
+
+#game-container:fullscreen #game,
+#game-container:-webkit-full-screen #game {
+  width: min(100vw, calc(100vh * 800 / 480));
+  height: min(100vh, calc(100vw * 480 / 800));
+}
+
+#game-container:fullscreen #home-link,
+#game-container:-webkit-full-screen #home-link,
+#game-container:fullscreen #controls-help,
+#game-container:-webkit-full-screen #controls-help {
+  display: none;
 }
 
 #game {
