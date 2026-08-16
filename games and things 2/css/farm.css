@@ -1,0 +1,197 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  font-family: 'Press Start 2P', monospace;
+  color: #fff;
+  image-rendering: pixelated;
+}
+
+#game-container {
+  position: relative;
+  border: 4px solid #e94560;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 4px #1a1a2e,
+    0 0 40px rgba(233, 69, 96, 0.4),
+    inset 0 0 60px rgba(0, 0, 0, 0.3);
+  background: #0a0a14;
+}
+
+#home-link {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 7px;
+  color: #e94560;
+  text-decoration: none;
+}
+
+#home-link:hover {
+  color: #fff;
+}
+
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  pointer-events: none;
+}
+
+#hud .tool-btn,
+#hud .seed-btn {
+  pointer-events: auto;
+}
+
+.hud-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 #000;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+#tool-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.tool-btn {
+  font-family: inherit;
+  font-size: 7px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #555;
+  color: #aaa;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+
+.tool-btn:hover {
+  border-color: #e94560;
+  color: #fff;
+}
+
+.tool-btn.active {
+  background: rgba(233, 69, 96, 0.3);
+  border-color: #e94560;
+  color: #fff;
+}
+
+#seed-picker {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#seed-picker.hidden {
+  display: none;
+}
+
+.seed-btn {
+  font-family: inherit;
+  font-size: 6px;
+  padding: 6px 8px;
+  background: rgba(34, 139, 34, 0.4);
+  border: 2px solid #2d8a2d;
+  color: #cfc;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.seed-btn:hover {
+  background: rgba(34, 139, 34, 0.7);
+  border-color: #5f5;
+}
+
+#message-box {
+  margin-top: 8px;
+  font-size: 7px;
+  color: #ffd700;
+  text-shadow: 2px 2px 0 #000;
+  min-height: 20px;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+#overlay-content {
+  background: #1a1a2e;
+  border: 4px solid #e94560;
+  padding: 24px;
+  max-width: 90%;
+  font-size: 8px;
+  line-height: 2;
+  text-align: center;
+}
+
+#overlay-content h2 {
+  color: #e94560;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+#overlay-content button {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 20px;
+  margin-top: 16px;
+  background: #e94560;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#overlay-content button:hover {
+  background: #ff6b8a;
+}
+
+#controls-help {
+  position: absolute;
+  bottom: -36px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 6px;
+  color: #888;
+}
+
+#controls-help kbd {
+  background: #333;
+  padding: 2px 4px;
+  border-radius: 2px;
+  border: 1px solid #555;
+}

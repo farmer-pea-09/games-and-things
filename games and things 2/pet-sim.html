@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pet Simulator</title>
+  <link rel="stylesheet" href="css/pet-sim.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <button id="fullscreen-btn" type="button" aria-label="Full screen" title="Full screen">⛶</button>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="coins-label">🪙 0</span>
+        <span id="mult-label">×1.0</span>
+        <span id="clock-label">8:00 AM</span>
+        <span id="area-label">Sunny Meadow</span>
+      </div>
+      <div class="hud-row care-row">
+        <span id="food-label">🍖 100</span>
+        <span id="water-label">💧 100</span>
+        <span id="hp-label">❤️ 100</span>
+      </div>
+      <div id="hint-label">Collect coins. Buy eggs. Hatch rare pets!</div>
+    </div>
+    <div id="action-bar">
+      <button type="button" data-care="food"><kbd>Z</kbd> Food</button>
+      <button type="button" data-care="water"><kbd>X</kbd> Water</button>
+      <button type="button" data-panel="pets"><kbd>E</kbd> Pets</button>
+      <button type="button" data-panel="home"><kbd>B</kbd> Babysit</button>
+      <button type="button" data-panel="shop"><kbd>F</kbd> Shop</button>
+      <button type="button" data-panel="rebirth"><kbd>R</kbd> Rebirth</button>
+      <button type="button" data-panel="multi"><kbd>M</kbd> Play</button>
+    </div>
+    <aside id="sit-rail" class="hidden">
+      <h2>Babysit</h2>
+      <p class="sit-sub">Click a pet to leave or take</p>
+      <input id="sit-search" type="search" placeholder="Search pets" maxlength="24" autocomplete="off" spellcheck="false">
+      <button type="button" id="sit-heal">Heal walking pets</button>
+      <div id="sit-list"></div>
+    </aside>
+    <div id="panel" class="hidden">
+      <div id="panel-content"></div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>WASD</kbd> move · <kbd>Space</kbd> fight · <kbd>B</kbd> babysit · <kbd>M</kbd> play together · <kbd>Z</kbd> food · <kbd>X</kbd> water
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('petsim')) {
+      await import('./js/pet-sim.js');
+    }
+  </script>
+</body>
+</html>

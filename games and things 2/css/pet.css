@@ -1,0 +1,264 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3d2914 0%, #6b3f2a 45%, #8c5a3c 100%);
+  font-family: 'Press Start 2P', monospace;
+  color: #fff8ef;
+  image-rendering: pixelated;
+}
+
+#game-container {
+  position: relative;
+  border: 4px solid #e07a5f;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 4px #2b1810,
+    0 0 40px rgba(224, 122, 95, 0.35),
+    inset 0 0 60px rgba(0, 0, 0, 0.25);
+  background: #2b1810;
+}
+
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#home-link {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 7px;
+  color: #e9c46a;
+  text-decoration: none;
+}
+
+#home-link:hover {
+  color: #fff;
+}
+
+#care-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 8px 12px;
+  background: #2b1810;
+}
+
+#care-buttons.on-walk [data-care="food"],
+#care-buttons.on-walk [data-care="water"],
+#care-buttons.on-walk [data-care="sleep"] {
+  opacity: 0.38;
+}
+
+#care-buttons button {
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 1.5;
+  color: #fff8ef;
+  background: #5c3a28;
+  border: 3px solid #e07a5f;
+  border-radius: 4px;
+  padding: 8px 8px;
+  cursor: pointer;
+  min-width: 78px;
+  user-select: none;
+}
+
+#care-buttons button:hover,
+#care-buttons button.active {
+  background: #e07a5f;
+  color: #2b1810;
+}
+
+#care-buttons kbd {
+  display: inline-block;
+  background: #2b1810;
+  color: #e9c46a;
+  padding: 2px 5px;
+  border-radius: 2px;
+  margin-right: 4px;
+  border: 1px solid #e9c46a;
+}
+
+#care-buttons button:hover kbd,
+#care-buttons button.active kbd {
+  background: #fff8ef;
+  color: #2b1810;
+  border-color: #2b1810;
+}
+
+#care-buttons.hidden {
+  display: none;
+}
+
+#picker {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  background: rgba(43, 24, 16, 0.96);
+  padding: 14px 16px 12px;
+}
+
+#picker.hidden {
+  display: none;
+}
+
+.picker-header {
+  text-align: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.picker-header h2 {
+  color: #e9c46a;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.picker-header p {
+  font-size: 7px;
+  color: #d4b896;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+#pet-search {
+  width: 100%;
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 12px;
+  border: 3px solid #e07a5f;
+  border-radius: 4px;
+  background: #fff8ef;
+  color: #2b1810;
+  outline: none;
+}
+
+#pet-search:focus {
+  border-color: #e9c46a;
+}
+
+#pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+#pet-grid button {
+  font-family: inherit;
+  font-size: 6px;
+  line-height: 1.5;
+  color: #fff8ef;
+  background: #5c3a28;
+  border: 3px solid #e07a5f;
+  border-radius: 4px;
+  padding: 10px 6px 8px;
+  cursor: pointer;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#pet-grid button:hover,
+#pet-grid button:focus-visible {
+  background: #e07a5f;
+  color: #2b1810;
+}
+
+.pet-emoji {
+  font-size: 22px;
+  line-height: 1;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+
+#pet-empty {
+  text-align: center;
+  font-size: 7px;
+  color: #e9c46a;
+  padding: 24px 8px;
+  line-height: 1.8;
+}
+
+#pet-empty.hidden {
+  display: none;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 10, 6, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+#overlay-content {
+  background: #5c3a28;
+  border: 4px solid #e07a5f;
+  padding: 24px;
+  max-width: 90%;
+  font-size: 8px;
+  line-height: 2;
+  text-align: center;
+}
+
+#overlay-content h2 {
+  color: #e9c46a;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+#overlay-content button {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 20px;
+  margin-top: 12px;
+  background: #e07a5f;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#overlay-content.shop-panel {
+  min-width: 280px;
+}
+
+#overlay-content.shop-panel button {
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+}
+
+#overlay-content .shop-note {
+  color: #e9c46a;
+  min-height: 16px;
+}
+
+#overlay-content button:hover {
+  background: #f4a261;
+}

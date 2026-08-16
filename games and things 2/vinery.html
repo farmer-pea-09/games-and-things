@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vinery Village</title>
+  <link rel="stylesheet" href="css/vinery.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="eggs-label">🥚 3</span>
+        <span id="acorn-label">🌰 50</span>
+        <span id="chapter-label">Nest</span>
+      </div>
+      <div id="quest-label">Talk to Dori</div>
+      <div id="message-box"></div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>WASD</kbd> move · <kbd>Space</kbd> talk / act · <kbd>Z</kbd> tongue · <kbd>Esc</kbd> pause
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('vinery')) {
+      await import('./js/vinery.js');
+    }
+  </script>
+</body>
+</html>

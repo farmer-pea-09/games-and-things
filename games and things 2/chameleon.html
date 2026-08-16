@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chameleon World</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <button id="fullscreen-btn" type="button" aria-label="Toggle full screen">⛶ Full Screen</button>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="score-label">★ 000000</span>
+        <span id="coins-label">🦗 0</span>
+        <span id="lives-label">💚 × 5</span>
+        <span id="time-label">⏱ 300</span>
+        <span id="super-label">🚀 Ready</span>
+        <span id="mute-label">🔊 M</span>
+        <span id="world-label">World Map</span>
+      </div>
+      <div id="message-box"></div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>←→</kbd> move · <kbd>Space</kbd> jump / double jump · <kbd>X</kbd> super jump · <kbd>S</kbd> tail stand · <kbd>Z</kbd> tongue / carry / throw · <kbd>E</kbd> emote menu · <kbd>Mouse</kbd> aim · hold <kbd>A</kbd> run · <kbd>P</kbd> online room · <kbd>M</kbd> mute
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('chameleon')) {
+      await import('./js/main.js');
+    }
+  </script>
+</body>
+</html>
