@@ -162,7 +162,7 @@ export function updatePlayer(player, world, keys) {
   const downPressed = downDown && !player.downHeld;
   player.downHeld = downDown;
   const ducking = downDown && player.onGround && !isTailStanding(player);
-  const running = keys.has('shift');
+  const running = keys.has('a');
   const speed = running ? RUN_SPEED : WALK_SPEED;
   const acceleration = player.onGround ? GROUND_ACCEL : AIR_ACCEL;
 
@@ -196,7 +196,7 @@ export function updatePlayer(player, world, keys) {
     player.vy *= JUMP_CUT;
   }
 
-  const superDown = keys.has('a');
+  const superDown = keys.has('x');
   if (superDown && !player.superHeld) trySuperJump(player);
   player.superHeld = superDown;
 
@@ -249,7 +249,7 @@ export function updatePlayer(player, world, keys) {
     player.vy = Math.min(player.vy, GLIDE_FALL);
   }
 
-  const actionDown = keys.has('z') || keys.has('x');
+  const actionDown = keys.has('z');
   const actionPressed = actionDown && !player.actionHeld;
   player.actionHeld = actionDown;
   if (actionPressed && !player.groundPounding && !player.camouflaged) {
