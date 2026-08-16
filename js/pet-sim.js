@@ -16,6 +16,9 @@ const overlay = document.getElementById('overlay');
 const overlayContent = document.getElementById('overlay-content');
 const panel = document.getElementById('panel');
 const panelContent = document.getElementById('panel-content');
+const sitRail = document.getElementById('sit-rail');
+const sitList = document.getElementById('sit-list');
+const sitHeal = document.getElementById('sit-heal');
 const coinsLabel = document.getElementById('coins-label');
 const multLabel = document.getElementById('mult-label');
 const clockLabel = document.getElementById('clock-label');
@@ -23,6 +26,7 @@ const areaLabel = document.getElementById('area-label');
 const hintLabel = document.getElementById('hint-label');
 const foodLabel = document.getElementById('food-label');
 const waterLabel = document.getElementById('water-label');
+const hpLabel = document.getElementById('hp-label');
 const REAL_SEC_PER_GAME_MIN = 5;
 const CARE_SECONDS = 120;
 
@@ -77,7 +81,7 @@ const AREAS = [
   {
     id: 'meadow', name: 'Sunny Meadow', unlock: 0, coin: 1, count: 30,
     ground: ['#7cb342', '#8bc34a', '#9ccc65'], dark: '#558b2f', sky: '#87ceeb',
-    accent: '#e9c46a', hint: 'Coins everywhere. Shop is north. Portal is to the right.',
+    accent: '#e9c46a', hint: 'Shop is north. Home is south — Mom heals and babysits.',
   },
   {
     id: 'beach', name: 'Pearl Beach', unlock: 40, coin: 8, count: 34,
@@ -120,6 +124,7 @@ const WILD_KINDS = {
 };
 
 const BOWLS = { food: { x: 168, y: 430 }, water: { x: 248, y: 430 } };
+const HOME = { x: 420, y: 640 };
 
 const keys = new Set();
 let lastTime = 0;
@@ -134,6 +139,7 @@ let toastTimer = 0;
 let clockAcc = 0;
 let careWarn = 0;
 let careFlash = null;
+let careFocus = 0;
 let wild = [];
 let treats = [];
 let battle = null;
@@ -146,6 +152,7 @@ const state = {
   equipped: [],
   hour: 8,
   minute: 0,
+  babysat: [],
 };
 
 const player = { x: 220, y: 480, dir: 1, walk: 0 };
@@ -268,6 +275,7 @@ function save() {
     equipped: state.equipped,
     hour: state.hour,
     minute: state.minute,
+    babysat: state.babysat,
     uid,
   }));
 }
@@ -284,25 +292,48 @@ function load() {
     state.equipped = Array.isArray(data.equipped) ? data.equipped : [];
     state.hour = Number.isFinite(data.hour) ? clamp(data.hour, 0, 23) : 8;
     state.minute = Number.isFinite(data.minute) ? clamp(data.minute, 0, 59) : 0;
+    state.babysat = Array.isArray(data.babysat) ? data.babysat : [];
     uid = data.uid || state.pets.length + 1;
-    for (const pet of state.pets) {
-      if (!Number.isFinite(pet.food)) pet.food = 100;
-      if (!Number.isFinite(pet.water)) pet.water = 100;
-    }
+    for (const pet of state.pets) ensurePetStats(pet);
+    state.babysat = state.babysat.filter((id) => state.pets.some((p) => p.uid === id));
+    state.equipped = state.equipped.filter((id) => !state.babysat.includes(id));
   } catch {
     /* ignore bad saves */
   }
 }
 
+function petMaxHp(pet) {
+  return maxHpFor(speciesById(pet.speciesId), pet.rarity, false);
+}
+
+function ensurePetStats(pet) {
+  if (!Number.isFinite(pet.food)) pet.food = 100;
+  if (!Number.isFinite(pet.water)) pet.water = 100;
+  if (!Number.isFinite(pet.hp)) pet.hp = petMaxHp(pet);
+  return pet;
+}
+
+function isBabysat(uid) {
+  return state.babysat.includes(uid);
+}
+
+function babysatPets() {
+  return state.babysat
+    .map((id) => state.pets.find((p) => p.uid === id))
+    .filter(Boolean);
+}
+
 function addPet(species, rarity) {
-  const pet = {
+  const pet = ensurePetStats({
     uid: uid++,
     speciesId: species.id,
     rarity,
     name: species.name,
     food: 100,
     water: 100,
-  };
+    hp: 0,
+  });
+  pet.hp = petMaxHp(pet);
   state.pets.push(pet);
   if (state.equipped.length < MAX_EQUIP) state.equipped.push(pet.uid);
   save();
@@ -416,8 +447,15 @@ function careAvg(stat) {
 function updateCare(dt) {
   const drain = (100 / CARE_SECONDS) * dt;
   for (const pet of state.pets) {
-    pet.food = clamp((pet.food ?? 100) - drain, 0, 100);
-    pet.water = clamp((pet.water ?? 100) - drain, 0, 100);
+    ensurePetStats(pet);
+    if (isBabysat(pet.uid)) {
+      pet.food = clamp(pet.food + 12 * dt, 0, 100);
+      pet.water = clamp(pet.water + 12 * dt, 0, 100);
+      pet.hp = clamp(pet.hp + 10 * dt, 0, petMaxHp(pet));
+      continue;
+    }
+    pet.food = clamp(pet.food - drain, 0, 100);
+    pet.water = clamp(pet.water - drain, 0, 100);
   }
   if (careFlash) {
     careFlash.t -= dt;
@@ -439,26 +477,58 @@ function updateCare(dt) {
     } else if (water < 28) {
       say('Your pets need water soon.');
       careWarn = 10;
+    } else if (equippedPets().some((p) => {
+      ensurePetStats(p);
+      return p.hp < petMaxHp(p) * 0.35;
+    })) {
+      say('A pet is hurt. Walk south to Mom\'s house to heal.');
+      careWarn = 12;
     }
   }
 }
 
+function focusedCarePet() {
+  const pack = equippedPets();
+  if (!pack.length) return null;
+  return pack.find((p) => p.uid === careFocus) || pack[0];
+}
+
+function nextCarePet(type) {
+  const pack = equippedPets();
+  if (!pack.length) return null;
+  pack.forEach(ensurePetStats);
+  const start = Math.max(0, pack.findIndex((p) => p.uid === careFocus));
+  for (let i = 0; i < pack.length; i++) {
+    const pet = pack[(start + i) % pack.length];
+    if ((pet[type] ?? 100) < 99.5) return pet;
+  }
+  return pack[start] || pack[0];
+}
+
 function giveCare(type) {
-  if (!equippedPets().length) {
+  const pack = equippedPets();
+  if (!pack.length) {
     say('Equip a pet first.');
     return;
   }
-  for (const pet of equippedPets()) {
-    pet[type] = 100;
+  const pet = nextCarePet(type);
+  if ((pet[type] ?? 100) >= 99.5) {
+    say(type === 'food' ? 'That pet is already full.' : 'That pet already had a drink.');
+    return;
   }
-  careFlash = { type, t: 1.1 };
+  careFocus = pet.uid;
+  pet[type] = 100;
+  careFlash = { type, t: 1.1, uid: pet.uid };
   burstCare(type);
-  say(type === 'food' ? 'Nom nom! Pets are full.' : 'Slurp! Pets had a drink.');
+  const name = speciesById(pet.speciesId).name;
+  const left = pack.filter((p) => p.uid !== pet.uid && (p[type] ?? 100) < 99.5).length;
+  const extra = left ? ` ${left} more still need ${type}.` : '';
+  say(type === 'food' ? `Nom nom! ${name} is full.${extra}` : `Slurp! ${name} had a drink.${extra}`);
   save();
 }
 
 function burstCare(type) {
-  const color = type === 'food' ? '#e07a5f' : '#4cc9f0';
+  const color = type === 'food' ? '#e07a5f' : type === 'heal' ? '#ff6bcb' : '#4cc9f0';
   for (let i = 0; i < 8; i++) {
     sparkles.push({
       x: player.x + (Math.random() - 0.5) * 40,
@@ -474,6 +544,97 @@ function burstCare(type) {
 function nearBowl(kind) {
   const b = BOWLS[kind];
   return Math.hypot(player.x - b.x, player.y - b.y) < 46;
+}
+
+function nearHome() {
+  return state.area === 0 && Math.hypot(player.x - HOME.x, player.y - HOME.y) < 78;
+}
+
+function healAtHome() {
+  const pack = equippedPets();
+  if (!pack.length) {
+    say('Bring a pet home to heal.');
+    return;
+  }
+  for (const pet of pack) {
+    ensurePetStats(pet);
+    pet.hp = petMaxHp(pet);
+  }
+  careFlash = { type: 'heal', t: 1.2 };
+  burstCare('heal');
+  say('Mom bandaged your walking pets. Feed and water them one at a time.');
+  save();
+}
+
+function leaveWithMom(uid) {
+  if (isBabysat(uid)) return;
+  state.equipped = state.equipped.filter((id) => id !== uid);
+  state.babysat.push(uid);
+  const pet = state.pets.find((p) => p.uid === uid);
+  const name = pet ? speciesById(pet.speciesId).name : 'pet';
+  say(`Mom is babysitting your ${name}.`);
+  save();
+  fillSitList();
+}
+
+function takeFromMom(uid) {
+  state.babysat = state.babysat.filter((id) => id !== uid);
+  if (!state.equipped.includes(uid) && state.equipped.length < MAX_EQUIP) {
+    state.equipped.push(uid);
+  }
+  const pet = state.pets.find((p) => p.uid === uid);
+  const name = pet ? speciesById(pet.speciesId).name : 'pet';
+  say(`You picked up your ${name}. Thanks, Mom!`);
+  save();
+  fillSitList();
+}
+
+function fillSitList() {
+  const list = [...state.pets].sort((a, b) => {
+    const aHome = isBabysat(a.uid) ? 0 : 1;
+    const bHome = isBabysat(b.uid) ? 0 : 1;
+    if (aHome !== bHome) return aHome - bHome;
+    return RARITY[b.rarity].mult - RARITY[a.rarity].mult;
+  });
+  sitList.innerHTML = list.length
+    ? list.map((pet) => {
+      const spec = speciesById(pet.speciesId);
+      ensurePetStats(pet);
+      const home = isBabysat(pet.uid);
+      const on = state.equipped.includes(pet.uid);
+      const where = home ? 'With Mom' : on ? 'Walking' : 'In bag';
+      return `
+        <button class="sit-pet${home ? ' home' : ''}" data-uid="${pet.uid}" type="button">
+          <span class="pet-emoji">${spec.emoji}</span>
+          <span class="sit-meta">
+            <span>${spec.name}</span>
+            <span>${where} · ❤️ ${Math.ceil(pet.hp)}/${petMaxHp(pet)}</span>
+            <span>${home ? 'Take' : 'Leave'}</span>
+          </span>
+        </button>
+      `;
+    }).join('')
+    : '<p class="sit-sub">No pets yet. Hatch an egg!</p>';
+  sitList.querySelectorAll('[data-uid]').forEach((btn) => {
+    btn.onclick = () => {
+      const id = Number(btn.dataset.uid);
+      if (isBabysat(id)) takeFromMom(id);
+      else leaveWithMom(id);
+    };
+  });
+}
+
+function openHome() {
+  menu = 'home';
+  panel.classList.add('hidden');
+  overlay.classList.add('hidden');
+  if (state.area !== 0) enterArea(0, true);
+  player.x = HOME.x - 54;
+  player.y = HOME.y + 30;
+  seedTrail();
+  sitRail.classList.remove('hidden');
+  fillSitList();
+  say("Mom's yard. Leave pets on the side list.");
 }
 
 function spawnWild() {
@@ -552,15 +713,22 @@ function maxHpFor(species, rarity, aggressive) {
 }
 
 function startBattle(wildPet, startedBy) {
-  const pack = equippedPets();
-  if (!pack.length) {
+  const pack = equippedPets().filter((p) => {
+    ensurePetStats(p);
+    return p.hp > 0;
+  });
+  if (!equippedPets().length) {
     say('Equip a pet before you battle.');
+    return false;
+  }
+  if (!pack.length) {
+    say('Your pets fainted. Take them home so Mom can heal them.');
     return false;
   }
   const pet = pack[0];
   const youSpec = speciesById(pet.speciesId);
   const foeSpec = speciesById(wildPet.speciesId);
-  const youMax = maxHpFor(youSpec, pet.rarity, false);
+  const youMax = petMaxHp(pet);
   const foeMax = maxHpFor(foeSpec, rarityOf(foeSpec.id), !wildPet.tame);
   const name = foeSpec.name.toUpperCase();
   battle = {
@@ -568,7 +736,7 @@ function startBattle(wildPet, startedBy) {
     pet,
     youSpec,
     foeSpec,
-    youHp: youMax,
+    youHp: clamp(pet.hp, 1, youMax),
     youMax,
     foeHp: foeMax,
     foeMax,
@@ -717,22 +885,31 @@ function endBattle(result) {
     addPet(battle.foeSpec, rarityOf(battle.foeSpec.id));
     const i = wild.indexOf(w);
     if (i >= 0) wild.splice(i, 1);
+    const kept = state.pets.find((p) => p.uid === pet.uid);
+    if (kept) kept.hp = Math.max(1, battle.youHp);
     say(`You caged the wild ${foe}! It's your pet now.`);
     battle = null;
+    save();
     return;
   }
+  const kept = state.pets.find((p) => p.uid === pet.uid);
   if (result === 'win') {
+    if (kept) kept.hp = Math.max(1, battle.youHp);
     spawnTreat(w.x, w.y, Math.random() < 0.5 ? 'food' : 'water');
     say(`You beat the wild ${foe}! ${petName} is safe.`);
   } else if (result === 'lose') {
     if (!w.tame) {
       state.equipped = state.equipped.filter((id) => id !== pet.uid);
       state.pets = state.pets.filter((p) => p.uid !== pet.uid);
+      state.babysat = state.babysat.filter((id) => id !== pet.uid);
       say(`The wild ${foe} took your ${petName}!`);
-      save();
-    } else {
-      say(`Your ${petName} fainted. The wild ${foe} hopped away.`);
+    } else if (kept) {
+      kept.hp = 0;
+      say(`Your ${petName} fainted. Take them home to heal.`);
     }
+  } else if (kept) {
+    kept.hp = Math.max(1, battle.youHp);
+    say('You ran back to the meadow.');
   } else {
     say('You ran back to the meadow.');
   }
@@ -740,6 +917,7 @@ function endBattle(result) {
   w.y = 80 + Math.random() * (WORLD_H - 160);
   w.cool = 10;
   battle = null;
+  save();
 }
 
 function updateBattle(dt) {
@@ -871,10 +1049,15 @@ function updateWild(dt) {
   treats = treats.filter((t) => {
     t.life -= dt;
     if (Math.hypot(player.x - t.x, player.y - t.y) < 26) {
-      for (const pet of equippedPets()) {
+      const pet = nextCarePet(t.kind);
+      if (pet && (pet[t.kind] ?? 100) < 99.5) {
         pet[t.kind] = clamp(pet[t.kind] + 40, 0, 100);
+        careFocus = pet.uid;
+        careFlash = { type: t.kind, t: 0.8, uid: pet.uid };
+        say(t.kind === 'food'
+          ? `Snack time for ${speciesById(pet.speciesId).name}!`
+          : `${speciesById(pet.speciesId).name} got a drink!`);
       }
-      say(t.kind === 'food' ? 'Snack time!' : 'Fresh water!');
       return false;
     }
     return t.life > 0;
@@ -934,6 +1117,10 @@ function tryPortal() {
 
 function interact() {
   if (menu || hatch || paused || battle) return;
+  if (nearHome()) {
+    openHome();
+    return;
+  }
   const foe = nearestWild(78);
   if (foe) {
     startBattle(foe, 'you');
@@ -959,10 +1146,12 @@ function closeMenus() {
   paused = false;
   panel.classList.add('hidden');
   overlay.classList.add('hidden');
+  sitRail.classList.add('hidden');
 }
 
 function openShop() {
   menu = 'shop';
+  sitRail.classList.add('hidden');
   panel.classList.remove('hidden');
   panelContent.innerHTML = `
     <h2>Egg Shop</h2>
@@ -988,6 +1177,7 @@ function openShop() {
 
 function openPets() {
   menu = 'pets';
+  sitRail.classList.add('hidden');
   const list = [...state.pets].sort((a, b) => RARITY[b.rarity].mult - RARITY[a.rarity].mult);
   panel.classList.remove('hidden');
   panelContent.innerHTML = `
@@ -996,14 +1186,16 @@ function openPets() {
     <div class="panel-grid">
       ${list.length ? list.map((pet) => {
         const spec = speciesById(pet.speciesId);
+        ensurePetStats(pet);
         const on = state.equipped.includes(pet.uid);
+        const sitting = isBabysat(pet.uid);
         return `
           <button class="pet-card${on ? ' equipped' : ''}" data-uid="${pet.uid}" type="button">
             <span class="pet-emoji">${spec.emoji}</span>
             ${spec.name}
             <span class="rarity" style="color:${RARITY[pet.rarity].color}">${RARITY[pet.rarity].label} ×${RARITY[pet.rarity].mult}</span>
-            🍖 ${Math.floor(pet.food ?? 100)} · 💧 ${Math.floor(pet.water ?? 100)}
-            ${on ? 'Equipped' : 'Click to equip'}
+            ❤️ ${Math.ceil(pet.hp)}/${petMaxHp(pet)} · 🍖 ${Math.floor(pet.food)} · 💧 ${Math.floor(pet.water)}
+            ${sitting ? "At Mom's" : on ? 'Equipped' : 'Click to equip'}
           </button>
         `;
       }).join('') : '<p class="panel-sub">No pets yet. Buy an egg!</p>'}
@@ -1015,6 +1207,10 @@ function openPets() {
   panelContent.querySelectorAll('[data-uid]').forEach((btn) => {
     btn.onclick = () => {
       const id = Number(btn.dataset.uid);
+      if (isBabysat(id)) {
+        say("That pet is at Mom's. Press B to pick them up.");
+        return;
+      }
       const idx = state.equipped.indexOf(id);
       if (idx >= 0) state.equipped.splice(idx, 1);
       else if (state.equipped.length < MAX_EQUIP) state.equipped.push(id);
@@ -1028,6 +1224,7 @@ function openPets() {
 
 function openRebirth() {
   menu = 'rebirth';
+  sitRail.classList.add('hidden');
   const cost = rebirthCost();
   panel.classList.remove('hidden');
   panelContent.innerHTML = `
@@ -1074,14 +1271,27 @@ function updateHud() {
   multLabel.textContent = `×${totalMult().toFixed(1)}`;
   clockLabel.textContent = `🕒 ${formatClock()}`;
   areaLabel.textContent = AREAS[state.area].name;
-  const food = Math.floor(careAvg('food'));
-  const water = Math.floor(careAvg('water'));
-  foodLabel.textContent = `🍖 ${food}`;
+  const pack = equippedPets();
+  const shown = focusedCarePet();
+  if (shown) ensurePetStats(shown);
+  const food = shown ? Math.floor(shown.food) : 100;
+  const water = shown ? Math.floor(shown.water) : 100;
+  const hp = shown ? Math.ceil((shown.hp / petMaxHp(shown)) * 100) : 100;
+  const who = shown ? speciesById(shown.speciesId).name : '';
+  foodLabel.textContent = who ? `🍖 ${food} ${who}` : '🍖 100';
   waterLabel.textContent = `💧 ${water}`;
+  if (hpLabel) {
+    hpLabel.textContent = `❤️ ${hp}`;
+    hpLabel.style.color = hp < 25 ? '#e63946' : '#fff8ef';
+  }
   foodLabel.style.color = food < 25 ? '#e63946' : '#fff8ef';
   waterLabel.style.color = water < 25 ? '#4cc9f0' : '#fff8ef';
   if (battle) {
     hintLabel.textContent = 'FIGHT · CAGE · ITEM · RUN  ·  lower HP to catch easier';
+    return;
+  }
+  if (menu === 'home') {
+    hintLabel.textContent = 'Side list: leave or take pets. B closes.';
     return;
   }
   if (toastTimer > 0) return;
@@ -1091,7 +1301,8 @@ function updateHud() {
     hintLabel.textContent = foe.tame
       ? `Space: battle the shy wild ${name}`
       : `Space: a wild ${name} is hunting!`;
-  } else if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
+  } else if (nearHome()) hintLabel.textContent = "B: Mom's house — heal or babysit";
+  else if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
   else if (nearBowl('water')) hintLabel.textContent = 'Space: fill water bowls';
   else if (nearShop()) hintLabel.textContent = 'Space: open the egg shop';
   else if (nearPortal('next')) hintLabel.textContent = 'Space: next world';
@@ -1160,6 +1371,12 @@ function updateFx(dt) {
 }
 
 function cam() {
+  if (menu === 'home') {
+    return {
+      x: clamp(HOME.x - (W - 228) / 2, 0, WORLD_W - W),
+      y: clamp(HOME.y - H / 2 + 24, 0, WORLD_H - H),
+    };
+  }
   return {
     x: clamp(player.x - W / 2, 0, WORLD_W - W),
     y: clamp(player.y - H / 2, 0, WORLD_H - H),
@@ -1308,6 +1525,93 @@ function drawBowls(c) {
   drawOne(water, '#4cc9f0', 'Water');
 }
 
+function drawPerson(x, y, clothes, hair, skin) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 16, 12, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = clothes;
+  ctx.fillRect(x - 8, y + 2, 16, 14);
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.arc(x, y - 16, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = hair;
+  ctx.fillRect(x - 10, y - 26, 20, 8);
+  ctx.fillRect(x - 11, y - 18, 5, 14);
+  ctx.fillStyle = '#3d2914';
+  ctx.fillRect(x - 4, y - 18, 3, 3);
+  ctx.fillRect(x + 2, y - 18, 3, 3);
+}
+
+function drawHouse(c) {
+  if (state.area !== 0) return;
+  const x = HOME.x - c.x;
+  const y = HOME.y - c.y;
+  ctx.fillStyle = '#8bc34a';
+  ctx.fillRect(x - 88, y + 18, 176, 78);
+  ctx.strokeStyle = '#6b4226';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 88, y + 18, 176, 78);
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(x - 70, y + 22, 140, 10);
+  ctx.fillStyle = '#e9c46a';
+  ctx.fillRect(x - 52, y - 22, 104, 52);
+  ctx.fillStyle = '#e63946';
+  ctx.beginPath();
+  ctx.moveTo(x - 66, y - 20);
+  ctx.lineTo(x, y - 68);
+  ctx.lineTo(x + 66, y - 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#8d5a3a';
+  ctx.fillRect(x + 26, y - 62, 12, 24);
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(x - 10, y + 4, 20, 26);
+  ctx.fillStyle = '#ffd166';
+  ctx.fillRect(x + 2, y + 16, 4, 4);
+  ctx.fillStyle = '#4cc9f0';
+  ctx.fillRect(x - 38, y - 6, 16, 14);
+  ctx.fillRect(x + 22, y - 6, 16, 14);
+  ctx.fillStyle = '#fff8ef';
+  ctx.fillRect(x - 34, y - 1, 4, 4);
+  ctx.fillRect(x + 26, y - 1, 4, 4);
+  ctx.fillStyle = '#c9a227';
+  ctx.fillRect(x - 18, y - 40, 36, 12);
+  ctx.fillStyle = '#1a1028';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('HOME', x, y - 31);
+  ctx.fillStyle = nearHome() ? '#ffd166' : '#fff8ef';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.fillText('B', x, y + 48);
+  ctx.textAlign = 'left';
+
+  const momX = x + 58;
+  const momY = y + 8 + Math.sin(clock * 2) * 1.5;
+  drawPerson(momX, momY, '#f15bb5', '#6b4226', '#f4a261');
+  ctx.fillStyle = '#fff8ef';
+  ctx.font = '5px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('Mom', momX, momY - 32);
+  ctx.textAlign = 'left';
+
+  babysatPets().forEach((pet, i) => {
+    const px = HOME.x - 36 + (i % 4) * 28;
+    const py = HOME.y + 40 + Math.floor(i / 4) * 26;
+    drawPetSprite(c, pet.speciesId, px, py, 0.16, {
+      mood: 92,
+      sleeping: i % 2 === 0,
+      playing: i % 2 === 1,
+      eating: false,
+      drinking: false,
+      loving: false,
+      sad: false,
+      crying: false,
+    });
+  });
+}
+
 function drawPortal(c, side) {
   const px = (side === 'next' ? WORLD_W - 48 : 48) - c.x;
   const py = WORLD_H / 2 - c.y;
@@ -1387,8 +1691,8 @@ function drawFollowers(c) {
     ctx.scale(0.28, 0.28);
     ctx.translate(-400, -318);
     const hungry = pet.food < 28 || pet.water < 28;
-    const eating = careFlash?.type === 'food';
-    const drinking = careFlash?.type === 'water';
+    const eating = careFlash?.type === 'food' && careFlash.uid === pet.uid;
+    const drinking = careFlash?.type === 'water' && careFlash.uid === pet.uid;
     drawSpecies(ctx, { species: spec, blink: hungry ? 0.1 : 0, actionTime: clock }, clock, {
       mood: hungry ? 22 : 88,
       sleeping: false,
@@ -1654,6 +1958,7 @@ function render() {
   drawDecor(c);
   drawShop(c);
   drawBowls(c);
+  drawHouse(c);
   drawPortal(c, 'prev');
   drawPortal(c, 'next');
   for (const coin of coins) drawCoin(coin, c);
@@ -1721,7 +2026,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (menu || !overlay.classList.contains('hidden')) {
-    if (key === 'e' || key === 'f' || key === 'r') closeMenus();
+    if (key === 'e' || key === 'f' || key === 'r' || key === 'b') closeMenus();
     return;
   }
 
@@ -1734,6 +2039,9 @@ window.addEventListener('keydown', (e) => {
   } else if (key === 'e') {
     e.preventDefault();
     openPets();
+  } else if (key === 'b') {
+    e.preventDefault();
+    openHome();
   } else if (key === 'f') {
     e.preventDefault();
     openShop();
@@ -1750,6 +2058,12 @@ window.addEventListener('keyup', (e) => {
   keys.delete(e.key.toLowerCase());
 });
 
+sitHeal.addEventListener('click', () => {
+  if (menu !== 'home') return;
+  healAtHome();
+  fillSitList();
+});
+
 document.querySelectorAll('#action-bar button').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (hatch || paused || battle) return;
@@ -1760,6 +2074,7 @@ document.querySelectorAll('#action-bar button').forEach((btn) => {
     const id = btn.dataset.panel;
     if (menu === id) closeMenus();
     else if (id === 'pets') openPets();
+    else if (id === 'home') openHome();
     else if (id === 'shop') openShop();
     else openRebirth();
   });

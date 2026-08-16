@@ -1,6 +1,7 @@
 import { TILE, TILE_TYPES } from './constants.js';
 
 export const WORLD_NODES = [
+  { id: 'shop', name: 'Bug Boutique', x: 70, y: 315, kind: 'shop', next: ['1-1'] },
   { id: '1-1', name: 'Leafy Lane', x: 150, y: 250, kind: 'grass', next: ['1-2'] },
   { id: '1-2', name: 'Canopy Walk', x: 290, y: 210, kind: 'grass', next: ['1-3'] },
   { id: '1-3', name: 'Windy Gulch', x: 430, y: 260, kind: 'athletic', next: ['1-4'] },
@@ -355,6 +356,24 @@ export function createWorld(levelId = '1-1') {
   let midway = null;
   let flagX = (width - 6) * TILE;
   const scales = [];
+  const bossNest = levelId === '1-castle'
+    ? { x: 97 * TILE, y: 13 * TILE - 13, w: 66, h: 13 }
+    : null;
+  const bossEggs = bossNest
+    ? [0, 1, 2].map((id) => ({
+        id,
+        x: bossNest.x + 12 + id * 20,
+        y: bossNest.y - 18,
+        homeX: bossNest.x + 12 + id * 20,
+        homeY: bossNest.y - 18,
+        w: 15,
+        h: 19,
+        vx: 0,
+        vy: 0,
+        state: 'nest',
+        respawnTimer: 0,
+      }))
+    : [];
 
   for (let y = 0; y < rows.length; y++) {
     tiles[y] = [];
@@ -382,7 +401,7 @@ export function createWorld(levelId = '1-1') {
 
   spawn.y = findGroundY(tiles, spawn.x + 8, spawn.y) - 32;
   for (const enemy of enemies) {
-    if (enemy.type === 'fly' || enemy.type === 'piranha') continue;
+    if (enemy.type === 'fly' || enemy.type === 'piranha' || enemy.type === 'boss') continue;
     enemy.y = findGroundY(tiles, enemy.x + enemy.w / 2, enemy.y) - enemy.h;
   }
   if (midway) midway.y = findGroundY(tiles, midway.x + 8, midway.y) - 8;
@@ -404,6 +423,8 @@ export function createWorld(levelId = '1-1') {
     worldLabel: label,
     completed: false,
     particles: [],
+    bossNest,
+    bossEggs,
   };
 }
 
@@ -446,7 +467,25 @@ function makeEnemy(kind, x, y) {
     };
   }
   if (kind === 'boss') {
-    return { x, y, w: 48, h: 44, vx: 1.4, alive: true, type: 'boss', hp: 3, hurtTimer: 0 };
+    return {
+      x,
+      y: 150,
+      w: 72,
+      h: 58,
+      vx: 1,
+      vy: 0,
+      alive: true,
+      type: 'boss',
+      hp: 3,
+      hurtTimer: 0,
+      state: 'hover',
+      homeY: 150,
+      phase: 0,
+      diveClock: 0,
+      diveTargetX: x,
+      arenaMin: x - 96,
+      arenaMax: x + 400,
+    };
   }
   return { x, y, w: 28, h: 26, vx: -1.15, alive: true, type: 'beetle' };
 }
@@ -524,7 +563,7 @@ export function mapNeighbors(nodeId) {
 }
 
 export function unlockedIds(cleared) {
-  const open = new Set(['1-1']);
+  const open = new Set(['shop', '1-1']);
   for (const id of cleared) {
     const node = WORLD_NODES.find((n) => n.id === id);
     node?.next.forEach((n) => open.add(n));

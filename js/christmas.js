@@ -28,20 +28,20 @@ const RIBBONS = [
 ];
 
 const PARTS = [
-  { id: 'fur', name: 'Fur', hex: '#c4a484' },
-  { id: 'button', name: 'Button', hex: '#2b2b2b' },
-  { id: 'bow', name: 'Bow', hex: '#c41e3a' },
-  { id: 'wood', name: 'Wood', hex: '#b56a2b' },
-  { id: 'wheel', name: 'Wheel', hex: '#3d2914' },
-  { id: 'paint', name: 'Paint', hex: '#e63946' },
-  { id: 'cloth', name: 'Cloth', hex: '#f4a6c4' },
-  { id: 'yarn', name: 'Yarn', hex: '#f4d35e' },
-  { id: 'metal', name: 'Metal', hex: '#8d99ae' },
-  { id: 'gear', name: 'Gear', hex: '#6c757d' },
-  { id: 'leather', name: 'Leather', hex: '#6b4226' },
-  { id: 'air', name: 'Air pump', hex: '#90e0ef' },
-  { id: 'stick', name: 'Stick', hex: '#d4a373' },
-  { id: 'bell', name: 'Bell', hex: '#ffd166' },
+  { id: 'fur', name: 'Fur', hex: '#e8b88a' },
+  { id: 'button', name: 'Button', hex: '#3d3d4a' },
+  { id: 'bow', name: 'Bow', hex: '#ff3b5c' },
+  { id: 'wood', name: 'Wood', hex: '#e07a3d' },
+  { id: 'wheel', name: 'Wheel', hex: '#7b4b9a' },
+  { id: 'paint', name: 'Paint', hex: '#ff5a4e' },
+  { id: 'cloth', name: 'Cloth', hex: '#ff8ec4' },
+  { id: 'yarn', name: 'Yarn', hex: '#ffe14a' },
+  { id: 'metal', name: 'Metal', hex: '#9ec0d8' },
+  { id: 'gear', name: 'Gear', hex: '#6f8f7a' },
+  { id: 'leather', name: 'Leather', hex: '#a0522d' },
+  { id: 'air', name: 'Air pump', hex: '#5ee7ff' },
+  { id: 'stick', name: 'Stick', hex: '#f0c27a' },
+  { id: 'bell', name: 'Bell', hex: '#ffd54a' },
 ];
 
 const TOYS = [
@@ -385,6 +385,7 @@ function beginDeliver() {
     y: 180,
     vx: 0,
     vy: 0,
+    facing: 1,
     cam: 0,
     selected: 0,
     falling: [],
@@ -395,7 +396,7 @@ function beginDeliver() {
     done: false,
   };
   questLabel.textContent = 'Drop each present on the matching house';
-  say('Fly, Santa! Space drops the selected gift.');
+  say('Fly, Santa! Hold Shift to slow down. Space drops the gift.');
   updateHud();
 }
 
@@ -607,17 +608,21 @@ function drawElf(x, y) {
   rect(x + 2, y + 10, 8, 10, '#1b4332');
 }
 
-function drawSantaSleigh(x, y) {
-  rect(x - 22, y + 10, 70, 14, '#6b4226');
-  rect(x - 24, y + 22, 76, 5, '#3d2914');
-  rect(x - 20, y + 8, 8, 8, '#c41e3a');
-  rect(x + 40, y + 6, 12, 10, '#c41e3a');
-  rect(x - 10, y - 8, 22, 18, '#c41e3a');
-  rect(x - 8, y - 20, 16, 14, '#f1d0b0');
-  rect(x - 10, y - 14, 20, 8, '#f8f4e8');
-  rect(x - 6, y - 26, 16, 8, '#c41e3a');
-  rect(x + 6, y - 30, 5, 5, '#f8f4e8');
-  rect(x + 16, y - 4, 16, 12, '#8b1428');
+function drawSantaSleigh(x, y, facing = 1) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  if (facing < 0) ctx.scale(-1, 1);
+  rect(-22, 10, 70, 14, '#6b4226');
+  rect(-24, 22, 76, 5, '#3d2914');
+  rect(-20, 8, 8, 8, '#c41e3a');
+  rect(40, 6, 12, 10, '#c41e3a');
+  rect(-10, -8, 22, 18, '#c41e3a');
+  rect(-8, -20, 16, 14, '#f1d0b0');
+  rect(-10, -14, 20, 8, '#f8f4e8');
+  rect(-6, -26, 16, 8, '#c41e3a');
+  rect(6, -30, 5, 5, '#f8f4e8');
+  rect(16, -4, 16, 12, '#8b1428');
+  ctx.restore();
 }
 
 function drawWorkshop() {
@@ -722,10 +727,30 @@ function uiBtn(x, y, w, h, id, meta) {
   ui.push({ x, y, w, h, id, meta });
 }
 
+function inkOn(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return r * 0.3 + g * 0.59 + b * 0.11 > 150 ? '#1a120c' : '#fff8ef';
+}
+
 function drawBtn(b, label, fill, hover) {
   rect(b.x, b.y, b.w, b.h, hover ? '#ffd166' : fill);
   rect(b.x, b.y, b.w, 4, '#0003');
-  drawText(label, b.x + b.w / 2, b.y + b.h / 2 - 5, hover ? '#1a120c' : '#fff', 7, 'center');
+  drawText(label, b.x + b.w / 2, b.y + b.h / 2 - 5, hover ? '#1a120c' : inkOn(fill), 7, 'center');
+}
+
+function drawPartBtn(b, part, taken, hover, next) {
+  const coat = taken ? '#3a2418' : part.hex;
+  const rim = next ? '#ffd166' : hover ? '#fff' : '#14080c';
+  rect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, rim);
+  rect(b.x, b.y, b.w, b.h, '#2a1810');
+  rect(b.x, b.y, b.w, 16, coat);
+  rect(b.x, b.y + 16, b.w, 4, '#0005');
+  rect(b.x + 6, b.y + 24, 14, 14, coat);
+  rect(b.x + 6, b.y + 24, 14, 14, taken ? '#0006' : '#fff2');
+  drawText(part.name, b.x + 28, b.y + 28, taken ? '#7a5a40' : '#fff8ef', 7, 'left');
 }
 
 function hovered() {
@@ -738,7 +763,16 @@ function drawMake() {
   if (!order) return;
   rect(230, 90, 340, 70, '#3d2914');
   drawText(`${order.toy.name} for ${order.kid.name}`, 400, 102, '#ffd166', 8, 'center');
-  drawText(order.toy.parts.map((id) => partById(id).name).join('  →  '), 400, 128, '#f4e4c8', 7, 'center');
+  let rx = 400 - (order.toy.parts.length * 92) / 2;
+  order.toy.parts.forEach((id, i) => {
+    const part = partById(id);
+    const used = i < game.make.clicked.length;
+    const next = i === game.make.clicked.length;
+    rect(rx, 124, 10, 10, used ? '#2a1810' : part.hex);
+    drawText(part.name, rx + 14, 124, used ? '#7a5a40' : next ? '#ffd166' : part.hex, 7, 'left');
+    if (i < order.toy.parts.length - 1) drawText('>', rx + 70, 124, '#c9a227', 7, 'left');
+    rx += 92;
+  });
   drawText(`Gift ${game.makeIndex + 1} of ${game.orders.length}`, 400, 148, '#c9a227', 7, 'center');
 
   rect(330, 178, 140, 110, '#5c3b1c');
@@ -752,14 +786,15 @@ function drawMake() {
     drawToy(order.toy.id, game.make.clicked.length, 400, 240, 2.4);
   }
 
+  const nextId = order.toy.parts[game.make.clicked.length];
   game.make.bench.forEach((id, i) => {
     const taken = game.make.clicked.includes(id);
-    const x = 92 + i * 110;
-    const y = 388;
-    const b = { x, y, w: 96, h: 54 };
+    const x = 86 + i * 112;
+    const y = 386;
+    const b = { x, y, w: 102, h: 58 };
     if (!taken) uiBtn(b.x, b.y, b.w, b.h, 'part', id);
     const hot = hovered() && hovered().id === 'part' && hovered().meta === id;
-    drawBtn(b, partById(id).name, taken ? '#2a1810' : partById(id).hex, hot && !taken);
+    drawPartBtn(b, partById(id), taken, hot && !taken, !taken && id === nextId);
   });
 
   if (game.make.flash > 0) {
@@ -835,7 +870,7 @@ function drawDeliver() {
     drawPresentBox(p.x - d.cam, p.y, p.order.paper, p.order.ribbon, 3, 0.7);
   });
 
-  drawSantaSleigh(d.x - d.cam, d.y);
+  drawSantaSleigh(d.x - d.cam, d.y, d.facing);
 
   const ready = game.orders.filter((o) => !o.delivered && !o.missed);
   ready.forEach((o, i) => {
@@ -931,13 +966,19 @@ function updateDeliver(dt) {
   if (keys.w || keys.arrowup) ay -= 1;
   if (keys.s || keys.arrowdown) ay += 1;
   if (!ax && !ay && mouse.y < 390) {
-    ax += Math.max(-1, Math.min(1, (mouse.x - (d.x - d.cam)) / 180));
-    ay += Math.max(-1, Math.min(1, (mouse.y - d.y) / 160));
+    ax += Math.max(-1, Math.min(1, (mouse.x - (d.x - d.cam)) / 120));
+    ay += Math.max(-1, Math.min(1, (mouse.y - d.y) / 110));
   }
-  d.vx += ax * 520 * dt;
-  d.vy += ay * 420 * dt;
-  d.vx *= 0.86;
-  d.vy *= 0.86;
+  const shiftBrake = keys.shift;
+  const brakeX = !shiftBrake && ax && d.vx * ax < 0;
+  const brakeY = !shiftBrake && ay && d.vy * ay < 0;
+  const accel = shiftBrake ? 900 : 2200;
+  const accelY = shiftBrake ? 700 : 1800;
+  d.vx += ax * (brakeX ? 3800 : accel) * dt;
+  d.vy += ay * (brakeY ? 3200 : accelY) * dt;
+  d.vx *= shiftBrake ? 0.78 : brakeX ? 0.8 : 0.94;
+  d.vy *= shiftBrake ? 0.78 : brakeY ? 0.8 : 0.94;
+  if (Math.abs(d.vx) > 18) d.facing = d.vx > 0 ? 1 : -1;
   d.x += d.vx * dt;
   d.y += d.vy * dt;
   d.x = Math.max(40, Math.min(d.worldW - 40, d.x));

@@ -43,6 +43,7 @@ body {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  cursor: crosshair;
 }
 
 #hud {
@@ -93,6 +94,8 @@ body {
   font-size: 8px;
   line-height: 2;
   text-align: center;
+  max-height: 92%;
+  overflow-y: auto;
 }
 
 #overlay-content h2 {
@@ -115,6 +118,53 @@ body {
 
 #overlay-content button:hover {
   background: #52b788;
+}
+
+#overlay-content button:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.shop-balance strong {
+  color: #ffe566;
+}
+
+.shop-note {
+  color: #b7e4c7;
+  font-size: 6px;
+  margin: 8px 0 12px;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+#overlay-content .shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  text-align: left;
+}
+
+.shop-item small {
+  color: #ffe566;
+  font-family: inherit;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+#overlay-content .shop-item.equipped {
+  background: #2d8a4a;
+  outline: 2px solid #ffe566;
+}
+
+#overlay-content .shop-secondary {
+  background: #315d4c;
+  margin: 12px 4px 0;
 }
 
 #controls-help {

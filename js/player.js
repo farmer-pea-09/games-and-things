@@ -3,7 +3,15 @@ import {
   MAX_FALL,
   WALK_SPEED,
   RUN_SPEED,
+  GROUND_ACCEL,
+  AIR_ACCEL,
   JUMP_FORCE,
+  AIR_JUMP_FORCE,
+  JUMPSQUAT_FRAMES,
+  GROUND_POUND_SPEED,
+  GROUND_POUND_RADIUS,
+  SUPER_JUMP_FORCE,
+  SUPER_JUMP_COOLDOWN_MS,
   JUMP_CUT,
   FRICTION,
   AIR_FRICTION,
@@ -17,11 +25,15 @@ import {
   SCALE_VALUE,
   LIFE_COINS,
   STARTING_TIME,
+  TAIL_STAND_MS,
+  TAIL_STAND_H,
   TILE,
   TILE_TYPES,
 } from './constants.js';
 import { isSolid, isPlatform, isLava, getTile, setTile, spawnBlockItem } from './world.js';
 import { sfx } from './audio.js';
+
+const EMOTE_KEYS = { '1': 'wave', '2': 'dance', '3': 'twirl' };
 
 export function createPlayer(save, spawn) {
   const powered = !!save?.powered;
@@ -43,6 +55,8 @@ export function createPlayer(save, spawn) {
     won: false,
     animFrame: 0,
     jumpHeld: false,
+    jumpKind: null,
+    jumpSquat: 0,
     coyote: 0,
     jumpBuffer: 0,
     tongue: null,
@@ -59,12 +73,43 @@ export function createPlayer(save, spawn) {
     spawnY: spawn?.y ?? 300,
     clearTimer: 0,
     scales: 0,
+    tailStandUntil: 0,
+    jumpKeyHeld: false,
+    airJumpAvailable: true,
+    tailHeld: false,
+    superJumpReadyAt: save?.superJumpReadyAt ?? 0,
+    superHeld: false,
+    superJumping: 0,
+    downHeld: false,
+    groundPounding: false,
+    groundPoundImpact: 0,
+    accessory: save?.accessory ?? null,
+    emotes: new Set(save?.emotes || []),
+    emote: null,
+    emoteTimer: 0,
+    actionHeld: false,
+    heldEgg: null,
+    aimX: null,
+    aimY: null,
   };
 }
 
 export function showMessage(player, msg) {
   player.message = msg;
   player.messageTimer = 110;
+}
+
+export function triggerEmote(player, key) {
+  const emote = EMOTE_KEYS[key];
+  if (!emote) return;
+  if (!player.emotes?.has(emote)) {
+    showMessage(player, `Buy emote ${key} at the Bug Boutique!`);
+    return;
+  }
+  player.emote = emote;
+  player.emoteTimer = 120;
+  showMessage(player, emote === 'wave' ? 'Hello!' : emote === 'dance' ? 'Happy dance!' : 'Tail twirl!');
+  sfx('coin');
 }
 
 export function updatePlayer(player, world, keys) {
@@ -87,6 +132,12 @@ export function updatePlayer(player, world, keys) {
   if (player.invincible > 0) player.invincible--;
   if (player.tongueCooldown > 0) player.tongueCooldown--;
   if (player.spinning > 0) player.spinning--;
+  if (player.superJumping > 0) player.superJumping--;
+  if (player.groundPoundImpact > 0) player.groundPoundImpact--;
+  if (player.emoteTimer > 0) {
+    player.emoteTimer--;
+    if (player.emoteTimer === 0) player.emote = null;
+  }
   if (player.messageTimer > 0) player.messageTimer--;
   else player.message = '';
 
@@ -102,19 +153,28 @@ export function updatePlayer(player, world, keys) {
     }
   }
 
-  const ducking = (keys.has('arrowdown') || keys.has('s')) && player.onGround;
+  const tailDown = keys.has('s');
+  if (tailDown && !player.tailHeld) startTailStand(player);
+  player.tailHeld = tailDown;
+  updateTailStandSize(player);
+
+  const downDown = keys.has('arrowdown');
+  const downPressed = downDown && !player.downHeld;
+  player.downHeld = downDown;
+  const ducking = downDown && player.onGround && !isTailStanding(player);
   const running = keys.has('shift');
   const speed = running ? RUN_SPEED : WALK_SPEED;
+  const acceleration = player.onGround ? GROUND_ACCEL : AIR_ACCEL;
 
   player.camouflaged = ducking && Math.abs(player.vx) < 0.35 && !player.tongue;
 
   if (!player.camouflaged) {
-    if (keys.has('arrowleft') || keys.has('a')) {
-      player.vx -= running ? 0.62 : 0.46;
+    if (keys.has('arrowleft')) {
+      player.vx -= acceleration * (running ? 1.2 : 1);
       player.facing = -1;
     }
     if (keys.has('arrowright') || keys.has('d')) {
-      player.vx += running ? 0.62 : 0.46;
+      player.vx += acceleration * (running ? 1.2 : 1);
       player.facing = 1;
     }
   }
@@ -127,41 +187,97 @@ export function updatePlayer(player, world, keys) {
   else if (player.coyote > 0) player.coyote--;
 
   const jumpDown = keys.has(' ') || keys.has('arrowup') || keys.has('w');
-  if (jumpDown) {
-    player.jumpBuffer = 7;
-    player.jumpHeld = true;
-  } else {
-    player.jumpHeld = false;
-    if (player.vy < 0) player.vy *= JUMP_CUT;
+  const jumpPressed = jumpDown && !player.jumpKeyHeld;
+  const jumpReleased = !jumpDown && player.jumpKeyHeld;
+  if (jumpPressed) player.jumpBuffer = 7;
+  player.jumpKeyHeld = jumpDown;
+  player.jumpHeld = jumpDown;
+  if (jumpReleased && player.vy < 0 && player.superJumping <= 0 && player.jumpKind === 'ground') {
+    player.vy *= JUMP_CUT;
   }
+
+  const superDown = keys.has('a');
+  if (superDown && !player.superHeld) trySuperJump(player);
+  player.superHeld = superDown;
 
   if (player.jumpBuffer > 0) {
     player.jumpBuffer--;
-    if ((player.onGround || player.coyote > 0) && player.vy >= 0) {
-      player.vy = JUMP_FORCE;
+    const canGroundJump = player.onGround || player.coyote > 0;
+    const canAirJump = !canGroundJump && player.airJumpAvailable;
+    if (canGroundJump && player.jumpSquat <= 0) {
+      player.jumpSquat = JUMPSQUAT_FRAMES;
+      player.jumpBuffer = 0;
+    } else if (canAirJump && player.jumpSquat <= 0) {
+      player.vy = AIR_JUMP_FORCE;
       player.onGround = false;
       player.coyote = 0;
       player.jumpBuffer = 0;
+      player.airJumpAvailable = false;
+      player.jumpKind = 'air';
+      sfx('jump');
+    }
+  }
+
+  if (player.jumpSquat > 0) {
+    player.jumpSquat--;
+    player.vx *= 0.92;
+    if (player.jumpSquat === 0) {
+      player.vy = JUMP_FORCE;
+      player.onGround = false;
+      player.coyote = 0;
+      player.jumpKind = 'ground';
       if (ducking) player.spinning = 22;
       sfx('jump');
     }
   }
 
-  if (player.powered && player.jumpHeld && player.vy > 1.2) {
+  if (
+    downPressed &&
+    !player.onGround &&
+    !player.groundPounding &&
+    (player.jumpKind || player.superJumping > 0)
+  ) {
+    player.groundPounding = true;
+    player.vx *= 0.35;
+    player.vy = GROUND_POUND_SPEED;
+    player.tongue = null;
+    showMessage(player, 'Ground pound!');
+    sfx('bump');
+  }
+
+  if (player.powered && !player.groundPounding && player.jumpHeld && player.vy > 1.2) {
     player.vy = Math.min(player.vy, GLIDE_FALL);
   }
 
-  if ((keys.has('z') || keys.has('x')) && !player.tongue && player.tongueCooldown <= 0 && !player.camouflaged) {
-    startTongue(player);
-    sfx('tongue');
+  const actionDown = keys.has('z') || keys.has('x');
+  const actionPressed = actionDown && !player.actionHeld;
+  player.actionHeld = actionDown;
+  if (actionPressed && !player.groundPounding && !player.camouflaged) {
+    if (player.heldEgg != null) {
+      throwHeldEgg(player, world);
+    } else if (!pickUpNestEgg(player, world) && !player.tongue && player.tongueCooldown <= 0) {
+      startTongue(player);
+      sfx('tongue');
+    }
   }
 
   updateTongue(player, world);
 
-  player.vy += GRAVITY;
-  player.vy = Math.min(player.vy, MAX_FALL);
+  if (player.groundPounding) {
+    player.vx *= 0.82;
+    player.vy = GROUND_POUND_SPEED;
+  } else {
+    player.vy += GRAVITY;
+    player.vy = Math.min(player.vy, MAX_FALL);
+  }
 
   moveAndCollide(player, world);
+  updateBossEggs(player, world);
+  if (player.groundPounding && player.onGround) finishGroundPound(player, world);
+  if (player.onGround) {
+    player.airJumpAvailable = true;
+    player.jumpKind = null;
+  }
 
   if (player.y > world.mapH * TILE + 40) {
     killPlayer(player, world, 'Fell away!');
@@ -172,7 +288,101 @@ export function updatePlayer(player, world, keys) {
   checkMidway(player, world);
   checkGoal(player, world);
 
-  if (Math.abs(player.vx) > 0.3 || !player.onGround) player.animFrame += 0.22;
+  if (Math.abs(player.vx) > 0.3 || !player.onGround || isTailStanding(player)) player.animFrame += 0.22;
+}
+
+export function isTailStanding(player) {
+  return (player.tailStandUntil || 0) > performance.now();
+}
+
+function trySuperJump(player) {
+  if (player.dead || player.won || player.paused) return;
+  const now = performance.now();
+  if (now < (player.superJumpReadyAt || 0)) {
+    const wait = Math.ceil((player.superJumpReadyAt - now) / 1000);
+    showMessage(player, `Super jump in ${wait}s`);
+    return;
+  }
+  if (!player.onGround && player.coyote <= 0) {
+    showMessage(player, 'Super jump needs the ground!');
+    return;
+  }
+  player.vy = SUPER_JUMP_FORCE;
+  player.onGround = false;
+  player.coyote = 0;
+  player.jumpBuffer = 0;
+  player.superJumping = 28;
+  player.superJumpReadyAt = now + SUPER_JUMP_COOLDOWN_MS;
+  showMessage(player, 'Super jump!');
+  sfx('super');
+}
+
+function finishGroundPound(player, world) {
+  player.groundPounding = false;
+  player.groundPoundImpact = 18;
+  player.vy = 0;
+  player.vx *= 0.25;
+  sfx('stomp');
+
+  const center = player.x + player.w / 2;
+  const feet = player.y + player.h;
+  let eggsSmashed = 0;
+  const minX = Math.max(0, Math.floor((center - GROUND_POUND_RADIUS) / TILE));
+  const maxX = Math.min(world.mapW - 1, Math.floor((center + GROUND_POUND_RADIUS) / TILE));
+  const minY = Math.max(0, Math.floor((feet - 12) / TILE));
+  const maxY = Math.min(world.mapH - 1, Math.floor((feet + 42) / TILE));
+
+  for (let ty = minY; ty <= maxY; ty++) {
+    for (let tx = minX; tx <= maxX; tx++) {
+      if (getTile(world.tiles, tx, ty) !== TILE_TYPES.QUESTION) continue;
+      const tileCenter = tx * TILE + TILE / 2;
+      if (Math.abs(tileCenter - center) > GROUND_POUND_RADIUS) continue;
+      spawnBlockItem(world, tx, ty);
+      setTile(world.tiles, tx, ty, TILE_TYPES.EMPTY);
+      world.blockItems.delete(`${tx},${ty}`);
+      player.score += 50;
+      eggsSmashed++;
+    }
+  }
+
+  showMessage(player, eggsSmashed > 0 ? `Egg smash! ×${eggsSmashed}` : 'BOOM!');
+
+  for (const enemy of world.enemies) {
+    if (!enemy.alive) continue;
+    const enemyCenter = enemy.x + enemy.w / 2;
+    const enemyFeet = enemy.y + enemy.h;
+    if (
+      Math.abs(enemyCenter - center) <= GROUND_POUND_RADIUS &&
+      Math.abs(enemyFeet - feet) <= 36
+    ) {
+      damageEnemy(player, enemy, false, center, feet);
+    }
+  }
+}
+
+function startTailStand(player) {
+  if (player.dead || player.won) return;
+  const already = isTailStanding(player);
+  player.tailStandUntil = performance.now() + TAIL_STAND_MS;
+  if (!already) {
+    const extra = TAIL_STAND_H - player.h;
+    player.y -= extra;
+    player.h = TAIL_STAND_H;
+  }
+  showMessage(player, 'Tail stand!');
+  sfx('power');
+}
+
+function updateTailStandSize(player) {
+  const standing = isTailStanding(player);
+  const baseH = player.powered ? 36 : 30;
+  if (standing && player.h < TAIL_STAND_H) {
+    player.y -= TAIL_STAND_H - player.h;
+    player.h = TAIL_STAND_H;
+  } else if (!standing && player.h > baseH + 1) {
+    player.y += player.h - baseH;
+    player.h = baseH;
+  }
 }
 
 function moveAndCollide(player, world) {
@@ -283,6 +493,107 @@ function startTongue(player) {
   };
 }
 
+function pickUpNestEgg(player, world) {
+  let nearest = null;
+  let nearestDistance = 48;
+  const cx = player.x + player.w / 2;
+  const cy = player.y + player.h / 2;
+  for (const egg of world.bossEggs || []) {
+    if (egg.state !== 'nest') continue;
+    const distance = Math.hypot(egg.x + egg.w / 2 - cx, egg.y + egg.h / 2 - cy);
+    if (distance < nearestDistance) {
+      nearest = egg;
+      nearestDistance = distance;
+    }
+  }
+  if (!nearest) return false;
+  nearest.state = 'held';
+  nearest.vx = 0;
+  nearest.vy = 0;
+  player.heldEgg = nearest.id;
+  showMessage(player, 'Egg ready! Press Z to throw.');
+  sfx('coin');
+  return true;
+}
+
+function throwHeldEgg(player, world) {
+  const egg = world.bossEggs?.find((entry) => entry.id === player.heldEgg);
+  if (!egg) return;
+  if (!Number.isFinite(player.aimX) || !Number.isFinite(player.aimY)) {
+    showMessage(player, 'Move the cursor to aim first!');
+    return;
+  }
+  player.heldEgg = null;
+  egg.state = 'thrown';
+  egg.x = player.x + player.w / 2 + player.facing * 10;
+  egg.y = player.y + 4;
+  const dx = player.aimX - (egg.x + egg.w / 2);
+  const dy = player.aimY - (egg.y + egg.h / 2);
+  const distance = Math.max(1, Math.hypot(dx, dy));
+  const speed = 12;
+  egg.vx = dx / distance * speed;
+  egg.vy = dy / distance * speed;
+  showMessage(player, 'Egg throw!');
+  sfx('bump');
+}
+
+function updateBossEggs(player, world) {
+  for (const egg of world.bossEggs || []) {
+    if (egg.state === 'held') {
+      egg.x = player.x + player.w / 2 - egg.w / 2;
+      egg.y = player.y - egg.h + 3;
+      continue;
+    }
+    if (egg.state === 'respawning') {
+      egg.respawnTimer--;
+      if (egg.respawnTimer <= 0) {
+        egg.state = 'nest';
+        egg.x = egg.homeX;
+        egg.y = egg.homeY;
+      }
+      continue;
+    }
+    if (egg.state !== 'thrown') continue;
+
+    egg.x += egg.vx;
+    egg.y += egg.vy;
+    egg.vy += 0.3;
+    egg.vx *= 0.995;
+
+    const boss = world.enemies.find((enemy) => enemy.type === 'boss' && enemy.alive);
+    if (boss && overlap(egg, boss)) {
+      stunOwlBoss(player, boss);
+      respawnBossEgg(egg);
+      continue;
+    }
+
+    if (
+      egg.y + egg.h >= 13 * TILE ||
+      egg.x < 0 ||
+      egg.x > world.mapW * TILE
+    ) {
+      respawnBossEgg(egg);
+    }
+  }
+}
+
+function stunOwlBoss(player, boss) {
+  if (boss.state === 'dizzy' || boss.state === 'dizzyFall') return;
+  boss.state = 'dizzyFall';
+  boss.vy = 2;
+  boss.dizzyTimer = 300;
+  boss.hurtTimer = 0;
+  showMessage(player, 'Direct hit! The owl is dizzy!');
+  sfx('stomp');
+}
+
+function respawnBossEgg(egg) {
+  egg.state = 'respawning';
+  egg.respawnTimer = 90;
+  egg.vx = 0;
+  egg.vy = 0;
+}
+
 function updateTongue(player, world) {
   if (!player.tongue) return;
   const t = player.tongue;
@@ -331,7 +642,7 @@ function updateTongue(player, world) {
   for (const enemy of world.enemies) {
     if (!enemy.alive) continue;
     if (tipX > enemy.x && tipX < enemy.x + enemy.w && tipY > enemy.y && tipY < enemy.y + enemy.h) {
-      damageEnemy(player, enemy, true);
+      damageEnemy(player, enemy, true, tipX, tipY);
       t.extending = false;
     }
   }
@@ -429,6 +740,11 @@ function checkMidway(player, world) {
 function checkGoal(player, world) {
   if (world.completed) return;
   if (player.x + player.w > world.flagX + 8) {
+    const bossAlive = world.enemies.some((enemy) => enemy.type === 'boss' && enemy.alive);
+    if (bossAlive) {
+      showMessage(player, 'Defeat the giant owl first!');
+      return;
+    }
     world.completed = true;
     player.won = true;
     player.vx = 0;
@@ -465,6 +781,12 @@ function killPlayer(player, world, msg) {
   player.vy = -7;
   player.respawnTimer = 80;
   player.tongue = null;
+  if (player.heldEgg != null) {
+    const egg = world.bossEggs?.find((entry) => entry.id === player.heldEgg);
+    if (egg) respawnBossEgg(egg);
+    player.heldEgg = null;
+  }
+  player.tailStandUntil = 0;
   showMessage(player, player.lives <= 0 ? 'Game Over!' : msg);
   sfx('hurt');
 }
@@ -481,34 +803,54 @@ export function respawnPlayer(player, world) {
   player.w = 26;
   player.h = 30;
   player.time = STARTING_TIME;
+  player.tailStandUntil = 0;
+  player.superJumping = 0;
+  player.airJumpAvailable = true;
+  player.jumpSquat = 0;
+  player.jumpKind = null;
+  player.groundPounding = false;
+  player.groundPoundImpact = 0;
 }
 
 export function stompEnemy(player, enemy) {
   if (!enemy.alive) return false;
   const feet = player.y + player.h;
   if ((player.vy > 0.4 || player.spinning > 0) && feet - enemy.y < 16) {
-    damageEnemy(player, enemy, false);
+    const damaged = damageEnemy(
+      player,
+      enemy,
+      false,
+      player.x + player.w / 2,
+      feet
+    );
+    if (!damaged) return false;
     player.vy = JUMP_FORCE * 0.58;
     return true;
   }
   return false;
 }
 
-function damageEnemy(player, enemy, fromTongue) {
+function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null) {
   if (enemy.type === 'boss') {
-    if (enemy.hurtTimer > 0) return;
+    if (enemy.state !== 'dizzy') {
+      showMessage(player, 'Throw a nest egg to make the owl dizzy!');
+      sfx('bump');
+      return false;
+    }
+    if (enemy.hurtTimer > 0) return true;
     enemy.hp--;
     enemy.hurtTimer = 40;
+    enemy.state = 'rise';
     player.score += STOMP_BONUS;
     sfx('stomp');
     if (enemy.hp <= 0) {
       enemy.alive = false;
       player.score += 2000;
-      showMessage(player, 'Boss down!');
+      showMessage(player, 'Giant owl defeated!');
     } else {
       showMessage(player, `${enemy.hp} hits left!`);
     }
-    return;
+    return true;
   }
 
   if (enemy.type === 'koopa' && !enemy.shell) {
@@ -518,21 +860,22 @@ function damageEnemy(player, enemy, fromTongue) {
     enemy.vx = 0;
     player.score += STOMP_BONUS;
     sfx('stomp');
-    showMessage(player, fromTongue ? 'Tongue zap!' : 'Koopa shelled!');
-    return;
+    showMessage(player, fromTongue ? 'Tongue zap!' : 'Owl tucked!');
+    return true;
   }
 
   if (enemy.type === 'koopa' && enemy.shell) {
     enemy.vx = (player.facing || 1) * 5.5;
     player.score += 100;
     sfx('stomp');
-    return;
+    return true;
   }
 
   enemy.alive = false;
   player.score += STOMP_BONUS;
   sfx('stomp');
   if (fromTongue) showMessage(player, 'Tongue zap!');
+  return true;
 }
 
 function overlap(a, b) {

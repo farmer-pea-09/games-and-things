@@ -2,15 +2,26 @@ export const TILE = 32;
 export const CANVAS_W = 800;
 export const CANVAS_H = 480;
 
-export const GRAVITY = 0.52;
-export const MAX_FALL = 11;
+export const GRAVITY = 0.42;
+export const MAX_FALL = 8.5;
 export const WALK_SPEED = 2.6;
 export const RUN_SPEED = 4.8;
-export const JUMP_FORCE = -11.8;
-export const JUMP_CUT = 0.48;
+export const GROUND_ACCEL = 0.5;
+export const AIR_ACCEL = 0.3;
+export const JUMP_FORCE = -12.2;
+export const AIR_JUMP_FORCE = -10.8;
+export const JUMPSQUAT_FRAMES = 3;
+export const GROUND_POUND_SPEED = 14;
+export const GROUND_POUND_RADIUS = 54;
+export const SUPER_JUMP_FORCE = -18.4;
+export const SUPER_JUMP_COOLDOWN_MS = 60000;
+export const JUMP_CUT = 0.55;
 export const FRICTION = 0.8;
-export const AIR_FRICTION = 0.94;
+export const AIR_FRICTION = 0.97;
 export const GLIDE_FALL = 2.1;
+
+export const TAIL_STAND_MS = 10000;
+export const TAIL_STAND_H = 50;
 
 export const TONGUE_SPEED = 16;
 export const TONGUE_MAX_LEN = 108;

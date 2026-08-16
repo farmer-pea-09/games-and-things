@@ -1,5 +1,5 @@
 import { TILE } from './constants.js';
-import { stompEnemy, hurtPlayer } from './player.js';
+import { stompEnemy, hurtPlayer, showMessage } from './player.js';
 import { isSolid, getTile } from './world.js';
 
 export function updateEnemies(world, player) {
@@ -20,14 +20,7 @@ export function updateEnemies(world, player) {
       const near = Math.abs(player.x - enemy.x) < 36 && player.y + player.h > enemy.homeY - 10;
       if (near) enemy.y = Math.min(enemy.y + 1.2, enemy.homeY + 24);
     } else if (enemy.type === 'boss') {
-      if (enemy.hurtTimer === 0) enemy.x += enemy.vx;
-      const wall = getTile(
-        world.tiles,
-        Math.floor((enemy.x + (enemy.vx > 0 ? enemy.w + 2 : -2)) / TILE),
-        Math.floor((enemy.y + enemy.h / 2) / TILE)
-      );
-      if (isSolid(wall) || enemy.x < 16 || enemy.x > world.mapW * TILE - 60) enemy.vx *= -1;
-      if (enemy.hurtTimer === 0 && Math.random() < 0.01) enemy.vx *= -1;
+      updateOwlBoss(enemy, player);
     } else {
       enemy.x += enemy.vx;
       const footTx = Math.floor((enemy.x + (enemy.vx > 0 ? enemy.w : 0)) / TILE);
@@ -61,8 +54,61 @@ export function updateEnemies(world, player) {
       }
       if (!stompEnemy(player, enemy)) {
         if (enemy.type === 'piranha' && enemy.y > enemy.homeY + 10) continue;
+        if (enemy.type === 'boss' && enemy.state === 'dizzy') continue;
         hurtPlayer(player, world);
       }
+    }
+  }
+}
+
+function updateOwlBoss(enemy, player) {
+  enemy.phase += 0.06;
+
+  if (enemy.state === 'hover') {
+    enemy.diveClock++;
+    enemy.x += enemy.vx;
+    enemy.y = enemy.homeY + Math.sin(enemy.phase) * 18;
+    if (enemy.x <= enemy.arenaMin || enemy.x + enemy.w >= enemy.arenaMax) {
+      enemy.vx *= -1;
+      enemy.x = Math.max(enemy.arenaMin, Math.min(enemy.x, enemy.arenaMax - enemy.w));
+    }
+    if (enemy.diveClock >= 180) {
+      enemy.diveClock = 0;
+      enemy.state = 'dive';
+      enemy.diveTargetX = player.x + player.w / 2;
+      enemy.vy = 3.5;
+      showMessage(player, 'The giant owl is diving!');
+    }
+  } else if (enemy.state === 'dive') {
+    const center = enemy.x + enemy.w / 2;
+    const dx = enemy.diveTargetX - center;
+    enemy.x += Math.max(-3.2, Math.min(3.2, dx * 0.08));
+    enemy.vy = Math.min(enemy.vy + 0.34, 11);
+    enemy.y += enemy.vy;
+    const floorY = 13 * TILE - enemy.h;
+    if (enemy.y >= floorY) {
+      enemy.y = floorY;
+      enemy.vy = 0;
+      enemy.state = 'rise';
+    }
+  } else if (enemy.state === 'dizzyFall') {
+    enemy.vy = Math.min(enemy.vy + 0.38, 10);
+    enemy.y += enemy.vy;
+    const floorY = 13 * TILE - enemy.h;
+    if (enemy.y >= floorY) {
+      enemy.y = floorY;
+      enemy.vy = 0;
+      enemy.state = 'dizzy';
+    }
+  } else if (enemy.state === 'dizzy') {
+    enemy.dizzyTimer--;
+    if (enemy.dizzyTimer <= 0) enemy.state = 'rise';
+  } else {
+    enemy.y -= 3.2;
+    enemy.x += enemy.vx * 0.4;
+    if (enemy.y <= enemy.homeY) {
+      enemy.y = enemy.homeY;
+      enemy.state = 'hover';
     }
   }
 }

@@ -24,6 +24,7 @@
       <div class="hud-row care-row">
         <span id="food-label">🍖 100</span>
         <span id="water-label">💧 100</span>
+        <span id="hp-label">❤️ 100</span>
       </div>
       <div id="hint-label">Collect coins. Buy eggs. Hatch rare pets!</div>
     </div>
@@ -31,9 +32,16 @@
       <button type="button" data-care="food"><kbd>Z</kbd> Food</button>
       <button type="button" data-care="water"><kbd>X</kbd> Water</button>
       <button type="button" data-panel="pets"><kbd>E</kbd> Pets</button>
+      <button type="button" data-panel="home"><kbd>B</kbd> Babysit</button>
       <button type="button" data-panel="shop"><kbd>F</kbd> Shop</button>
       <button type="button" data-panel="rebirth"><kbd>R</kbd> Rebirth</button>
     </div>
+    <aside id="sit-rail" class="hidden">
+      <h2>Babysit</h2>
+      <p class="sit-sub">Click a pet to leave or take</p>
+      <button type="button" id="sit-heal">Heal walking pets</button>
+      <div id="sit-list"></div>
+    </aside>
     <div id="panel" class="hidden">
       <div id="panel-content"></div>
     </div>
@@ -41,7 +49,7 @@
       <div id="overlay-content"></div>
     </div>
     <div id="controls-help">
-      <kbd>WASD</kbd> move · <kbd>Space</kbd> fight / interact · battle: FIGHT / CAGE / ITEM / RUN · <kbd>Z</kbd> food · <kbd>X</kbd> water
+      <kbd>WASD</kbd> move · <kbd>Space</kbd> fight / interact · <kbd>B</kbd> babysit · <kbd>Z</kbd> food · <kbd>X</kbd> water
     </div>
   </div>
   <script type="module">
