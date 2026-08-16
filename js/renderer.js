@@ -2,7 +2,7 @@ import { TILE, TILE_TYPES, CANVAS_W, CANVAS_H, COLORS } from './constants.js';
 import { resolveCamera, WORLD_NODES, unlockedIds } from './world.js';
 import { isTailStanding } from './player.js';
 
-export function render(ctx, world, player) {
+export function render(ctx, world, player, players = [player]) {
   const { camX, camY } = resolveCamera(player.x, player.y, world.mapW, world.mapH);
 
   drawBackground(ctx, camX, world.theme);
@@ -36,15 +36,17 @@ export function render(ctx, world, player) {
 
   drawGoal(ctx, world, camX, camY);
 
-  if (!player.dead || Math.floor(Date.now() / 90) % 2 === 0) {
-    drawChameleon(ctx, player, camX, camY);
-  }
-  if (player.groundPoundImpact > 0) {
-    drawGroundPoundImpact(ctx, player, camX, camY);
-  }
-  if (player.tongue) drawTongue(ctx, player.tongue, camX, camY);
-  if (player.heldEgg != null && Number.isFinite(player.aimX) && Number.isFinite(player.aimY)) {
-    drawAimCursor(ctx, player, camX, camY);
+  for (const character of players.filter(Boolean)) {
+    if (!character.dead || Math.floor(Date.now() / 90) % 2 === 0) {
+      drawPlayerCharacter(ctx, character, camX, camY);
+    }
+    if (character.groundPoundImpact > 0) {
+      drawGroundPoundImpact(ctx, character, camX, camY);
+    }
+    if (character.tongue) drawTongue(ctx, character.tongue, camX, camY);
+    if (character.heldEgg != null && Number.isFinite(character.aimX) && Number.isFinite(character.aimY)) {
+      drawAimCursor(ctx, character, camX, camY);
+    }
   }
 
   if (player.won) {
@@ -60,6 +62,94 @@ export function render(ctx, world, player) {
     ctx.fillText('Press ENTER for the world map', CANVAS_W / 2, 280);
     ctx.textAlign = 'left';
   }
+}
+
+function drawPlayerCharacter(ctx, player, camX, camY) {
+  if (player.species === 'skink') drawSkinkPlayer(ctx, player, camX, camY);
+  else if (player.species === 'blue-snake') drawBlueSnakePlayer(ctx, player, camX, camY);
+  else drawChameleon(ctx, player, camX, camY);
+}
+
+function drawSkinkPlayer(ctx, player, camX, camY) {
+  const x = player.x - camX;
+  const y = player.y - camY;
+  const dir = player.facing || 1;
+  const bob = player.onGround ? Math.sin(player.animFrame * 1.8) * 2 : -2;
+  ctx.save();
+  ctx.strokeStyle = '#4cc9f0';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 12 - dir * 5, y + 20 + bob);
+  ctx.quadraticCurveTo(x + 13 - dir * 22, y + 28 + bob, x + 13 - dir * 30, y + 16 + bob);
+  ctx.stroke();
+  ctx.fillStyle = '#2a9d8f';
+  ctx.beginPath();
+  ctx.ellipse(x + 13, y + 17 + bob, 12, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 13 + dir * 9, y + 10 + bob, 8, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#b9fbc0';
+  ctx.fillRect(x + 6, y + 19 + bob, 14, 3);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + 13 + dir * 12, y + 8 + bob, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#102a43';
+  ctx.beginPath();
+  ctx.arc(x + 13 + dir * 13, y + 8 + bob, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#217a70';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 7, y + 23 + bob);
+  ctx.lineTo(x + 3, y + 29 + bob);
+  ctx.moveTo(x + 19, y + 23 + bob);
+  ctx.lineTo(x + 23, y + 29 + bob);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBlueSnakePlayer(ctx, player, camX, camY) {
+  const x = player.x - camX;
+  const y = player.y - camY;
+  const dir = player.facing || 1;
+  const wave = Math.sin(player.animFrame * 2.2) * 3;
+  ctx.save();
+  ctx.strokeStyle = '#277da1';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y + 26);
+  ctx.quadraticCurveTo(x + 13, y + 14 + wave, x + 18, y + 25);
+  ctx.quadraticCurveTo(x + 23, y + 30, x + 25, y + 18);
+  ctx.stroke();
+  ctx.strokeStyle = '#4cc9f0';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y + 25);
+  ctx.quadraticCurveTo(x + 13, y + 17 + wave, x + 19, y + 25);
+  ctx.stroke();
+  ctx.fillStyle = '#219ebc';
+  ctx.beginPath();
+  ctx.ellipse(x + 14 + dir * 8, y + 10, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + 14 + dir * 11, y + 8, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0b2545';
+  ctx.beginPath();
+  ctx.arc(x + 14 + dir * 12, y + 8, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ff5d8f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 14 + dir * 16, y + 13);
+  ctx.lineTo(x + 14 + dir * 23, y + 14);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function themeColors(theme) {
@@ -188,12 +278,29 @@ function drawTile(ctx, world, x, y, camX, camY) {
     ctx.fillStyle = '#d8c090';
     ctx.fillRect(sx + 8, sy + 16, 16, 3);
   } else if (type === TILE_TYPES.PIPE) {
-    ctx.fillStyle = '#00a800';
-    ctx.fillRect(sx + 2, sy, TILE - 4, TILE);
-    ctx.fillStyle = '#00d000';
-    ctx.fillRect(sx, sy, TILE, 8);
-    ctx.fillStyle = '#007800';
-    ctx.fillRect(sx + 6, sy + 8, 4, TILE - 8);
+    const treeDark = world.theme === 'castle' || world.theme === 'cave';
+    const pipeAbove = y > 0 && world.tiles[y - 1][x] === TILE_TYPES.PIPE;
+    const pipeLeft = x > 0 && world.tiles[y][x - 1] === TILE_TYPES.PIPE;
+    ctx.fillStyle = treeDark ? '#5b3824' : '#8b542f';
+    ctx.fillRect(sx + 7, sy, TILE - 14, TILE);
+    ctx.fillStyle = treeDark ? '#392418' : '#61381f';
+    ctx.fillRect(sx + 10, sy, 5, TILE);
+    if (!pipeAbove && pipeLeft) {
+      const cx = sx;
+      const leaf = treeDark ? '#31583b' : '#218c45';
+      const leafLight = treeDark ? '#47734f' : '#39b857';
+      ctx.fillStyle = leaf;
+      ctx.beginPath();
+      ctx.arc(cx - 22, sy + 3, 22, 0, Math.PI * 2);
+      ctx.arc(cx, sy - 8, 27, 0, Math.PI * 2);
+      ctx.arc(cx + 24, sy + 4, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = leafLight;
+      ctx.beginPath();
+      ctx.arc(cx - 11, sy - 13, 10, 0, Math.PI * 2);
+      ctx.arc(cx + 15, sy - 9, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (type === TILE_TYPES.PLATFORM) {
     ctx.fillStyle = '#e8b060';
     ctx.fillRect(sx, sy, TILE, 10);
@@ -360,15 +467,22 @@ function drawEnemy(ctx, enemy, camX, camY) {
     ctx.fillRect(sx - 2, sy + 8, 10, 5);
     ctx.fillRect(sx + 20, sy + 8, 10, 5);
     eyes(ctx, sx, sy, enemy.vx);
-  } else if (enemy.type === 'piranha') {
-    ctx.fillStyle = '#d00030';
-    ctx.beginPath();
-    ctx.ellipse(sx + 12, sy + 14, 12, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(sx + 4, sy + 12, 16, 4);
-    ctx.fillStyle = '#00a000';
-    ctx.fillRect(sx + 10, sy + 24, 4, 8);
+  } else if (enemy.type === 'spike') {
+    ctx.fillStyle = '#606878';
+    ctx.fillRect(sx, sy + 19, enemy.w, 5);
+    ctx.fillStyle = '#d9e2ec';
+    ctx.strokeStyle = '#4a5260';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const x = sx + i * 9;
+      ctx.beginPath();
+      ctx.moveTo(x, sy + 20);
+      ctx.lineTo(x + 5, sy);
+      ctx.lineTo(x + 10, sy + 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   } else if (enemy.type === 'boss') {
     drawGiantOwl(ctx, enemy, sx, sy);
   } else if (enemy.type === 'koopa' && enemy.shell) {
@@ -890,9 +1004,11 @@ export function renderTitle(ctx) {
   ctx.fillText('A Super Mario World-style jungle quest', CANVAS_W / 2, 160);
   ctx.fillStyle = '#ffe566';
   ctx.fillText('Press SPACE or ENTER', CANVAS_W / 2, 340);
+  ctx.fillStyle = '#7ee8ff';
+  ctx.fillText('Press P for a 3-player online room', CANVAS_W / 2, 365);
   ctx.fillStyle = '#d8ffc2';
   ctx.font = '6px "Press Start 2P"';
-  ctx.fillText('Tongue · Camouflage · Frill glide · Reach the goal tape', CANVAS_W / 2, 380);
+  ctx.fillText('Tongue · Camouflage · Frill glide · Reach the goal tape', CANVAS_W / 2, 395);
   ctx.textAlign = 'left';
 }
 

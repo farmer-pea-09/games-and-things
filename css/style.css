@@ -167,6 +167,39 @@ body {
   margin: 12px 4px 0;
 }
 
+.multi-note {
+  color: #b7e4c7;
+  margin: 8px 0;
+}
+
+.multi-error {
+  color: #ff8fa3;
+  margin: 8px 0;
+}
+
+.join-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#overlay-content .join-row button {
+  margin-top: 0;
+}
+
+#room-input {
+  width: 180px;
+  border: 3px solid #52b788;
+  border-radius: 4px;
+  background: #081c15;
+  color: #ffe566;
+  padding: 10px;
+  font: 8px 'Press Start 2P', monospace;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 #controls-help {
   position: absolute;
   bottom: -36px;

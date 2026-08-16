@@ -29,7 +29,7 @@ const ENTITY_CHARS = {
   e: 'beetle',
   f: 'fly',
   k: 'koopa',
-  n: 'piranha',
+  n: 'spike',
   o: 'coin',
   '*': 'berry',
   '+': 'life',
@@ -72,10 +72,10 @@ function makeLevel(width, paint, theme = 'grass', label = 'World 1-1') {
 }
 
 function level11() {
-  return makeLevel(132, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(164, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 27);
     ground(30, 75);
-    ground(78, 132);
+    ground(78, 164);
 
     put(3, 12, 'S');
     blockRow(10, 9, '?!?');
@@ -106,16 +106,24 @@ function level11() {
     put(114, 12, 'e');
     put(118, 8, 'f');
 
-    put(126, 10, 'G');
-    put(126, 11, 'G');
-    put(126, 12, 'G');
+    fill(134, 142, 10, '=');
+    put(136, 8, 'o');
+    put(137, 8, 'o');
+    put(139, 8, '$');
+    put(145, 12, 'k');
+    blockRow(149, 8, '?!?');
+    put(155, 7, 'f');
+
+    put(158, 10, 'G');
+    put(158, 11, 'G');
+    put(158, 12, 'G');
   }, 'grass', '1-1 Leafy Lane');
 }
 
 function level12() {
-  return makeLevel(148, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(180, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
-    ground(128, 148);
+    ground(128, 180);
 
     put(3, 12, 'S');
     blockRow(8, 9, '??');
@@ -162,21 +170,29 @@ function level12() {
     put(130, 10, 'n');
     put(136, 12, 'e');
 
-    put(144, 10, 'G');
-    put(144, 11, 'G');
-    put(144, 12, 'G');
+    fill(145, 153, 8, '=');
+    put(147, 6, 'o');
+    put(149, 5, 'f');
+    pipe(156, 2);
+    put(156, 10, 'n');
+    blockRow(164, 7, '!??');
+    put(170, 12, 'k');
+
+    put(176, 10, 'G');
+    put(176, 11, 'G');
+    put(176, 12, 'G');
   }, 'grass', '1-2 Canopy Walk');
 }
 
 function level13() {
-  return makeLevel(140, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(172, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
     ground(22, 40);
     ground(50, 64);
     fill(42, 48, 11, '=');
     ground(76, 92);
     fill(66, 74, 9, '=');
-    ground(104, 140);
+    ground(104, 172);
     fill(94, 102, 8, '=');
 
     put(3, 12, 'S');
@@ -212,21 +228,30 @@ function level13() {
     blockRow(120, 8, '???');
     put(128, 12, 'e');
 
-    put(136, 10, 'G');
-    put(136, 11, 'G');
-    put(136, 12, 'G');
+    pipe(142, 3);
+    put(142, 9, 'n');
+    fill(150, 158, 9, '=');
+    put(152, 7, 'o');
+    put(153, 6, '*');
+    put(154, 7, 'o');
+    put(160, 12, 'k');
+    put(164, 6, 'f');
+
+    put(168, 10, 'G');
+    put(168, 11, 'G');
+    put(168, 12, 'G');
   }, 'athletic', '1-3 Windy Gulch');
 }
 
 function level14() {
-  return makeLevel(136, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(168, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 20);
     fill(20, 32, 14, 'L');
     ground(32, 50);
     fill(50, 62, 14, 'L');
     ground(62, 88);
     fill(88, 100, 14, 'L');
-    ground(100, 136);
+    ground(100, 168);
 
     put(3, 12, 'S');
     blockRow(8, 9, 'B?B');
@@ -266,21 +291,29 @@ function level14() {
     put(118, 9, 'o');
     put(124, 12, 'e');
 
-    put(132, 10, 'G');
-    put(132, 11, 'G');
-    put(132, 12, 'G');
+    pipe(138, 2);
+    put(138, 10, 'n');
+    blockRow(146, 8, 'B!?');
+    put(151, 12, 'k');
+    fill(154, 160, 10, '=');
+    put(156, 8, '$');
+    put(160, 12, 'e');
+
+    put(164, 10, 'G');
+    put(164, 11, 'G');
+    put(164, 12, 'G');
   }, 'cave', '1-4 Murk Cavern');
 }
 
 function levelCastle() {
-  return makeLevel(124, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(156, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
     fill(18, 28, 14, 'L');
     ground(28, 48);
     fill(48, 58, 14, 'L');
     ground(58, 86);
     fill(86, 96, 14, 'L');
-    ground(96, 124);
+    ground(96, 156);
 
     for (let x = 0; x < 8; x++) {
       put(x, 0, 'C');
@@ -319,19 +352,27 @@ function levelCastle() {
     put(102, 12, 'b');
     put(108, 8, '+');
 
-    put(118, 10, 'G');
-    put(118, 11, 'G');
-    put(118, 12, 'G');
-    put(120, 8, 'C');
-    put(120, 9, 'C');
-    put(120, 10, 'C');
-    put(120, 11, 'C');
-    put(120, 12, 'C');
-    put(121, 8, 'C');
-    put(121, 9, 'C');
-    put(121, 10, 'C');
-    put(121, 11, 'C');
-    put(121, 12, 'C');
+    fill(120, 127, 9, '=');
+    put(122, 7, 'o');
+    put(124, 7, '$');
+    pipe(132, 2);
+    put(132, 10, 'n');
+    blockRow(139, 8, 'B!B');
+    put(145, 12, 'k');
+
+    put(150, 10, 'G');
+    put(150, 11, 'G');
+    put(150, 12, 'G');
+    put(152, 8, 'C');
+    put(152, 9, 'C');
+    put(152, 10, 'C');
+    put(152, 11, 'C');
+    put(152, 12, 'C');
+    put(153, 8, 'C');
+    put(153, 9, 'C');
+    put(153, 10, 'C');
+    put(153, 11, 'C');
+    put(153, 12, 'C');
   }, 'castle', 'Castle Thorn Keep');
 }
 
@@ -401,7 +442,7 @@ export function createWorld(levelId = '1-1') {
 
   spawn.y = findGroundY(tiles, spawn.x + 8, spawn.y) - 32;
   for (const enemy of enemies) {
-    if (enemy.type === 'fly' || enemy.type === 'piranha' || enemy.type === 'boss') continue;
+    if (enemy.type === 'fly' || enemy.type === 'spike' || enemy.type === 'boss') continue;
     enemy.y = findGroundY(tiles, enemy.x + enemy.w / 2, enemy.y) - enemy.h;
   }
   if (midway) midway.y = findGroundY(tiles, midway.x + 8, midway.y) - 8;
@@ -453,17 +494,15 @@ function makeEnemy(kind, x, y) {
   if (kind === 'koopa') {
     return { x, y, w: 28, h: 30, vx: -0.9, alive: true, type: 'koopa', shell: false };
   }
-  if (kind === 'piranha') {
+  if (kind === 'spike') {
     return {
-      x,
+      x: x + 2,
       y: y + 8,
-      w: 24,
-      h: 28,
+      w: 28,
+      h: 24,
       vx: 0,
       alive: true,
-      type: 'piranha',
-      homeY: y + 8,
-      phase: 0,
+      type: 'spike',
     };
   }
   if (kind === 'boss') {

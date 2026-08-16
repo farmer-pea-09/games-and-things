@@ -112,7 +112,7 @@ export function triggerEmote(player, key) {
   sfx('coin');
 }
 
-export function updatePlayer(player, world, keys) {
+export function updatePlayer(player, world, keys, updateSharedWorld = true) {
   if (player.paused) return;
 
   if (player.won) {
@@ -272,7 +272,7 @@ export function updatePlayer(player, world, keys) {
   }
 
   moveAndCollide(player, world);
-  updateBossEggs(player, world);
+  updateBossEggs(player, world, updateSharedWorld);
   if (player.groundPounding && player.onGround) finishGroundPound(player, world);
   if (player.onGround) {
     player.airJumpAvailable = true;
@@ -508,6 +508,7 @@ function pickUpNestEgg(player, world) {
   }
   if (!nearest) return false;
   nearest.state = 'held';
+  nearest.heldBy = player.slot ?? 0;
   nearest.vx = 0;
   nearest.vy = 0;
   player.heldEgg = nearest.id;
@@ -525,6 +526,7 @@ function throwHeldEgg(player, world) {
   }
   player.heldEgg = null;
   egg.state = 'thrown';
+  egg.heldBy = null;
   egg.x = player.x + player.w / 2 + player.facing * 10;
   egg.y = player.y + 4;
   const dx = player.aimX - (egg.x + egg.w / 2);
@@ -537,13 +539,16 @@ function throwHeldEgg(player, world) {
   sfx('bump');
 }
 
-function updateBossEggs(player, world) {
+function updateBossEggs(player, world, updateSharedWorld) {
   for (const egg of world.bossEggs || []) {
     if (egg.state === 'held') {
-      egg.x = player.x + player.w / 2 - egg.w / 2;
-      egg.y = player.y - egg.h + 3;
+      if (egg.heldBy === (player.slot ?? 0)) {
+        egg.x = player.x + player.w / 2 - egg.w / 2;
+        egg.y = player.y - egg.h + 3;
+      }
       continue;
     }
+    if (!updateSharedWorld) continue;
     if (egg.state === 'respawning') {
       egg.respawnTimer--;
       if (egg.respawnTimer <= 0) {
@@ -589,6 +594,7 @@ function stunOwlBoss(player, boss) {
 
 function respawnBossEgg(egg) {
   egg.state = 'respawning';
+  egg.heldBy = null;
   egg.respawnTimer = 90;
   egg.vx = 0;
   egg.vy = 0;
@@ -831,6 +837,7 @@ export function stompEnemy(player, enemy) {
 }
 
 function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null) {
+  if (enemy.type === 'spike') return false;
   if (enemy.type === 'boss') {
     if (enemy.state !== 'dizzy') {
       showMessage(player, 'Throw a nest egg to make the owl dizzy!');

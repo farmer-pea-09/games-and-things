@@ -2,7 +2,8 @@ import { TILE } from './constants.js';
 import { stompEnemy, hurtPlayer, showMessage } from './player.js';
 import { isSolid, getTile } from './world.js';
 
-export function updateEnemies(world, player) {
+export function updateEnemies(world, playerOrPlayers) {
+  const players = (Array.isArray(playerOrPlayers) ? playerOrPlayers : [playerOrPlayers]).filter(Boolean);
   for (const enemy of world.enemies) {
     if (!enemy.alive) continue;
     if (enemy.hurtTimer > 0) enemy.hurtTimer--;
@@ -12,15 +13,11 @@ export function updateEnemies(world, player) {
       enemy.y = enemy.flyY + Math.sin(enemy.flyPhase) * 36;
       enemy.x += enemy.vx;
       if (enemy.x < 16 || enemy.x > world.mapW * TILE - 40) enemy.vx *= -1;
-    } else if (enemy.type === 'piranha') {
-      enemy.phase += 1;
-      const hidden = Math.floor(enemy.phase / 70) % 2 === 0;
-      enemy.y += hidden ? 0.7 : -0.7;
-      enemy.y = Math.max(enemy.homeY - 28, Math.min(enemy.homeY + 24, enemy.y));
-      const near = Math.abs(player.x - enemy.x) < 36 && player.y + player.h > enemy.homeY - 10;
-      if (near) enemy.y = Math.min(enemy.y + 1.2, enemy.homeY + 24);
+    } else if (enemy.type === 'spike') {
+      // Tree-top spikes are stationary hazards.
     } else if (enemy.type === 'boss') {
-      updateOwlBoss(enemy, player);
+      const target = nearestPlayer(enemy, players);
+      if (target) updateOwlBoss(enemy, target);
     } else {
       enemy.x += enemy.vx;
       const footTx = Math.floor((enemy.x + (enemy.vx > 0 ? enemy.w : 0)) / TILE);
@@ -45,20 +42,40 @@ export function updateEnemies(world, player) {
       }
     }
 
-    if (player.camouflaged || player.dead || player.won) continue;
-    if (rects(player, enemy)) {
-      if (enemy.type === 'koopa' && enemy.shell && Math.abs(enemy.vx) < 0.4) {
-        enemy.vx = (player.facing || 1) * 5.5;
-        player.vx = -player.facing * 2;
-        continue;
-      }
-      if (!stompEnemy(player, enemy)) {
-        if (enemy.type === 'piranha' && enemy.y > enemy.homeY + 10) continue;
-        if (enemy.type === 'boss' && enemy.state === 'dizzy') continue;
-        hurtPlayer(player, world);
+    for (const player of players) {
+      if (player.camouflaged || player.dead || player.won) continue;
+      if (rects(player, enemy)) {
+        if (enemy.type === 'spike') {
+          hurtPlayer(player, world);
+          continue;
+        }
+        if (enemy.type === 'koopa' && enemy.shell && Math.abs(enemy.vx) < 0.4) {
+          enemy.vx = (player.facing || 1) * 5.5;
+          player.vx = -player.facing * 2;
+          continue;
+        }
+        if (!stompEnemy(player, enemy)) {
+          if (enemy.type === 'boss' && enemy.state === 'dizzy') continue;
+          hurtPlayer(player, world);
+        }
       }
     }
   }
+}
+
+function nearestPlayer(enemy, players) {
+  let nearest = null;
+  let distance = Infinity;
+  for (const player of players) {
+    if (player.dead || player.won) continue;
+    const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
+    const nextDistance = Math.abs(dx);
+    if (nextDistance < distance) {
+      nearest = player;
+      distance = nextDistance;
+    }
+  }
+  return nearest;
 }
 
 function updateOwlBoss(enemy, player) {
