@@ -5,7 +5,7 @@ export const CANVAS_H = 480;
 export const GRAVITY = 0.42;
 export const MAX_FALL = 8.5;
 export const WALK_SPEED = 2.6;
-export const RUN_SPEED = 5.8;
+export const RUN_SPEED = 5.6;
 export const GROUND_ACCEL = 0.5;
 export const AIR_ACCEL = 0.3;
 export const JUMP_FORCE = -12.2;
@@ -46,6 +46,7 @@ export const TILE_TYPES = {
   LAVA: 7,
   PLATFORM: 8,
   CASTLE: 9,
+  GATE: 10,
 };
 
 export const COLORS = {

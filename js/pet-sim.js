@@ -1,6 +1,6 @@
-import { PETS } from './pets.js';
+import { PETS, searchPets } from './pets.js';
 import { drawSpecies } from './pet-draw.js';
-import { netHost, netJoin, netBroadcast, netStop, netRoom, netRole, makeRoomCode, inviteUrl } from './net.js';
+import { netHost, netJoin, netBroadcast, netStop, netRoom, netRole, netCount, makeRoomCode, inviteUrl, MAX_PLAYERS } from './net.js';
 
 const W = 800;
 const H = 480;
@@ -20,6 +20,7 @@ const panelContent = document.getElementById('panel-content');
 const sitRail = document.getElementById('sit-rail');
 const sitList = document.getElementById('sit-list');
 const sitHeal = document.getElementById('sit-heal');
+const sitSearch = document.getElementById('sit-search');
 const coinsLabel = document.getElementById('coins-label');
 const multLabel = document.getElementById('mult-label');
 const clockLabel = document.getElementById('clock-label');
@@ -57,6 +58,8 @@ const PET_RARITY = {
   owl: 'legendary', llama: 'legendary', capybara: 'legendary',
   bear: 'epic',
   panda: 'mythic', 'sugar-glider': 'mythic', chinchilla: 'mythic',
+  dragon: 'mythic', phoenix: 'mythic', unicorn: 'mythic', pegasus: 'mythic',
+  griffin: 'mythic', kitsune: 'mythic', hydra: 'mythic', jackalope: 'mythic',
 };
 
 const EGGS = [
@@ -74,7 +77,7 @@ const EGGS = [
   },
   {
     id: 'mythic', name: 'Mythic Egg', price: 800, color: '#ff6bcb',
-    weights: { epic: 20, legendary: 40, mythic: 40 },
+    weights: { legendary: 18, mythic: 82 },
   },
 ];
 
@@ -82,7 +85,7 @@ const AREAS = [
   {
     id: 'meadow', name: 'Sunny Meadow', unlock: 0, coin: 1, count: 30,
     ground: ['#7cb342', '#8bc34a', '#9ccc65'], dark: '#558b2f', sky: '#87ceeb',
-    accent: '#e9c46a', hint: 'Shop is north. Home is south — Mom heals and babysits.',
+    accent: '#e9c46a', hint: 'Pet store is north. Home is south — Mom heals and babysits.',
   },
   {
     id: 'beach', name: 'Pearl Beach', unlock: 40, coin: 8, count: 34,
@@ -141,6 +144,8 @@ let clockAcc = 0;
 let careWarn = 0;
 let careFlash = null;
 let careFocus = 0;
+let shopTab = 'sale';
+let shopQuery = '';
 let wild = [];
 let treats = [];
 let battle = null;
@@ -154,12 +159,13 @@ const state = {
   hour: 8,
   minute: 0,
   babysat: [],
+  lost: [],
 };
 
 const player = { x: 220, y: 480, dir: 1, walk: 0 };
 const trail = [];
 const remotes = new Map();
-const REMOTE_COLORS = ['#e63946', '#9b5de5', '#52b788', '#f15bb5', '#ff6d00'];
+const REMOTE_COLORS = ['#e63946', '#9b5de5', '#52b788', '#f15bb5', '#ff6d00', '#4cc9f0'];
 let netAcc = 0;
 let netBusy = false;
 let coins = [];
@@ -281,6 +287,7 @@ function save() {
     hour: state.hour,
     minute: state.minute,
     babysat: state.babysat,
+    lost: state.lost,
     uid,
   }));
 }
@@ -298,8 +305,10 @@ function load() {
     state.hour = Number.isFinite(data.hour) ? clamp(data.hour, 0, 23) : 8;
     state.minute = Number.isFinite(data.minute) ? clamp(data.minute, 0, 59) : 0;
     state.babysat = Array.isArray(data.babysat) ? data.babysat : [];
+    state.lost = Array.isArray(data.lost) ? data.lost : [];
     uid = data.uid || state.pets.length + 1;
     for (const pet of state.pets) ensurePetStats(pet);
+    for (const pet of state.lost) ensurePetStats(pet);
     state.babysat = state.babysat.filter((id) => state.pets.some((p) => p.uid === id));
     state.equipped = state.equipped.filter((id) => !state.babysat.includes(id));
   } catch {
@@ -594,13 +603,27 @@ function takeFromMom(uid) {
   fillSitList();
 }
 
+function sitMatches(pet, q) {
+  if (!q) return true;
+  const spec = speciesById(pet.speciesId);
+  const home = isBabysat(pet.uid);
+  const on = state.equipped.includes(pet.uid);
+  const where = home ? 'mom babysit home' : on ? 'walking walk' : 'bag';
+  const hay = `${spec.name} ${spec.tags} ${spec.id} ${spec.kind} ${pet.rarity} ${RARITY[pet.rarity].label} ${where}`;
+  if (hay.toLowerCase().includes(q)) return true;
+  return searchPets(q).some((hit) => hit.id === pet.speciesId);
+}
+
 function fillSitList() {
-  const list = [...state.pets].sort((a, b) => {
-    const aHome = isBabysat(a.uid) ? 0 : 1;
-    const bHome = isBabysat(b.uid) ? 0 : 1;
-    if (aHome !== bHome) return aHome - bHome;
-    return RARITY[b.rarity].mult - RARITY[a.rarity].mult;
-  });
+  const q = (sitSearch?.value || '').trim().toLowerCase();
+  const list = [...state.pets]
+    .filter((pet) => sitMatches(pet, q))
+    .sort((a, b) => {
+      const aHome = isBabysat(a.uid) ? 0 : 1;
+      const bHome = isBabysat(b.uid) ? 0 : 1;
+      if (aHome !== bHome) return aHome - bHome;
+      return RARITY[b.rarity].mult - RARITY[a.rarity].mult;
+    });
   sitList.innerHTML = list.length
     ? list.map((pet) => {
       const spec = speciesById(pet.speciesId);
@@ -619,7 +642,7 @@ function fillSitList() {
         </button>
       `;
     }).join('')
-    : '<p class="sit-sub">No pets yet. Hatch an egg!</p>';
+    : `<p class="sit-sub">${state.pets.length ? 'No pets match that search.' : 'No pets yet. Hatch an egg!'}</p>`;
   sitList.querySelectorAll('[data-uid]').forEach((btn) => {
     btn.onclick = () => {
       const id = Number(btn.dataset.uid);
@@ -639,6 +662,8 @@ function openHome() {
   seedTrail();
   sitRail.classList.remove('hidden');
   fillSitList();
+  sitSearch?.focus();
+  sitSearch?.select();
   say("Mom's yard. Leave pets on the side list.");
 }
 
@@ -680,6 +705,14 @@ function nearestWild(range) {
 }
 
 function movesFor(species) {
+  if (species.extra === 'mythic') {
+    return [
+      { name: 'Starfall', pow: 26 },
+      { name: 'Charm', pow: 0, drop: true },
+      { name: 'Roar', pow: 18 },
+      { name: 'Mythic', pow: 30 },
+    ];
+  }
   if (species.kind === 'bird') {
     return [
       { name: 'Peck', pow: 18 },
@@ -904,10 +937,22 @@ function endBattle(result) {
     say(`You beat the wild ${foe}! ${petName} is safe.`);
   } else if (result === 'lose') {
     if (!w.tame) {
+      const gone = state.pets.find((p) => p.uid === pet.uid);
+      if (gone && !state.lost.some((p) => p.uid === gone.uid)) {
+        state.lost.push({
+          uid: gone.uid,
+          speciesId: gone.speciesId,
+          rarity: gone.rarity,
+          name: gone.name,
+          food: 100,
+          water: 100,
+          hp: 0,
+        });
+      }
       state.equipped = state.equipped.filter((id) => id !== pet.uid);
       state.pets = state.pets.filter((p) => p.uid !== pet.uid);
       state.babysat = state.babysat.filter((id) => id !== pet.uid);
-      say(`The wild ${foe} took your ${petName}!`);
+      say(`The wild ${foe} took your ${petName}! Go to the pet store to find them.`);
     } else if (kept) {
       kept.hp = 0;
       say(`Your ${petName} fainted. Take them home to heal.`);
@@ -1154,26 +1199,132 @@ function closeMenus() {
   sitRail.classList.add('hidden');
 }
 
-function openShop() {
+function salePrice(rarity) {
+  return { common: 18, uncommon: 40, rare: 90, epic: 200, legendary: 480, mythic: 1100 }[rarity] || 40;
+}
+
+function lostFee(pet) {
+  return Math.max(6, Math.floor(salePrice(pet.rarity) * 0.35));
+}
+
+function shopMatches(spec, q) {
+  if (!q) return true;
+  return searchPets(q).some((hit) => hit.id === spec.id);
+}
+
+function reclaimLost(uid) {
+  const i = state.lost.findIndex((p) => p.uid === uid);
+  if (i < 0) return;
+  const pet = state.lost[i];
+  const fee = lostFee(pet);
+  if (state.coins < fee) {
+    say(`Need ${formatCoins(fee)} coins to bring them home.`);
+    return;
+  }
+  state.coins -= fee;
+  state.lost.splice(i, 1);
+  ensurePetStats(pet);
+  pet.hp = petMaxHp(pet);
+  pet.food = 100;
+  pet.water = 100;
+  state.pets.push(pet);
+  if (state.equipped.length < MAX_EQUIP) state.equipped.push(pet.uid);
+  const name = speciesById(pet.speciesId).name;
+  say(`${name} came home from the lost board!`);
+  save();
+  openShop('lost');
+}
+
+function buyShopPet(speciesId) {
+  const spec = speciesById(speciesId);
+  const rarity = rarityOf(speciesId);
+  const price = salePrice(rarity);
+  if (state.coins < price) {
+    say('Not enough coins for that pet.');
+    return;
+  }
+  state.coins -= price;
+  addPet(spec, rarity);
+  say(`You bought a ${spec.name}!`);
+  openShop('sale');
+}
+
+function openShop(tab) {
   menu = 'shop';
   sitRail.classList.add('hidden');
+  if (tab) shopTab = tab;
+  else shopTab = state.lost.length ? 'lost' : 'sale';
+  const q = shopQuery.trim().toLowerCase();
+  const lostList = state.lost.filter((pet) => shopMatches(speciesById(pet.speciesId), q));
+  const saleList = PETS.filter((spec) => shopMatches(spec, q));
   panel.classList.remove('hidden');
   panelContent.innerHTML = `
-    <h2>Egg Shop</h2>
-    <p class="panel-sub">Coins ${formatCoins(state.coins)} · Hatch a pet, then equip it.</p>
+    <h2>Pet Store</h2>
+    <p class="panel-sub">Coins ${formatCoins(state.coins)}${state.lost.length ? ` · ${state.lost.length} lost` : ''}</p>
+    <div class="shop-tabs">
+      <button type="button" data-tab="lost" class="${shopTab === 'lost' ? 'on' : ''}">Lost pets</button>
+      <button type="button" data-tab="sale" class="${shopTab === 'sale' ? 'on' : ''}">Pets for sale</button>
+    </div>
+    <input id="shop-search" type="search" placeholder="${shopTab === 'lost' ? 'Search lost pets' : 'Search pets for sale'}" maxlength="24" autocomplete="off" spellcheck="false" value="${shopQuery.replace(/"/g, '&quot;')}">
     <div class="panel-grid">
-      ${EGGS.map((egg) => `
-        <button class="egg-card" data-egg="${egg.id}" type="button">
-          <span class="pet-emoji">🥚</span>
-          ${egg.name}
-          <span class="rarity" style="color:${egg.color}">${formatCoins(egg.price)} coins</span>
-        </button>
-      `).join('')}
+      ${shopTab === 'lost'
+        ? (lostList.length
+          ? lostList.map((pet) => {
+            const spec = speciesById(pet.speciesId);
+            const fee = lostFee(pet);
+            return `
+              <button class="pet-card" data-lost="${pet.uid}" type="button">
+                <span class="pet-emoji">${spec.emoji}</span>
+                ${spec.name}
+                <span class="rarity" style="color:${RARITY[pet.rarity].color}">Lost · ${RARITY[pet.rarity].label}</span>
+                Bring home ${formatCoins(fee)}
+              </button>
+            `;
+          }).join('')
+          : `<p class="panel-sub">${state.lost.length ? 'No lost pets match that search.' : 'No lost pets. If a wild animal takes one, they show up here.'}</p>`)
+        : `${EGGS.filter((egg) => !q || egg.name.toLowerCase().includes(q) || egg.id.includes(q)).map((egg) => `
+            <button class="egg-card" data-egg="${egg.id}" type="button">
+              <span class="pet-emoji">🥚</span>
+              ${egg.name}
+              <span class="rarity" style="color:${egg.color}">${formatCoins(egg.price)} coins</span>
+            </button>
+          `).join('')}
+          ${saleList.map((spec) => {
+            const rarity = rarityOf(spec.id);
+            return `
+              <button class="pet-card" data-buy="${spec.id}" type="button">
+                <span class="pet-emoji">${spec.emoji}</span>
+                ${spec.name}
+                <span class="rarity" style="color:${RARITY[rarity].color}">${RARITY[rarity].label} · ${formatCoins(salePrice(rarity))}</span>
+                Buy
+              </button>
+            `;
+          }).join('')}`}
     </div>
     <div class="panel-actions">
       <button class="ghost" id="close-panel" type="button">Close</button>
     </div>
   `;
+  panelContent.querySelectorAll('[data-tab]').forEach((btn) => {
+    btn.onclick = () => openShop(btn.dataset.tab);
+  });
+  const search = panelContent.querySelector('#shop-search');
+  search.addEventListener('input', () => {
+    shopQuery = search.value;
+    const start = search.selectionStart;
+    openShop(shopTab);
+    const next = panelContent.querySelector('#shop-search');
+    if (next) {
+      next.focus();
+      next.setSelectionRange(start, start);
+    }
+  });
+  panelContent.querySelectorAll('[data-lost]').forEach((btn) => {
+    btn.onclick = () => reclaimLost(Number(btn.dataset.lost));
+  });
+  panelContent.querySelectorAll('[data-buy]').forEach((btn) => {
+    btn.onclick = () => buyShopPet(btn.dataset.buy);
+  });
   panelContent.querySelectorAll('[data-egg]').forEach((btn) => {
     btn.onclick = () => hatchEgg(EGGS.find((e) => e.id === btn.dataset.egg));
   });
@@ -1392,6 +1543,7 @@ function showMultiStatus() {
   overlayContent.innerHTML = `
     <h2>Play together</h2>
     <p>Room <strong>${code}</strong></p>
+    <p class="panel-sub">${Math.min(netCount(), MAX_PLAYERS)} / ${MAX_PLAYERS} players</p>
     <p class="panel-sub">Send this link to a friend</p>
     <p style="font-size:6px;line-height:1.6;word-break:break-all;max-width:340px">${link}</p>
     <div class="panel-actions">
@@ -1428,7 +1580,7 @@ function openMultiplayer() {
   overlay.classList.remove('hidden');
   overlayContent.innerHTML = `
     <h2>Play together</h2>
-    <p>See friends in the same meadow. Your coins and pets stay yours.</p>
+    <p>Up to ${MAX_PLAYERS} players in one meadow. Your coins and pets stay yours.</p>
     <div class="panel-actions">
       <button id="host-room" type="button">Host room</button>
     </div>
@@ -1492,7 +1644,7 @@ function updateHud() {
   } else if (nearHome()) hintLabel.textContent = "B: Mom's house — heal or babysit";
   else if (nearBowl('food')) hintLabel.textContent = 'Space: fill food bowls';
   else if (nearBowl('water')) hintLabel.textContent = 'Space: fill water bowls';
-  else if (nearShop()) hintLabel.textContent = 'Space: open the egg shop';
+  else if (nearShop()) hintLabel.textContent = 'Space: pet store — lost pets and pets for sale';
   else if (nearPortal('next')) hintLabel.textContent = 'Space: next world';
   else if (nearPortal('prev') && state.area > 0) hintLabel.textContent = 'Space: previous world';
   else hintLabel.textContent = AREAS[state.area].hint;
@@ -1678,7 +1830,12 @@ function drawShop(c) {
   ctx.fillStyle = '#fff8ef';
   ctx.font = '7px "Press Start 2P"';
   ctx.textAlign = 'center';
-  ctx.fillText('EGGS', x, y - 36);
+  ctx.fillText('PET STORE', x, y - 36);
+  if (state.lost.length) {
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '5px "Press Start 2P"';
+    ctx.fillText(`${state.lost.length} LOST`, x, y - 48);
+  }
   ctx.fillStyle = nearShop() ? '#ffd166' : '#fff8ef';
   ctx.font = '6px "Press Start 2P"';
   ctx.fillText('Space', x, y + 42);
@@ -1787,7 +1944,7 @@ function drawHouse(c) {
   babysatPets().forEach((pet, i) => {
     const px = HOME.x - 36 + (i % 4) * 28;
     const py = HOME.y + 40 + Math.floor(i / 4) * 26;
-    drawPetSprite(c, pet.speciesId, px, py, 0.16, {
+    drawPetSprite(c, pet.speciesId, px, py, 0.22, {
       mood: 92,
       sleeping: i % 2 === 0,
       playing: i % 2 === 1,
@@ -1889,7 +2046,7 @@ function drawRemotePlayer(c, r) {
   ctx.textAlign = 'left';
   r.pets.forEach((pet, i) => {
     const node = r.trail[14 + i * 18] || { x: r.x - r.dir * (24 + i * 20), y: r.y };
-    drawPetSprite(c, pet.speciesId, node.x, node.y - 6, 0.22, {
+    drawPetSprite(c, pet.speciesId, node.x, node.y - 6, 0.32, {
       mood: 80, sleeping: false, playing: true, eating: false, drinking: false,
       loving: false, sad: false, crying: false,
     });
@@ -1911,7 +2068,7 @@ function drawFollowers(c) {
     ctx.globalAlpha = 1;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(0.28, 0.28);
+    ctx.scale(0.38, 0.38);
     ctx.translate(-400, -318);
     const hungry = pet.food < 28 || pet.water < 28;
     const eating = careFlash?.type === 'food' && careFlash.uid === pet.uid;
@@ -1945,7 +2102,7 @@ function drawPetSprite(c, speciesId, x, y, scale, extra) {
 
 function drawWild(c) {
   for (const w of wild) {
-    drawPetSprite(c, w.speciesId, w.x, w.y, 0.22, {
+    drawPetSprite(c, w.speciesId, w.x, w.y, 0.32, {
       mood: w.tame ? 70 : 28,
       sleeping: false,
       playing: !w.tame,
@@ -2128,7 +2285,7 @@ function drawBattle() {
   } else {
     ctx.save();
     ctx.translate(560 + foeShake, 118);
-    ctx.scale(0.42, 0.42);
+    ctx.scale(0.55, 0.55);
     ctx.translate(-400, -318);
     drawSpecies(ctx, { species: battle.foeSpec, blink: 0, actionTime: clock }, clock, {
       mood: 40, sleeping: false, playing: false, eating: false, drinking: false,
@@ -2139,7 +2296,7 @@ function drawBattle() {
 
   ctx.save();
   ctx.translate(220 + youShake, 250);
-  ctx.scale(0.48, 0.48);
+  ctx.scale(0.62, 0.62);
   ctx.translate(-400, -318);
   drawSpecies(ctx, { species: battle.youSpec, blink: 0, actionTime: clock }, clock, {
     mood: 80, sleeping: false, playing: true, eating: false, drinking: false,
@@ -2235,7 +2392,13 @@ function loop(now) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.closest('input, textarea')) return;
+  if (e.target.closest('input, textarea')) {
+    if (e.key === 'Escape' && menu === 'home') {
+      e.preventDefault();
+      closeMenus();
+    }
+    return;
+  }
   const key = e.key.toLowerCase();
   keys.add(key);
   if (e.repeat) return;
@@ -2304,6 +2467,41 @@ sitHeal.addEventListener('click', () => {
   healAtHome();
   fillSitList();
 });
+
+sitSearch.addEventListener('input', fillSitList);
+
+const gameContainer = document.getElementById('game-container');
+const fullscreenButton = document.getElementById('fullscreen-btn');
+
+function isFullscreen() {
+  return document.fullscreenElement === gameContainer
+    || document.webkitFullscreenElement === gameContainer;
+}
+
+function syncFullscreenBtn() {
+  const on = isFullscreen();
+  fullscreenButton.textContent = on ? '×' : '⛶';
+  fullscreenButton.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+  fullscreenButton.title = on ? 'Exit full screen' : 'Full screen';
+}
+
+fullscreenButton.addEventListener('click', async () => {
+  try {
+    if (isFullscreen()) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else document.webkitExitFullscreen?.();
+    } else if (gameContainer.requestFullscreen) {
+      await gameContainer.requestFullscreen();
+    } else {
+      gameContainer.webkitRequestFullscreen?.();
+    }
+  } catch {
+    say('Full screen is not available here.');
+  }
+});
+
+document.addEventListener('fullscreenchange', syncFullscreenBtn);
+document.addEventListener('webkitfullscreenchange', syncFullscreenBtn);
 
 document.querySelectorAll('#action-bar button').forEach((btn) => {
   btn.addEventListener('click', () => {

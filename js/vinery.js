@@ -675,33 +675,185 @@ function drawFamilyCart(f, x, y) {
   ctx.fillText(f.name, x + 2, y - 2);
 }
 
-function drawFossa(x, y, facing, t = 0) {
+function drawFossa(x, y, facing, t = 0, opts = {}) {
+  const kind = opts.kind || 'horde';
+  const stunned = !!opts.stunned;
+  const palettes = {
+    horde: { fur: '#c08552', dark: '#6b3f1a', belly: '#eddcd2', ear: '#e07a5f', eye: '#ffba08' },
+    rapier: { fur: '#9b2226', dark: '#370617', belly: '#c08552', ear: '#6b3f1a', eye: '#e9c46a' },
+    goldie: { fur: '#e9c46a', dark: '#bc6c25', belly: '#fff3b0', ear: '#f4a261', eye: '#2a9d8f' },
+    stealth: { fur: '#5c4033', dark: '#1a120c', belly: '#a98467', ear: '#3d2914', eye: '#4cc9f0' },
+    flame: { fur: '#e76f51', dark: '#9b2226', belly: '#f4a261', ear: '#bc6c25', eye: '#ffba08' },
+    dagger: { fur: '#8d6e63', dark: '#3e2723', belly: '#d7ccc8', ear: '#6d4c41', eye: '#ffcc80' },
+  };
+  const pal = palettes[kind] || palettes.horde;
+  const scale = opts.scale || (kind === 'rapier' ? 1.35 : 1.15);
   const dir = facing >= 0 ? 1 : -1;
-  const b = Math.sin(t * 6) * 1.5;
+  const run = stunned ? 0 : Math.sin(t * 7);
+  const bob = stunned ? 2 : Math.sin(t * 6) * 1.4;
+  const tailWag = stunned ? -4 : Math.sin(t * 5) * 7;
+
   ctx.save();
-  ctx.translate(x + 16, y + 14 + b);
-  ctx.scale(dir, 1);
-  ctx.fillStyle = '#9c6644';
+  ctx.translate(x + 20, y + 16 + bob);
+  ctx.scale(dir * scale, scale);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath();
-  ctx.ellipse(0, 2, 16, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 18, 20, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#6b3f1a';
+
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = pal.dark;
+  ctx.lineWidth = 7;
   ctx.beginPath();
-  ctx.moveTo(14, 4);
-  ctx.quadraticCurveTo(28, 10, 30, -4);
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = '#6b3f1a';
+  ctx.moveTo(-16, 2);
+  ctx.quadraticCurveTo(-30, 12 + tailWag * 0.3, -42, -6 + tailWag);
   ctx.stroke();
-  ctx.fillStyle = '#c08552';
+  ctx.strokeStyle = pal.fur;
+  ctx.lineWidth = 4.5;
   ctx.beginPath();
-  ctx.ellipse(12, -4, 8, 7, 0, 0, Math.PI * 2);
+  ctx.moveTo(-16, 2);
+  ctx.quadraticCurveTo(-30, 12 + tailWag * 0.3, -42, -6 + tailWag);
+  ctx.stroke();
+  if (kind === 'dagger') {
+    ctx.strokeStyle = pal.dark;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-28, 6);
+    ctx.lineTo(-32, 2);
+    ctx.moveTo(-36, -2);
+    ctx.lineTo(-40, -6);
+    ctx.stroke();
+  }
+  ctx.fillStyle = kind === 'flame' ? '#ffba08' : pal.dark;
+  ctx.beginPath();
+  ctx.arc(-42, -6 + tailWag, 3.4, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(14, -8, 3, 3);
-  ctx.fillStyle = '#111';
-  ctx.fillRect(15, -7, 2, 2);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(18, -2, 2, 3);
+
+  ctx.fillStyle = pal.dark;
+  ctx.fillRect(-12, 8, 5, 9 - run * 2);
+  ctx.fillRect(-3, 8, 5, 9 + run * 2);
+  ctx.fillRect(7, 8, 5, 9 + run * 2);
+  ctx.fillRect(14, 8, 4, 9 - run * 2);
+  ctx.fillStyle = pal.belly;
+  ctx.fillRect(-13, 16, 6, 3);
+  ctx.fillRect(-4, 16, 6, 3);
+  ctx.fillRect(6, 16, 6, 3);
+  ctx.fillRect(13, 16, 5, 3);
+
+  ctx.fillStyle = pal.fur;
+  ctx.beginPath();
+  ctx.ellipse(1, 2, 17, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = pal.belly;
+  ctx.beginPath();
+  ctx.ellipse(3, 7, 11, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = pal.dark;
+  ctx.globalAlpha = 0.32;
+  ctx.beginPath();
+  ctx.ellipse(-2, -3, 13, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  if (kind === 'stealth') {
+    ctx.fillStyle = '#9b2226';
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(4, 0, 4, 3, 0.4, 0, Math.PI * 2);
+    ctx.ellipse(-6, 4, 3, 2.2, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.fillStyle = pal.fur;
+  ctx.beginPath();
+  ctx.ellipse(14, -2, 8, 7, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(22, -6, 10, 8.5, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = pal.fur;
+  ctx.beginPath();
+  ctx.ellipse(17, -15, 3.8, 5, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(24, -15, 3.4, 4.6, 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = pal.ear;
+  ctx.beginPath();
+  ctx.ellipse(17, -14, 1.7, 2.4, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(24, -14, 1.5, 2.2, 0.25, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = pal.belly;
+  ctx.beginPath();
+  ctx.ellipse(28, -3, 6.5, 4.2, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a120c';
+  ctx.beginPath();
+  ctx.ellipse(33, -4, 2.4, 1.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (stunned) {
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(20, -9);
+    ctx.lineTo(25, -4);
+    ctx.moveTo(25, -9);
+    ctx.lineTo(20, -4);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.ellipse(23, -8, 3.4, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = pal.eye;
+    ctx.beginPath();
+    ctx.ellipse(23.2, -8, 2.4, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.ellipse(24.2, -8, 1.1, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(22.2, -9, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (kind === 'rapier') {
+    ctx.strokeStyle = '#1a120c';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(18, -12);
+    ctx.lineTo(26, -5);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#fff8ef';
+  ctx.beginPath();
+  ctx.moveTo(30, -1);
+  ctx.lineTo(32, 5);
+  ctx.lineTo(28.5, -1);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(27, -1);
+  ctx.lineTo(28, 3);
+  ctx.lineTo(26, -1);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,248,239,0.65)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(28, -2);
+  ctx.lineTo(38, -6);
+  ctx.moveTo(28, -1);
+  ctx.lineTo(38, 1);
+  ctx.moveTo(28, 0);
+  ctx.lineTo(36, 4);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -2022,13 +2174,30 @@ function drawCave() {
   ctx.fill();
   ctx.fillStyle = '#6b3f1a';
   for (let i = 0; i < 6; i++) ctx.fillRect(80 + i * 120, 40, 18, 80);
-  drawFossa(300, 220, 1, clock);
-  drawFossa(380, 240, 1, clock + 1);
-  drawFossa(460, 210, -1, clock + 0.5);
-  drawFossa(520, 250, 1, clock + 2);
+  ctx.fillStyle = 'rgba(231, 111, 81, 0.12)';
+  ctx.beginPath();
+  ctx.arc(400, 280, 160, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawFossa(210, 250, 1, clock + 1.4, { kind: 'stealth', scale: 1.15 });
+  drawFossa(300, 240, 1, clock, { kind: 'dagger', scale: 1.2 });
+  drawFossa(400, 248, 1, clock + 0.3, { kind: 'rapier', scale: 1.45 });
+  drawFossa(530, 242, -1, clock + 0.5, { kind: 'goldie', scale: 1.25 });
+  drawFossa(620, 255, 1, clock + 2, { kind: 'flame', scale: 1.18 });
+
+  ctx.textAlign = 'center';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.fillStyle = '#d7ccc8';
+  ctx.fillText('Stealth Claw', 230, 312);
+  ctx.fillText('Dagger Tail', 320, 308);
+  ctx.fillStyle = '#e76f51';
+  ctx.fillText('Rapier Fang', 430, 318);
+  ctx.fillStyle = '#e9c46a';
+  ctx.fillText('Golden Arrow', 545, 310);
+  ctx.fillStyle = '#e76f51';
+  ctx.fillText('Flame Tail', 640, 316);
   ctx.fillStyle = '#e76f51';
   ctx.font = '10px "Press Start 2P"';
-  ctx.textAlign = 'center';
   ctx.fillText('Meanwhile...', W / 2, 40);
   ctx.textAlign = 'left';
 }
@@ -2076,6 +2245,7 @@ function updateDitch(dt) {
       x: 560 + Math.random() * 40,
       y: 160 + Math.random() * 180,
       stunned: 0,
+      kind: ['horde', 'horde', 'dagger', 'flame', 'stealth'][Math.floor(Math.random() * 5)],
     });
   }
 
@@ -2141,7 +2311,11 @@ function drawDitch() {
   if (ditch.t < 6) drawEgg(110, 196, '#c1440e', 1);
   if (ditch.rescued) drawDragon(108, 198, clock * 5);
 
-  ditch.fossas.forEach((f) => drawFossa(f.x, f.y, -1, f.stunned > 0 ? 0 : clock * 8));
+  ditch.fossas.forEach((f) => drawFossa(f.x, f.y, -1, f.stunned > 0 ? 0 : clock * 8, {
+    kind: f.kind || 'horde',
+    stunned: f.stunned > 0,
+    scale: 1.2,
+  }));
   drawChameleon(430, 200, -1, DORI_PAL, clock * 3);
   drawMouse(300, 180);
   drawLemur(340, 300, clock);

@@ -1,5 +1,6 @@
 const PREFIX = 'gatps-';
 const PEER_SRC = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+export const MAX_PLAYERS = 6;
 
 let PeerCtor = null;
 let peer = null;
@@ -41,6 +42,19 @@ function hostRelay(fromId, msg) {
 
 function attachGuest(conn) {
   const id = conn.peer;
+  if (guests.size + 1 >= MAX_PLAYERS) {
+    const dump = () => {
+      send(conn, { t: 'full' });
+      setTimeout(() => {
+        try { conn.close(); } catch { /* ignore */ }
+      }, 80);
+    };
+    if (conn.open) dump();
+    else conn.on('open', dump);
+    return;
+  }
+
+  let welcomed = false;
   guests.set(id, conn);
   conn.on('data', (msg) => {
     if (!msg || typeof msg !== 'object') return;
@@ -50,15 +64,23 @@ function attachGuest(conn) {
   });
   conn.on('close', () => {
     guests.delete(id);
+    if (!welcomed) return;
     handlers.onLeave?.(id);
     hostRelay(id, { t: 'leave', id });
   });
   conn.on('error', () => {
     guests.delete(id);
-    handlers.onLeave?.(id);
+    if (welcomed) handlers.onLeave?.(id);
   });
-  send(conn, { t: 'welcome', id, host: true });
-  handlers.onJoin?.(id);
+
+  const greet = () => {
+    if (welcomed || role !== 'host') return;
+    welcomed = true;
+    send(conn, { t: 'welcome', id, host: true });
+    handlers.onJoin?.(id);
+  };
+  if (conn.open) greet();
+  else conn.on('open', greet);
 }
 
 export function netRoom() {
@@ -140,16 +162,24 @@ export async function netJoin(code, nextHandlers) {
     peer.on('error', fail);
     peer.on('open', () => {
       hostConn = peer.connect(PREFIX + code, { reliable: true });
-      hostConn.on('open', () => {
-        opened = true;
-        clearTimeout(timer);
-        resolve(code);
-      });
       hostConn.on('data', (msg) => {
         if (!msg || typeof msg !== 'object') return;
+        if (msg.t === 'full') {
+          fail(new Error('That room already has 6 players.'));
+          return;
+        }
+        if (!opened && msg.t === 'welcome') {
+          opened = true;
+          clearTimeout(timer);
+          resolve(code);
+        }
         handlers.onMessage?.(msg);
       });
       hostConn.on('close', () => {
+        if (!opened) {
+          fail(new Error('Could not join room'));
+          return;
+        }
         handlers.onLeave?.('host');
         handlers.onHostGone?.();
       });

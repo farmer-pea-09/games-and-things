@@ -5,6 +5,7 @@ import { updateEnemies } from './enemies.js';
 import { render, renderTitle, renderMap } from './renderer.js';
 import { updateHUD, showPauseMenu, showGameOver, showBugShop, hideOverlay } from './ui.js';
 import { sfx, startMusic, toggleMute } from './audio.js';
+import { showCustomizationPrompt, showCustomizer } from './customizer.js';
 import {
   netHost,
   netJoin,
@@ -16,16 +17,40 @@ import {
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const gameContainer = document.getElementById('game-container');
+const fullscreenButton = document.getElementById('fullscreen-btn');
 const overlay = document.getElementById('overlay');
 const overlayContent = document.getElementById('overlay-content');
 ctx.imageSmoothingEnabled = false;
 
+fullscreenButton.addEventListener('click', async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await gameContainer.requestFullscreen();
+  } catch {
+    if (player) {
+      player.message = 'Full screen is not available in this browser.';
+      player.messageTimer = 120;
+    }
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  fullscreenButton.textContent = document.fullscreenElement ? '× Exit Full Screen' : '⛶ Full Screen';
+});
+
 const keys = new Set();
 const remoteKeys = new Map();
+const remoteCustomizations = new Map();
 const peerSlots = new Map();
 const activeSlots = new Set();
 const SPECIES = ['chameleon', 'skink', 'blue-snake'];
 const SPECIES_NAMES = ['Chameleon', 'Skink', 'Blue Snake'];
+const EMOTES = [
+  { id: 'wave', name: 'Wave', icon: '👋' },
+  { id: 'dance', name: 'Happy Dance', icon: '🎵' },
+  { id: 'twirl', name: 'Tail Twirl', icon: '🌀' },
+];
 
 let mode = 'title';
 let world = null;
@@ -40,6 +65,15 @@ let localSlot = 0;
 let ownPeerId = '';
 let lobbyOpen = false;
 let netFrame = 0;
+let introPromptOpen = true;
+
+const CUSTOMIZATION_KEY = 'chameleon-world-design';
+let savedCustomization = null;
+try {
+  savedCustomization = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || 'null');
+} catch {
+  savedCustomization = null;
+}
 
 const save = {
   lives: STARTING_LIVES,
@@ -50,6 +84,8 @@ const save = {
   emotes: new Set(),
   accessories: new Set(),
   accessory: null,
+  barny: false,
+  customization: savedCustomization,
 };
 
 function snapshotSave() {
@@ -60,6 +96,8 @@ function snapshotSave() {
   save.powered = !!player.powered;
   save.superJumpReadyAt = player.superJumpReadyAt ?? 0;
   save.accessory = player.accessory ?? save.accessory ?? null;
+  save.barny = !!player.barny;
+  save.customization = player.customization || save.customization;
 }
 
 function goMap() {
@@ -78,6 +116,8 @@ function goMap() {
     superJumpReadyAt: save.superJumpReadyAt ?? 0,
     accessory: save.accessory,
     emotes: new Set(save.emotes),
+    barny: save.barny,
+    customization: save.customization,
   };
   players = [player];
   hideOverlay();
@@ -92,15 +132,21 @@ function makePlayerForSlot(slot, spawn) {
   character.slot = slot;
   character.species = SPECIES[slot];
   character.name = SPECIES_NAMES[slot];
+  if (remoteCustomizations.has(slot)) character.customization = remoteCustomizations.get(slot);
   bindWorld(character, world);
   return character;
 }
 
 function startLevel(id) {
+  const barnyBySlot = players.map((character) => !!character?.barny);
   world = createWorld(id);
   if (multiplayerRole === 'host') {
     players = [null, null, null];
-    for (const slot of activeSlots) players[slot] = makePlayerForSlot(slot, world.spawn);
+    for (const slot of activeSlots) {
+      players[slot] = makePlayerForSlot(slot, world.spawn);
+      players[slot].barny = barnyBySlot[slot] || players[slot].barny;
+      players[slot].ridingBarny = players[slot].barny;
+    }
     player = players[0];
   } else {
     player = createPlayer(save, world.spawn);
@@ -118,8 +164,9 @@ function startLevel(id) {
 
 function completeLevel() {
   snapshotSave();
-  save.cleared.add(world.id);
-  const node = WORLD_NODES.find((entry) => entry.id === world.id);
+  const completedId = world.progressId || world.id;
+  save.cleared.add(completedId);
+  const node = WORLD_NODES.find((entry) => entry.id === completedId);
   if (multiplayerRole === 'host') {
     const next = node?.next.find((id) => id !== 'shop');
     if (next) startLevel(next);
@@ -142,12 +189,286 @@ function openShop() {
   );
 }
 
+function openIntroCustomization() {
+  introPromptOpen = true;
+  showCustomizationPrompt(
+    () => {
+      showCustomizer(
+        save.customization,
+        (design) => {
+          save.customization = design;
+          try {
+            localStorage.setItem(CUSTOMIZATION_KEY, JSON.stringify(design));
+          } catch { /* customization still works for this session */ }
+          finishIntroCustomization();
+        },
+        openIntroCustomization
+      );
+    },
+    finishIntroCustomization
+  );
+}
+
+function finishIntroCustomization() {
+  introPromptOpen = false;
+  hideOverlay();
+  if (inviteCode) {
+    startMusic();
+    joinRoom(inviteCode);
+  }
+}
+
+function openEmoteMenu() {
+  keys.clear();
+  const owned = EMOTES.filter((emote) => player.emotes?.has(emote.id));
+  if (multiplayerRole !== 'guest') player.paused = true;
+  overlay.classList.remove('hidden');
+  overlayContent.innerHTML = `
+    <h2>Choose an Emote</h2>
+    ${owned.length > 0
+      ? `<div class="emote-grid">${owned.map((emote) => `
+          <button data-emote="${emote.id}">${emote.icon}<br>${emote.name}</button>
+        `).join('')}</div>`
+      : '<p class="multi-note">Buy emotes with bugs at the Bug Boutique first!</p>'}
+    <button id="close-emotes" class="shop-secondary">Back to game</button>
+  `;
+  overlayContent.querySelectorAll('[data-emote]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const emote = button.dataset.emote;
+      if (multiplayerRole === 'guest') netBroadcast({ t: 'emote', emote });
+      else triggerEmote(player, emote);
+      if (multiplayerRole !== 'guest') player.paused = false;
+      hideOverlay();
+    });
+  });
+  overlayContent.querySelector('#close-emotes').addEventListener('click', () => {
+    if (multiplayerRole !== 'guest') player.paused = false;
+    hideOverlay();
+  });
+}
+
 function activePlayers() {
   return players.filter(Boolean);
 }
 
+function startTailContest(characters) {
+  const slots = characters.map((character) => character.slot ?? 0);
+  world.tailContest = {
+    active: true,
+    slots,
+    turnIndex: 0,
+    currentSlot: slots[0],
+    meter: 50,
+    phase: 'ready',
+    timer: 75,
+    result: 'Get ready!',
+    results: [],
+  };
+  keys.clear();
+  remoteKeys.clear();
+  showTailContestOverlay();
+  if (multiplayerRole === 'host') broadcastSnapshot();
+}
+
+function handleTailTap(slot) {
+  const contest = world?.tailContest;
+  if (!contest?.active || contest.phase !== 'duel' || contest.currentSlot !== slot) return;
+  contest.meter = Math.min(100, contest.meter + 4.5);
+  if (contest.meter >= 100) finishTailRound(true);
+}
+
+function finishTailRound(won) {
+  const contest = world.tailContest;
+  if (!contest?.active || contest.phase === 'result') return;
+  contest.results.push({ slot: contest.currentSlot, won });
+  contest.phase = 'result';
+  contest.timer = 100;
+  contest.result = won
+    ? `${SPECIES_NAMES[contest.currentSlot]} beats Dori!`
+    : `Dori outlasts ${SPECIES_NAMES[contest.currentSlot]}!`;
+  if (won && players[contest.currentSlot]) players[contest.currentSlot].score += 1000;
+}
+
+function updateTailContest() {
+  const contest = world?.tailContest;
+  if (!contest?.active) return false;
+  if (contest.phase === 'ready') {
+    contest.timer--;
+    if (contest.timer <= 0) {
+      contest.phase = 'duel';
+      contest.result = 'Tap S! Keep your balance!';
+    }
+  } else if (contest.phase === 'duel') {
+    contest.meter = Math.max(0, contest.meter - 0.32);
+    if (contest.meter <= 0) finishTailRound(false);
+  } else if (contest.phase === 'result') {
+    contest.timer--;
+    if (contest.timer <= 0) {
+      contest.turnIndex++;
+      if (contest.turnIndex >= contest.slots.length) {
+        contest.active = false;
+        const dori = world.doris?.[0];
+        if (dori) {
+          dori.completed = true;
+          dori.requested = false;
+        }
+        hideOverlay();
+        for (const character of activePlayers()) {
+          character.message = 'Tail contest complete!';
+          character.messageTimer = 120;
+        }
+        if (multiplayerRole === 'host') broadcastSnapshot();
+        return false;
+      }
+      contest.currentSlot = contest.slots[contest.turnIndex];
+      contest.meter = 50;
+      contest.phase = 'ready';
+      contest.timer = 75;
+      contest.result = `${SPECIES_NAMES[contest.currentSlot]}'s turn!`;
+    }
+  }
+  showTailContestOverlay();
+  return true;
+}
+
+function showTailContestOverlay() {
+  const contest = world?.tailContest;
+  if (!contest?.active) return;
+  const currentName = SPECIES_NAMES[contest.currentSlot] || `Player ${contest.currentSlot + 1}`;
+  const isYourTurn = contest.currentSlot === localSlot;
+  overlay.classList.remove('hidden');
+  overlayContent.innerHTML = `
+    <h2>🦎 Dori's Tail Contest</h2>
+    <p class="multi-note">${currentName} versus Dori</p>
+    <div class="tail-meter">
+      <div class="tail-dori">DORI</div>
+      <div class="tail-fill" style="width:${contest.meter}%"></div>
+      <div class="tail-player">P${contest.currentSlot + 1}</div>
+    </div>
+    <p>${contest.result}</p>
+    <p class="${isYourTurn ? 'tail-your-turn' : 'multi-note'}">
+      ${isYourTurn && contest.phase === 'duel' ? 'REPEATEDLY TAP S!' : isYourTurn ? 'Get ready to tap S…' : 'Watch this round…'}
+    </p>
+  `;
+}
+
+function updateSkyTransition() {
+  const transition = world?.skyTransition;
+  if (!transition?.active) return false;
+  const characters = activePlayers();
+
+  if (transition.phase === 'stop') {
+    for (const character of characters) character.vx = 0;
+    transition.timer--;
+    if (transition.timer <= 0) {
+      transition.phase = 'open';
+      transition.timer = 45;
+      for (let x = 207; x <= 215; x++) {
+        world.tiles[13][x] = 0;
+        world.tiles[14][x] = 0;
+      }
+    }
+  } else if (transition.phase === 'open') {
+    for (const character of characters) {
+      character.vx = 0;
+      character.x += (transition.trampolineX - character.x) * 0.12;
+    }
+    transition.timer--;
+    if (transition.timer <= 0) {
+      transition.phase = 'bounce';
+      transition.timer = 72;
+      for (const character of characters) {
+        character.x = transition.trampolineX + (character.slot ?? 0) * 22;
+        character.y = 13 * 32 - character.h - 22;
+        character.vx = 0;
+        character.vy = -16;
+      }
+    }
+  } else if (transition.phase === 'bounce') {
+    for (const character of characters) {
+      character.y += character.vy;
+      character.vy += 0.18;
+      character.animFrame += 0.3;
+    }
+    transition.timer--;
+    if (transition.timer <= 0) {
+      transition.phase = 'fadeOut';
+      transition.alpha = 0;
+    }
+  } else if (transition.phase === 'fadeOut') {
+    transition.alpha = Math.min(1, transition.alpha + 0.035);
+    if (transition.alpha >= 1) enterCloudKingdom();
+  } else if (transition.phase === 'fadeIn') {
+    transition.alpha = Math.max(0, transition.alpha - 0.025);
+    if (transition.alpha <= 0) {
+      transition.active = false;
+      for (const character of characters) {
+        character.message = 'Welcome to the Cloud Kingdom!';
+        character.messageTimer = 150;
+      }
+      if (multiplayerRole === 'host') broadcastSnapshot();
+      return false;
+    }
+  }
+
+  if (multiplayerRole === 'host') {
+    netFrame++;
+    if (netFrame % 4 === 0) broadcastSnapshot();
+  }
+  return true;
+}
+
+function enterCloudKingdom() {
+  const previousPlayers = activePlayers();
+  world = createWorld('1-2-sky');
+  world.skyTransition = { active: true, phase: 'fadeIn', timer: 0, alpha: 1 };
+
+  if (multiplayerRole === 'host') {
+    players = [null, null, null];
+    for (const oldPlayer of previousPlayers) {
+      const slot = oldPlayer.slot ?? 0;
+      const character = createPlayer(oldPlayer, {
+        x: world.spawn.x + slot * 34,
+        y: world.spawn.y,
+      });
+      character.slot = slot;
+      character.species = SPECIES[slot];
+      character.name = SPECIES_NAMES[slot];
+      character.barny = oldPlayer.barny;
+      character.ridingBarny = oldPlayer.ridingBarny;
+      bindWorld(character, world);
+      players[slot] = character;
+    }
+    player = players[0];
+    broadcastSnapshot();
+  } else {
+    const oldPlayer = previousPlayers[0];
+    player = createPlayer(oldPlayer, world.spawn);
+    player.slot = 0;
+    player.species = 'chameleon';
+    player.barny = oldPlayer.barny;
+    player.ridingBarny = oldPlayer.ridingBarny;
+    bindWorld(player, world);
+    players = [player];
+  }
+}
+
 function updateHostGame() {
   const characters = activePlayers();
+  world._players = characters;
+  if (updateSkyTransition()) {
+    player = players[0];
+    return;
+  }
+  if (world.doris?.some((dori) => dori.requested) && !world.tailContest?.active && !world.doris[0].completed) {
+    startTailContest(characters);
+  }
+  if (updateTailContest()) {
+    player = players[0];
+    netFrame++;
+    if (netFrame % 4 === 0) broadcastSnapshot();
+    return;
+  }
   if (!world.completed) {
     const sharedWorldUpdater = characters.find((character) => !character.dead) || characters[0];
     for (const character of characters) {
@@ -155,6 +476,9 @@ function updateHostGame() {
       updatePlayer(character, world, input, character === sharedWorldUpdater);
     }
     updateEnemies(world, characters);
+    if (world.doris?.some((dori) => dori.requested) && !world.doris[0].completed) {
+      startTailContest(characters);
+    }
     if (world.completed) {
       for (const character of characters) character.won = true;
     }
@@ -173,9 +497,17 @@ function updateHostGame() {
 }
 
 function updateSinglePlayer() {
+  if (updateSkyTransition()) return;
+  if (world.doris?.some((dori) => dori.requested) && !world.tailContest?.active && !world.doris[0].completed) {
+    startTailContest([player]);
+  }
+  if (updateTailContest()) return;
   if (!player.paused && !player.won) {
     updatePlayer(player, world, keys);
     updateEnemies(world, player);
+    if (world.doris?.some((dori) => dori.requested) && !world.doris[0].completed) {
+      startTailContest([player]);
+    }
   } else if (player.won) {
     updatePlayer(player, world, keys);
   }
@@ -207,10 +539,18 @@ function gameLoop() {
 
     const visiblePlayers = multiplayerRole ? activePlayers() : [player];
     render(ctx, world, player, visiblePlayers);
+    if ((world.skyTransition?.alpha || 0) > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${world.skyTransition.alpha})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
     const roomWorld = multiplayerRole
       ? { ...world, worldLabel: `${world.worldLabel} · ${multiplayerCode} · P${localSlot + 1}` }
       : world;
     updateHUD(player, roomWorld);
+    if (multiplayerRole === 'guest') {
+      if (world.tailContest?.active) showTailContestOverlay();
+      else if (overlayContent.querySelector('.tail-meter')) hideOverlay();
+    }
   }
 
   if (multiplayerRole === 'guest' && mode === 'play') {
@@ -245,6 +585,16 @@ function serializeWorld() {
     enemies: world.enemies,
     items: world.items,
     scales: world.scales,
+    superOrbs: world.superOrbs,
+    barnyEggs: world.barnyEggs,
+    doris: world.doris,
+    tailContest: world.tailContest,
+    skyTransition: world.skyTransition,
+    progressId: world.progressId,
+    superJumpCooldownMs: world.superJumpCooldownMs,
+    jumpMultiplier: world.jumpMultiplier,
+    gravityMultiplier: world.gravityMultiplier,
+    superJumpForce: world.superJumpForce,
     blockItems: [...world.blockItems.entries()],
     spawn: world.spawn,
     midway: world.midway,
@@ -255,6 +605,10 @@ function serializeWorld() {
     particles: world.particles,
     bossNest: world.bossNest,
     bossEggs: world.bossEggs,
+    buttons: world.buttons,
+    carryBricks: world.carryBricks,
+    gates: world.gates,
+    gateOpen: world.gateOpen,
   };
 }
 
@@ -284,7 +638,7 @@ function applySnapshot(message) {
   player = players[localSlot] || players.find(Boolean);
   mode = message.mode || 'play';
   if (mode === 'play') {
-    hideOverlay();
+    if (!world.tailContest?.active) hideOverlay();
     lobbyOpen = false;
   }
 }
@@ -303,11 +657,26 @@ function assignGuest(peerId) {
 }
 
 function handleHostMessage(message) {
-  if (message.t !== 'input') return;
   const slot = peerSlots.get(message.id);
   if (slot == null) return;
-  remoteKeys.set(slot, new Set(message.keys || []));
+  if (message.t === 'tailTap') {
+    handleTailTap(slot);
+    return;
+  }
+  if (message.t === 'customization') {
+    remoteCustomizations.set(slot, message.design || null);
+    if (players[slot]) players[slot].customization = message.design || null;
+    return;
+  }
+  if (message.t === 'emote') {
+    const character = players[slot];
+    if (character) triggerEmote(character, message.emote);
+    return;
+  }
+  if (message.t !== 'input') return;
+  const nextInput = new Set(message.keys || []);
   const character = players[slot];
+  remoteKeys.set(slot, nextInput);
   if (character) {
     if (Number.isFinite(message.aimX)) character.aimX = message.aimX;
     if (Number.isFinite(message.aimY)) character.aimY = message.aimY;
@@ -318,6 +687,7 @@ function handleGuestMessage(message) {
   if (message.t === 'welcome') ownPeerId = message.id;
   if (message.t === 'assign' && message.target === ownPeerId) {
     localSlot = message.slot;
+    netBroadcast({ t: 'customization', design: save.customization });
     showGuestLobby(`You are Player ${localSlot + 1}: ${SPECIES_NAMES[localSlot]}`);
   } else if (message.t === 'lobby' && lobbyOpen) {
     showGuestLobby(`Room ${message.code} · ${message.count}/3 players`);
@@ -337,6 +707,7 @@ function multiplayerHandlers(role) {
           peerSlots.delete(peerId);
           activeSlots.delete(slot);
           remoteKeys.delete(slot);
+          remoteCustomizations.delete(slot);
           players[slot] = null;
           netBroadcast({ t: 'lobby', count: activeSlots.size, code: multiplayerCode });
           if (lobbyOpen) showHostLobby();
@@ -462,6 +833,7 @@ function leaveMultiplayer(message = '') {
   peerSlots.clear();
   activeSlots.clear();
   remoteKeys.clear();
+  remoteCustomizations.clear();
   mode = 'title';
   world = null;
   player = { score: 0, lives: STARTING_LIVES, coins: 0, message: '', time: 300 };
@@ -497,6 +869,21 @@ function moveCursor(dir) {
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
   keys.add(key);
+
+  if (introPromptOpen) {
+    keys.delete(key);
+    return;
+  }
+
+  if (mode === 'play' && world?.tailContest?.active && key === 's') {
+    event.preventDefault();
+    keys.delete('s');
+    if (!event.repeat) {
+      if (multiplayerRole === 'guest') netBroadcast({ t: 'tailTap' });
+      else handleTailTap(localSlot);
+    }
+    return;
+  }
 
   if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
     event.preventDefault();
@@ -538,8 +925,8 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (mode !== 'play') return;
-  if (key === '1' || key === '2' || key === '3') {
-    if (multiplayerRole !== 'guest') triggerEmote(player, key);
+  if (key === 'e') {
+    openEmoteMenu();
     return;
   }
   if (player.won && (key === 'enter' || key === ' ')) {
@@ -575,9 +962,6 @@ canvas.addEventListener('mousemove', (event) => {
 });
 
 gameLoop();
+openIntroCustomization();
 
 const inviteCode = new URLSearchParams(location.search).get('play');
-if (inviteCode) {
-  startMusic();
-  joinRoom(inviteCode);
-}

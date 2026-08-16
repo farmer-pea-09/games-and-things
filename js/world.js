@@ -6,7 +6,8 @@ export const WORLD_NODES = [
   { id: '1-2', name: 'Canopy Walk', x: 290, y: 210, kind: 'grass', next: ['1-3'] },
   { id: '1-3', name: 'Windy Gulch', x: 430, y: 260, kind: 'athletic', next: ['1-4'] },
   { id: '1-4', name: 'Murk Cavern', x: 560, y: 300, kind: 'cave', next: ['1-castle'] },
-  { id: '1-castle', name: 'Thorn Keep', x: 680, y: 230, kind: 'castle', next: [] },
+  { id: '1-castle', name: 'Thorn Keep', x: 670, y: 220, kind: 'castle', next: ['1-5'] },
+  { id: '1-5', name: 'Moonlit Spires', x: 740, y: 330, kind: 'athletic', next: [] },
 ];
 
 const TILE_CHARS = {
@@ -22,13 +23,14 @@ const TILE_CHARS = {
   L: TILE_TYPES.LAVA,
   C: TILE_TYPES.CASTLE,
   U: TILE_TYPES.USED,
+  D: TILE_TYPES.GATE,
+  E: TILE_TYPES.GATE,
 };
 
 const ENTITY_CHARS = {
   S: 'spawn',
   e: 'beetle',
   f: 'fly',
-  k: 'koopa',
   n: 'spike',
   o: 'coin',
   '*': 'berry',
@@ -36,6 +38,14 @@ const ENTITY_CHARS = {
   $: 'scale',
   M: 'midway',
   b: 'boss',
+  t: 'button',
+  u: 'button2',
+  q: 'carryBrick',
+  j: 'superOrb',
+  h: 'barnyEgg',
+  v: 'dori',
+  g: 'pegasus',
+  w: 'wingedSnake',
 };
 
 const BLOCK_ITEMS = {
@@ -72,10 +82,10 @@ function makeLevel(width, paint, theme = 'grass', label = 'World 1-1') {
 }
 
 function level11() {
-  return makeLevel(164, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(210, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 27);
     ground(30, 75);
-    ground(78, 164);
+    ground(78, 210);
 
     put(3, 12, 'S');
     blockRow(10, 9, '?!?');
@@ -90,8 +100,6 @@ function level11() {
 
     blockRow(52, 8, '???');
     put(58, 12, 'e');
-    put(63, 12, 'k');
-
     put(68, 12, 'M');
     put(69, 9, '$');
 
@@ -106,24 +114,54 @@ function level11() {
     put(114, 12, 'e');
     put(118, 8, 'f');
 
+    put(124, 12, 'q');
+    put(128, 12, 'e');
+    put(129, 12, 'u');
+    put(133, 3, 'E');
+    put(133, 4, 'E');
+    put(133, 5, 'E');
+    put(133, 6, 'E');
+    put(133, 7, 'E');
+    put(133, 8, 'E');
+    put(133, 9, 'E');
+    put(133, 10, 'E');
+    put(133, 11, 'E');
+    put(133, 12, 'E');
     fill(134, 142, 10, '=');
     put(136, 8, 'o');
     put(137, 8, 'o');
     put(139, 8, '$');
-    put(145, 12, 'k');
+    put(146, 12, 'h');
     blockRow(149, 8, '?!?');
     put(155, 7, 'f');
 
-    put(158, 10, 'G');
-    put(158, 11, 'G');
-    put(158, 12, 'G');
+    put(164, 12, 'q');
+    put(169, 12, 't');
+    put(172, 3, 'D');
+    put(172, 4, 'D');
+    put(172, 5, 'D');
+    put(172, 6, 'D');
+    put(172, 7, 'D');
+    put(172, 8, 'D');
+    put(172, 9, 'D');
+    put(172, 10, 'D');
+    put(172, 11, 'D');
+    put(172, 12, 'D');
+    blockRow(180, 8, '?!?');
+    put(188, 12, 'e');
+    put(198, 12, 'e');
+    put(195, 8, 'f');
+
+    put(204, 10, 'G');
+    put(204, 11, 'G');
+    put(204, 12, 'G');
   }, 'grass', '1-1 Leafy Lane');
 }
 
 function level12() {
-  return makeLevel(180, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(232, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
-    ground(128, 180);
+    ground(128, 232);
 
     put(3, 12, 'S');
     blockRow(8, 9, '??');
@@ -141,7 +179,6 @@ function level12() {
     put(38, 4, 'f');
 
     fill(46, 54, 10, '=');
-    put(48, 9, 'k');
     blockRow(48, 6, '?!?');
 
     fill(60, 68, 7, '=');
@@ -170,36 +207,64 @@ function level12() {
     put(130, 10, 'n');
     put(136, 12, 'e');
 
+    put(138, 12, 'q');
+    put(142, 12, 'u');
+    put(144, 3, 'E');
+    put(144, 4, 'E');
+    put(144, 5, 'E');
+    put(144, 6, 'E');
+    put(144, 7, 'E');
+    put(144, 8, 'E');
+    put(144, 9, 'E');
+    put(144, 10, 'E');
+    put(144, 11, 'E');
+    put(144, 12, 'E');
     fill(145, 153, 8, '=');
     put(147, 6, 'o');
     put(149, 5, 'f');
     pipe(156, 2);
     put(156, 10, 'n');
     blockRow(164, 7, '!??');
-    put(170, 12, 'k');
+    fill(182, 190, 10, '=');
+    put(184, 8, 'o');
+    put(186, 9, 'q');
+    put(191, 12, 't');
+    put(194, 3, 'D');
+    put(194, 4, 'D');
+    put(194, 5, 'D');
+    put(194, 6, 'D');
+    put(194, 7, 'D');
+    put(194, 8, 'D');
+    put(194, 9, 'D');
+    put(194, 10, 'D');
+    put(194, 11, 'D');
+    put(194, 12, 'D');
+    blockRow(204, 7, '!??');
+    put(214, 12, 'e');
+    put(218, 9, 'j');
+    put(220, 12, 'e');
 
-    put(176, 10, 'G');
-    put(176, 11, 'G');
-    put(176, 12, 'G');
+    put(226, 10, 'G');
+    put(226, 11, 'G');
+    put(226, 12, 'G');
   }, 'grass', '1-2 Canopy Walk');
 }
 
 function level13() {
-  return makeLevel(172, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(225, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
     ground(22, 40);
     ground(50, 64);
     fill(42, 48, 11, '=');
     ground(76, 92);
     fill(66, 74, 9, '=');
-    ground(104, 172);
+    ground(104, 225);
     fill(94, 102, 8, '=');
 
     put(3, 12, 'S');
     blockRow(7, 9, '??');
     put(12, 12, 'e');
 
-    put(26, 12, 'k');
     fill(30, 36, 10, '=');
     put(32, 8, 'o');
     put(33, 8, 'o');
@@ -214,7 +279,6 @@ function level13() {
     put(68, 6, 'f');
     put(70, 7, 'o');
 
-    put(80, 12, 'k');
     pipe(86, 2);
     put(86, 10, 'n');
 
@@ -223,35 +287,65 @@ function level13() {
     put(98, 6, 'o');
     put(100, 4, 'f');
 
-    put(110, 12, 'e');
-    put(116, 12, 'k');
+    put(105, 12, 'e');
+    put(113, 12, 'v');
     blockRow(120, 8, '???');
     put(128, 12, 'e');
 
+    put(132, 12, 'q');
+    put(136, 12, 'u');
+    put(140, 3, 'E');
+    put(140, 4, 'E');
+    put(140, 5, 'E');
+    put(140, 6, 'E');
+    put(140, 7, 'E');
+    put(140, 8, 'E');
+    put(140, 9, 'E');
+    put(140, 10, 'E');
+    put(140, 11, 'E');
+    put(140, 12, 'E');
     pipe(142, 3);
     put(142, 9, 'n');
     fill(150, 158, 9, '=');
     put(152, 7, 'o');
     put(153, 6, '*');
     put(154, 7, 'o');
-    put(160, 12, 'k');
     put(164, 6, 'f');
 
-    put(168, 10, 'G');
-    put(168, 11, 'G');
-    put(168, 12, 'G');
+    put(176, 12, 'q');
+    fill(178, 184, 10, '=');
+    put(181, 8, 'o');
+    put(184, 12, 't');
+    put(188, 3, 'D');
+    put(188, 4, 'D');
+    put(188, 5, 'D');
+    put(188, 6, 'D');
+    put(188, 7, 'D');
+    put(188, 8, 'D');
+    put(188, 9, 'D');
+    put(188, 10, 'D');
+    put(188, 11, 'D');
+    put(188, 12, 'D');
+    put(196, 6, 'f');
+    put(200, 12, 'e');
+    blockRow(204, 8, '???');
+    put(212, 12, 'e');
+
+    put(219, 10, 'G');
+    put(219, 11, 'G');
+    put(219, 12, 'G');
   }, 'athletic', '1-3 Windy Gulch');
 }
 
 function level14() {
-  return makeLevel(168, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(220, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 20);
     fill(20, 32, 14, 'L');
     ground(32, 50);
     fill(50, 62, 14, 'L');
     ground(62, 88);
     fill(88, 100, 14, 'L');
-    ground(100, 168);
+    ground(100, 220);
 
     put(3, 12, 'S');
     blockRow(8, 9, 'B?B');
@@ -263,7 +357,6 @@ function level14() {
     put(26, 9, 'o');
     put(28, 8, 'f');
 
-    put(36, 12, 'k');
     blockRow(40, 8, '!?');
     put(46, 12, 'e');
 
@@ -285,35 +378,64 @@ function level14() {
     put(94, 7, 'o');
     put(96, 5, 'f');
 
-    put(106, 12, 'k');
     put(112, 12, 'e');
     fill(116, 122, 11, '=');
     put(118, 9, 'o');
     put(124, 12, 'e');
 
+    put(128, 12, 'q');
+    put(132, 12, 'u');
+    put(135, 3, 'E');
+    put(135, 4, 'E');
+    put(135, 5, 'E');
+    put(135, 6, 'E');
+    put(135, 7, 'E');
+    put(135, 8, 'E');
+    put(135, 9, 'E');
+    put(135, 10, 'E');
+    put(135, 11, 'E');
+    put(135, 12, 'E');
     pipe(138, 2);
     put(138, 10, 'n');
     blockRow(146, 8, 'B!?');
-    put(151, 12, 'k');
     fill(154, 160, 10, '=');
     put(156, 8, '$');
     put(160, 12, 'e');
 
-    put(164, 10, 'G');
-    put(164, 11, 'G');
-    put(164, 12, 'G');
+    put(174, 12, 'q');
+    put(181, 12, 't');
+    put(185, 3, 'D');
+    put(185, 4, 'D');
+    put(185, 5, 'D');
+    put(185, 6, 'D');
+    put(185, 7, 'D');
+    put(185, 8, 'D');
+    put(185, 9, 'D');
+    put(185, 10, 'D');
+    put(185, 11, 'D');
+    put(185, 12, 'D');
+    fill(192, 199, 10, '=');
+    put(194, 8, '$');
+    put(198, 8, 'j');
+    put(204, 12, 'e');
+    put(210, 12, 'e');
+    blockRow(208, 7, 'B!?');
+
+    put(214, 10, 'G');
+    put(214, 11, 'G');
+    put(214, 12, 'G');
   }, 'cave', '1-4 Murk Cavern');
 }
 
 function levelCastle() {
-  return makeLevel(156, ({ put, fill, ground, pipe, blockRow }) => {
+  return makeLevel(198, ({ put, fill, ground, pipe, blockRow }) => {
     ground(0, 18);
     fill(18, 28, 14, 'L');
     ground(28, 48);
     fill(48, 58, 14, 'L');
     ground(58, 86);
     fill(86, 96, 14, 'L');
-    ground(96, 156);
+    ground(96, 198);
 
     for (let x = 0; x < 8; x++) {
       put(x, 0, 'C');
@@ -330,8 +452,6 @@ function levelCastle() {
     put(22, 9, 'o');
     put(23, 9, 'o');
 
-    put(32, 12, 'k');
-    put(36, 12, 'k');
     blockRow(38, 8, '???');
     put(44, 12, 'e');
 
@@ -357,23 +477,217 @@ function levelCastle() {
     put(124, 7, '$');
     pipe(132, 2);
     put(132, 10, 'n');
+    put(136, 12, 'q');
     blockRow(139, 8, 'B!B');
-    put(145, 12, 'k');
+    put(141, 12, 'u');
+    put(145, 3, 'E');
+    put(145, 4, 'E');
+    put(145, 5, 'E');
+    put(145, 6, 'E');
+    put(145, 7, 'E');
+    put(145, 8, 'E');
+    put(145, 9, 'E');
+    put(145, 10, 'E');
+    put(145, 11, 'E');
+    put(145, 12, 'E');
+    put(150, 12, 'e');
+    put(158, 12, 'q');
+    put(164, 12, 't');
+    put(168, 3, 'D');
+    put(168, 4, 'D');
+    put(168, 5, 'D');
+    put(168, 6, 'D');
+    put(168, 7, 'D');
+    put(168, 8, 'D');
+    put(168, 9, 'D');
+    put(168, 10, 'D');
+    put(168, 11, 'D');
+    put(168, 12, 'D');
+    fill(176, 182, 9, '=');
+    put(178, 7, '+');
+    put(185, 12, 'e');
+    put(188, 12, 'e');
 
-    put(150, 10, 'G');
-    put(150, 11, 'G');
-    put(150, 12, 'G');
-    put(152, 8, 'C');
-    put(152, 9, 'C');
-    put(152, 10, 'C');
-    put(152, 11, 'C');
-    put(152, 12, 'C');
-    put(153, 8, 'C');
-    put(153, 9, 'C');
-    put(153, 10, 'C');
-    put(153, 11, 'C');
-    put(153, 12, 'C');
+    put(192, 10, 'G');
+    put(192, 11, 'G');
+    put(192, 12, 'G');
+    put(194, 8, 'C');
+    put(194, 9, 'C');
+    put(194, 10, 'C');
+    put(194, 11, 'C');
+    put(194, 12, 'C');
+    put(195, 8, 'C');
+    put(195, 9, 'C');
+    put(195, 10, 'C');
+    put(195, 11, 'C');
+    put(195, 12, 'C');
   }, 'castle', 'Castle Thorn Keep');
+}
+
+function level15() {
+  return makeLevel(242, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 18);
+    fill(18, 27, 14, 'L');
+    ground(27, 43);
+    fill(43, 55, 14, 'L');
+    ground(55, 72);
+    fill(72, 87, 14, 'L');
+    ground(87, 104);
+    fill(104, 118, 14, 'L');
+    ground(118, 144);
+    fill(144, 158, 14, 'L');
+    ground(158, 242);
+
+    put(3, 12, 'S');
+    blockRow(8, 8, '?!?');
+    put(14, 12, 'e');
+
+    fill(19, 25, 10, '=');
+    put(20, 8, 'o');
+    put(22, 7, 'o');
+    put(24, 8, 'f');
+
+    pipe(32, 3);
+    put(32, 9, 'n');
+    put(38, 12, 'k');
+
+    fill(45, 51, 9, '=');
+    put(46, 7, 'o');
+    put(48, 5, 'f');
+    put(50, 7, '*');
+
+    put(61, 12, 'e');
+    blockRow(64, 7, 'B!?B');
+    put(68, 12, 'M');
+
+    fill(74, 80, 11, '=');
+    fill(82, 86, 8, '=');
+    put(76, 9, 'o');
+    put(84, 6, '$');
+    put(85, 4, 'f');
+
+    put(92, 12, 'k');
+    pipe(97, 2);
+    put(97, 10, 'n');
+
+    fill(106, 112, 9, '=');
+    put(108, 7, 'o');
+    put(110, 5, 'f');
+    fill(114, 118, 7, '=');
+
+    put(124, 12, 'e');
+    put(130, 12, 'k');
+    put(134, 12, 'q');
+    put(138, 12, 'u');
+    put(141, 3, 'E');
+    put(141, 4, 'E');
+    put(141, 5, 'E');
+    put(141, 6, 'E');
+    put(141, 7, 'E');
+    put(141, 8, 'E');
+    put(141, 9, 'E');
+    put(141, 10, 'E');
+    put(141, 11, 'E');
+    put(141, 12, 'E');
+    blockRow(134, 8, '???');
+
+    fill(146, 152, 10, '=');
+    put(148, 8, 'o');
+    put(150, 6, 'f');
+    put(156, 7, 'f');
+
+    put(164, 12, 'q');
+    put(171, 12, 't');
+    put(175, 3, 'D');
+    put(175, 4, 'D');
+    put(175, 5, 'D');
+    put(175, 6, 'D');
+    put(175, 7, 'D');
+    put(175, 8, 'D');
+    put(175, 9, 'D');
+    put(175, 10, 'D');
+    put(175, 11, 'D');
+    put(175, 12, 'D');
+
+    put(182, 12, 'e');
+    put(184, 12, 'e');
+    pipe(188, 3);
+    put(188, 9, 'n');
+    blockRow(196, 7, 'B!??B');
+    put(202, 5, 'f');
+    put(208, 12, 'k');
+    fill(212, 220, 9, '=');
+    put(212, 7, 'j');
+    put(214, 7, 'o');
+    put(216, 6, '+');
+    put(218, 7, 'o');
+    put(225, 12, 'e');
+    put(230, 12, 'e');
+
+    put(236, 10, 'G');
+    put(236, 11, 'G');
+    put(236, 12, 'G');
+  }, 'athletic', '1-5 Moonlit Spires');
+}
+
+function level12Sky() {
+  return makeLevel(184, ({ put, fill, ground, blockRow }) => {
+    ground(0, 18);
+    ground(166, 184);
+
+    put(3, 12, 'S');
+    put(10, 8, 'j');
+    blockRow(12, 9, '?!?');
+
+    fill(20, 30, 11, '=');
+    put(22, 9, 'o');
+    put(25, 7, 'w');
+    put(28, 9, 'o');
+
+    fill(35, 45, 8, '=');
+    put(37, 6, 'g');
+    put(40, 5, '$');
+    put(43, 6, 'w');
+
+    fill(50, 58, 11, '=');
+    put(52, 9, 'o');
+    put(55, 7, 'g');
+
+    fill(64, 74, 7, '=');
+    put(66, 5, 'w');
+    put(69, 4, 'j');
+    put(72, 5, 'o');
+
+    fill(80, 88, 10, '=');
+    put(82, 8, 'g');
+    put(86, 7, 'w');
+
+    fill(94, 106, 6, '=');
+    put(96, 4, 'o');
+    put(99, 3, '+');
+    put(103, 4, 'g');
+
+    fill(112, 121, 10, '=');
+    put(114, 8, 'w');
+    put(118, 7, 'j');
+
+    fill(127, 138, 7, '=');
+    put(129, 5, 'g');
+    put(133, 4, '$');
+    put(136, 5, 'w');
+
+    fill(143, 152, 10, '=');
+    put(145, 8, 'o');
+    put(149, 7, 'g');
+
+    fill(156, 164, 8, '=');
+    put(158, 6, 'w');
+    put(161, 5, 'j');
+
+    put(178, 10, 'G');
+    put(178, 11, 'G');
+    put(178, 12, 'G');
+  }, 'sky', '1-2 Cloud Kingdom');
 }
 
 const LEVELS = {
@@ -382,6 +696,8 @@ const LEVELS = {
   '1-3': level13,
   '1-4': level14,
   '1-castle': levelCastle,
+  '1-5': level15,
+  '1-2-sky': level12Sky,
 };
 
 export function createWorld(levelId = '1-1') {
@@ -397,6 +713,12 @@ export function createWorld(levelId = '1-1') {
   let midway = null;
   let flagX = (width - 6) * TILE;
   const scales = [];
+  const buttons = [];
+  const carryBricks = [];
+  const superOrbs = [];
+  const barnyEggs = [];
+  const doris = [];
+  const gates = [];
   const bossNest = levelId === '1-castle'
     ? { x: 97 * TILE, y: 13 * TILE - 13, w: 66, h: 13 }
     : null;
@@ -431,9 +753,52 @@ export function createWorld(levelId = '1-1') {
         else if (kind === 'berry') items.push(makeItem(px, py, 'berry', true));
         else if (kind === 'life') items.push(makeItem(px, py, 'life', true));
         else if (kind === 'scale') scales.push({ x: px, y: py, collected: false });
+        else if (kind === 'button' || kind === 'button2') {
+          buttons.push({
+            id: `button-${buttons.length}`,
+            group: kind === 'button2' ? 'b' : 'a',
+            x: px,
+            y: py + TILE - 8,
+            w: TILE,
+            h: 8,
+            pressed: false,
+          });
+        } else if (kind === 'carryBrick') {
+          const brick = {
+            id: carryBricks.length,
+            x: px + 3,
+            y: py + 6,
+            homeX: px + 3,
+            homeY: py + 6,
+            w: 26,
+            h: 26,
+            vx: 0,
+            vy: 0,
+            state: 'floor',
+            heldBy: null,
+          };
+          carryBricks.push(brick);
+        } else if (kind === 'superOrb') {
+          superOrbs.push({ x: px + 4, y: py + 4, w: 24, h: 24, collected: false });
+        } else if (kind === 'barnyEgg') {
+          barnyEggs.push({ x: px + 5, y: py + 2, w: 22, h: 30, collected: false });
+        } else if (kind === 'dori') {
+          doris.push({
+            x: px + 1,
+            y: py + 2,
+            w: 30,
+            h: 30,
+            facing: -1,
+            animFrame: 0,
+            name: 'Dori',
+            completed: false,
+            requested: false,
+          });
+        }
         else enemies.push(makeEnemy(kind, px, py));
       } else {
         tiles[y][x] = TILE_CHARS[ch] ?? TILE_TYPES.EMPTY;
+        if (ch === 'D' || ch === 'E') gates.push({ tx: x, ty: y, group: ch === 'E' ? 'b' : 'a' });
         if (BLOCK_ITEMS[ch]) blockItems.set(`${x},${y}`, BLOCK_ITEMS[ch]);
         if (ch === 'G') flagX = x * TILE;
       }
@@ -442,7 +807,13 @@ export function createWorld(levelId = '1-1') {
 
   spawn.y = findGroundY(tiles, spawn.x + 8, spawn.y) - 32;
   for (const enemy of enemies) {
-    if (enemy.type === 'fly' || enemy.type === 'spike' || enemy.type === 'boss') continue;
+    if (
+      enemy.type === 'fly' ||
+      enemy.type === 'pegasus' ||
+      enemy.type === 'wingedSnake' ||
+      enemy.type === 'spike' ||
+      enemy.type === 'boss'
+    ) continue;
     enemy.y = findGroundY(tiles, enemy.x + enemy.w / 2, enemy.y) - enemy.h;
   }
   if (midway) midway.y = findGroundY(tiles, midway.x + 8, midway.y) - 8;
@@ -466,6 +837,20 @@ export function createWorld(levelId = '1-1') {
     particles: [],
     bossNest,
     bossEggs,
+    buttons,
+    carryBricks,
+    superOrbs,
+    barnyEggs,
+    doris,
+    tailContest: null,
+    gates,
+    gateOpen: false,
+    skyTransition: null,
+    progressId: levelId === '1-2-sky' ? '1-2' : levelId,
+    superJumpCooldownMs: levelId === '1-2-sky' ? 3000 : null,
+    jumpMultiplier: levelId === '1-2-sky' ? 1.45 : 1,
+    gravityMultiplier: levelId === '1-2-sky' ? 0.68 : 1,
+    superJumpForce: levelId === '1-2-sky' ? -24 : null,
   };
 }
 
@@ -491,8 +876,11 @@ function makeEnemy(kind, x, y) {
   if (kind === 'fly') {
     return { x, y, w: 28, h: 24, vx: -1.1, alive: true, type: 'fly', flyY: y, flyPhase: 0 };
   }
-  if (kind === 'koopa') {
-    return { x, y, w: 28, h: 30, vx: -0.9, alive: true, type: 'koopa', shell: false };
+  if (kind === 'pegasus') {
+    return { x, y, w: 38, h: 28, vx: -1.25, alive: true, type: 'pegasus', flyY: y, flyPhase: 0 };
+  }
+  if (kind === 'wingedSnake') {
+    return { x, y, w: 32, h: 24, vx: -1.45, alive: true, type: 'wingedSnake', flyY: y, flyPhase: 0 };
   }
   if (kind === 'spike') {
     return {
@@ -557,7 +945,8 @@ export function isSolid(type) {
     type === TILE_TYPES.QUESTION ||
     type === TILE_TYPES.PIPE ||
     type === TILE_TYPES.USED ||
-    type === TILE_TYPES.CASTLE
+    type === TILE_TYPES.CASTLE ||
+    type === TILE_TYPES.GATE
   );
 }
 

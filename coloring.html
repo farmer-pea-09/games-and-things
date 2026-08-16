@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coloring Book</title>
+  <link rel="stylesheet" href="css/coloring.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <button id="fullscreen-btn" type="button" aria-label="Toggle full screen">⛶ Full Screen</button>
+  <div id="app">
+    <a href="index.html" id="home-link">← Games</a>
+
+    <section id="picker-view">
+      <header class="picker-header">
+        <p class="kicker">Games and Things</p>
+        <h1>Coloring Book</h1>
+        <p class="lede">Pick an animal outline, color it in, or submit a drawing to make a new page.</p>
+      </header>
+      <div id="page-grid"></div>
+    </section>
+
+    <section id="color-view" class="hidden">
+      <div class="color-bar">
+        <button type="button" id="back-btn">← Pages</button>
+        <h2 id="page-title">Cat</h2>
+        <div class="color-bar-actions">
+          <button type="button" id="undo-btn">Undo</button>
+          <button type="button" id="clear-btn">Clear</button>
+          <button type="button" id="download-btn">Download</button>
+        </div>
+      </div>
+      <div class="studio">
+        <aside class="toolbox" aria-label="Coloring tools">
+          <p class="box-label">Tools</p>
+          <div class="tool-row">
+            <button type="button" class="tool-btn active" data-tool="crayon" title="Crayon">🖍️</button>
+            <button type="button" class="tool-btn" data-tool="fill" title="Fill">🪣</button>
+            <button type="button" class="tool-btn" data-tool="eraser" title="Eraser">🧽</button>
+          </div>
+          <p class="box-label">Size</p>
+          <div class="tool-row sizes">
+            <button type="button" class="size-btn" data-size="6">S</button>
+            <button type="button" class="size-btn active" data-size="14">M</button>
+            <button type="button" class="size-btn" data-size="26">L</button>
+            <button type="button" class="size-btn" data-size="42">XL</button>
+          </div>
+          <p class="box-label">Colors</p>
+          <div id="palette"></div>
+        </aside>
+        <div class="paper-wrap">
+          <div class="paper">
+            <canvas id="fill-canvas" width="800" height="520"></canvas>
+            <canvas id="outline-canvas" width="800" height="520"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="submit-view" class="hidden">
+      <div class="color-bar">
+        <button type="button" id="submit-back-btn">← Pages</button>
+        <h2>Submit a drawing</h2>
+      </div>
+      <p class="submit-lede">Sketch or upload a picture. We trace the lines so it becomes a coloring-book outline.</p>
+      <div class="submit-tabs">
+        <button type="button" class="tab-btn active" data-tab="draw">Draw</button>
+        <button type="button" class="tab-btn" data-tab="upload">Upload</button>
+      </div>
+      <div class="submit-studio">
+        <div class="submit-draw">
+          <div class="paper submit-paper">
+            <canvas id="submit-canvas" width="800" height="520"></canvas>
+          </div>
+          <div class="submit-draw-tools">
+            <button type="button" id="submit-pen-btn" class="active">Pencil</button>
+            <button type="button" id="submit-erase-btn">Erase</button>
+            <button type="button" id="submit-clear-btn">Clear</button>
+            <label class="upload-btn hidden" id="upload-label">
+              Choose image
+              <input id="upload-input" type="file" accept="image/*">
+            </label>
+          </div>
+        </div>
+        <div class="submit-side">
+          <button type="button" id="trace-btn" class="primary">Make outline</button>
+          <p class="box-label">Preview</p>
+          <canvas id="preview-canvas" width="400" height="260"></canvas>
+          <label class="name-field">
+            Page name
+            <input id="page-name" type="text" maxlength="24" placeholder="My animal" autocomplete="off">
+          </label>
+          <button type="button" id="add-page-btn" class="primary" disabled>Add to coloring book</button>
+          <p id="submit-status" class="status"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('coloring')) {
+      await import('./js/coloring.js');
+    }
+  </script>
+</body>
+</html>

@@ -53,6 +53,14 @@ export const PETS = [
   { id: 'panda', name: 'Panda', emoji: '🐼', tags: 'bear bamboo', kind: 'land', ears: 'round', extra: 'panda', scale: 1.02, body: '#f5f0e6', belly: '#ffffff', ear: '#1d3557', inner: '#1d3557', nose: '#1d3557', tail: '#1d3557' },
   { id: 'koala', name: 'Koala', emoji: '🐨', tags: 'bear marsupial', kind: 'land', ears: 'round', extra: 'fluff', scale: 0.92, body: '#c4b7a6', belly: '#eee7de', ear: '#c4b7a6', inner: '#e8b4b8', nose: '#3d2914', tail: '#9a8c82' },
   { id: 'snail', name: 'Snail', emoji: '🐌', tags: 'gastropod shell', kind: 'land', ears: 'none', extra: 'shell', scale: 0.7, body: '#e9c46a', belly: '#fff3c4', ear: '#d4a056', inner: '#f4a5a5', nose: '#6b4226', tail: '#d4a056' },
+  { id: 'dragon', name: 'Dragon', emoji: '🐉', tags: 'mythic wyrm fire winged', kind: 'land', extra: 'mythic', scale: 1.08, body: '#7b2cbf', belly: '#ffd166', ear: '#5a189a', inner: '#f4a5a5', nose: '#3d2914', tail: '#4a148c' },
+  { id: 'phoenix', name: 'Phoenix', emoji: '🔥', tags: 'mythic firebird rebirth flame', kind: 'bird', extra: 'mythic', scale: 0.96, body: '#e63946', belly: '#ffd166', ear: '#ff6d00', inner: '#f4a5a5', nose: '#f4a261', tail: '#ff6d00' },
+  { id: 'unicorn', name: 'Unicorn', emoji: '🦄', tags: 'mythic horse horn magic', kind: 'land', extra: 'mythic', scale: 1.08, body: '#fff8ef', belly: '#ffe5ec', ear: '#f7b2bd', inner: '#ff8fab', nose: '#e07a9a', tail: '#c77dff' },
+  { id: 'pegasus', name: 'Pegasus', emoji: '🪽', tags: 'mythic winged horse sky', kind: 'bird', extra: 'mythic', scale: 1.06, body: '#e8edf2', belly: '#ffffff', ear: '#9aa4b0', inner: '#f4a5a5', nose: '#3d2914', tail: '#fff8ef' },
+  { id: 'griffin', name: 'Griffin', emoji: '🦅', tags: 'mythic gryphon eagle lion', kind: 'bird', extra: 'mythic', scale: 1.04, body: '#d4a373', belly: '#fff3d6', ear: '#8d5a3a', inner: '#f4a5a5', nose: '#3d2914', tail: '#e9c46a' },
+  { id: 'kitsune', name: 'Kitsune', emoji: '🦊', tags: 'mythic fox nine tails spirit', kind: 'land', extra: 'mythic', scale: 0.98, body: '#fff8ef', belly: '#ffe5ec', ear: '#e07a9a', inner: '#ff8fab', nose: '#3d2914', tail: '#ff6bcb' },
+  { id: 'hydra', name: 'Hydra', emoji: '🐍', tags: 'mythic serpent heads water', kind: 'snake', extra: 'mythic', scale: 1.02, body: '#2d6a4f', belly: '#95d5b2', ear: '#1b4332', inner: '#f4a5a5', nose: '#1b4332', tail: '#40916c' },
+  { id: 'jackalope', name: 'Jackalope', emoji: '🐰', tags: 'mythic rabbit antlers horned hare', kind: 'land', extra: 'mythic', scale: 0.92, body: '#f5f0e6', belly: '#ffffff', ear: '#f5f0e6', inner: '#f4a5a5', nose: '#e07a5f', tail: '#ffffff' },
 ];
 
 export function searchPets(query) {

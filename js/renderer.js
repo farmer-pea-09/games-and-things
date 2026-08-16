@@ -20,6 +20,11 @@ export function render(ctx, world, player, players = [player]) {
 
   if (world.midway && !world.midway.got) drawMidway(ctx, world.midway, camX, camY);
   if (world.bossNest) drawBossNest(ctx, world, camX, camY);
+  if (world.skyTransition?.active && world.id === '1-2') {
+    drawLaunchTrampoline(ctx, world.skyTransition, camX, camY);
+  }
+  for (const button of world.buttons || []) drawPuzzleButton(ctx, button, camX, camY);
+  for (const brick of world.carryBricks || []) drawCarryBrick(ctx, brick, camX, camY);
 
   for (const coin of world.coins) {
     if (!coin.collected) drawCoin(ctx, coin, camX, camY);
@@ -27,6 +32,13 @@ export function render(ctx, world, player, players = [player]) {
   for (const scale of world.scales) {
     if (!scale.collected) drawScale(ctx, scale, camX, camY);
   }
+  for (const orb of world.superOrbs || []) {
+    if (!orb.collected) drawSuperJumpOrb(ctx, orb, camX, camY);
+  }
+  for (const egg of world.barnyEggs || []) {
+    if (!egg.collected) drawBarnyEgg(ctx, egg, camX, camY);
+  }
+  for (const dori of world.doris || []) drawDoriArena(ctx, dori, camX, camY);
   for (const item of world.items) {
     if (!item.collected) drawItem(ctx, item, camX, camY);
   }
@@ -37,14 +49,22 @@ export function render(ctx, world, player, players = [player]) {
   drawGoal(ctx, world, camX, camY);
 
   for (const character of players.filter(Boolean)) {
+    if (character.barny) drawBarnyCompanion(ctx, character, camX, camY);
     if (!character.dead || Math.floor(Date.now() / 90) % 2 === 0) {
-      drawPlayerCharacter(ctx, character, camX, camY);
+      const displayCharacter = character.ridingBarny
+        ? { ...character, y: character.y - 14 }
+        : character;
+      drawPlayerCharacter(ctx, displayCharacter, camX, camY);
     }
     if (character.groundPoundImpact > 0) {
       drawGroundPoundImpact(ctx, character, camX, camY);
     }
     if (character.tongue) drawTongue(ctx, character.tongue, camX, camY);
-    if (character.heldEgg != null && Number.isFinite(character.aimX) && Number.isFinite(character.aimY)) {
+    if (
+      (character.heldEgg != null || character.heldBrick != null) &&
+      Number.isFinite(character.aimX) &&
+      Number.isFinite(character.aimY)
+    ) {
       drawAimCursor(ctx, character, camX, camY);
     }
   }
@@ -153,6 +173,9 @@ function drawBlueSnakePlayer(ctx, player, camX, camY) {
 }
 
 function themeColors(theme) {
+  if (theme === 'sky') {
+    return { top: '#3178d4', mid: '#bde9ff', hill: '#dff7ff', hill2: '#9bdcf8' };
+  }
   if (theme === 'cave') {
     return { top: '#1b1f3b', mid: '#2c2f54', hill: '#17122a', hill2: '#24183a' };
   }
@@ -229,6 +252,19 @@ function drawTile(ctx, world, x, y, camX, camY) {
   if (type === TILE_TYPES.EMPTY) return;
 
   if (type === TILE_TYPES.GROUND) {
+    if (world.theme === 'sky') {
+      ctx.fillStyle = '#f8fdff';
+      ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.fillStyle = '#b9e8f7';
+      ctx.fillRect(sx, sy + 21, TILE, 11);
+      ctx.beginPath();
+      ctx.fillStyle = '#fff';
+      ctx.arc(sx + 7, sy + 7, 9, 0, Math.PI * 2);
+      ctx.arc(sx + 17, sy + 4, 12, 0, Math.PI * 2);
+      ctx.arc(sx + 27, sy + 8, 8, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     const cave = world.theme === 'cave' || world.theme === 'castle';
     ctx.fillStyle = cave ? '#6b4f3a' : '#c84c0c';
     ctx.fillRect(sx, sy, TILE, TILE);
@@ -302,10 +338,21 @@ function drawTile(ctx, world, x, y, camX, camY) {
       ctx.fill();
     }
   } else if (type === TILE_TYPES.PLATFORM) {
-    ctx.fillStyle = '#e8b060';
-    ctx.fillRect(sx, sy, TILE, 10);
-    ctx.fillStyle = '#b07830';
-    ctx.fillRect(sx, sy + 8, TILE, 4);
+    if (world.theme === 'sky') {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(sx + 7, sy + 5, 8, 0, Math.PI * 2);
+      ctx.arc(sx + 16, sy + 1, 10, 0, Math.PI * 2);
+      ctx.arc(sx + 26, sy + 6, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#9bdcf8';
+      ctx.fillRect(sx, sy + 8, TILE, 5);
+    } else {
+      ctx.fillStyle = '#e8b060';
+      ctx.fillRect(sx, sy, TILE, 10);
+      ctx.fillStyle = '#b07830';
+      ctx.fillRect(sx, sy + 8, TILE, 4);
+    }
   } else if (type === TILE_TYPES.LAVA) {
     ctx.fillStyle = '#ff3c00';
     ctx.fillRect(sx, sy + 8, TILE, TILE - 8);
@@ -319,9 +366,64 @@ function drawTile(ctx, world, x, y, camX, camY) {
     ctx.fillRect(sx + 8, sy + 10, 16, 16);
     ctx.fillStyle = '#202030';
     ctx.fillRect(sx + 12, sy + 16, 8, 10);
+  } else if (type === TILE_TYPES.GATE) {
+    ctx.fillStyle = '#34495e';
+    ctx.fillRect(sx + 2, sy, 5, TILE);
+    ctx.fillRect(sx + 14, sy, 5, TILE);
+    ctx.fillRect(sx + 26, sy, 4, TILE);
+    ctx.fillStyle = '#8fa3b8';
+    ctx.fillRect(sx, sy + 4, TILE, 4);
+    ctx.fillRect(sx, sy + 24, TILE, 4);
   } else if (type === TILE_TYPES.GOAL) {
     return;
   }
+}
+
+function drawPuzzleButton(ctx, button, camX, camY) {
+  const x = button.x - camX;
+  const y = button.y - camY;
+  ctx.fillStyle = button.pressed ? '#6ee7b7' : '#f6c945';
+  ctx.fillRect(x + 2, y + (button.pressed ? 4 : 0), button.w - 4, button.pressed ? 4 : 8);
+  ctx.fillStyle = button.pressed ? '#168f68' : '#9a6817';
+  ctx.fillRect(x + 7, y + (button.pressed ? 6 : 5), button.w - 14, 2);
+}
+
+function drawCarryBrick(ctx, brick, camX, camY) {
+  const x = brick.x - camX;
+  const y = brick.y - camY;
+  ctx.fillStyle = '#b56a32';
+  ctx.fillRect(x, y, brick.w, brick.h);
+  ctx.fillStyle = '#e39a55';
+  ctx.fillRect(x + 3, y + 3, brick.w - 6, 7);
+  ctx.fillRect(x + 3, y + 14, brick.w - 6, 8);
+  ctx.strokeStyle = '#6f3b20';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, brick.w - 2, brick.h - 2);
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 3);
+  ctx.lineTo(x + brick.w - 3, y + brick.h - 3);
+  ctx.moveTo(x + brick.w - 3, y + 3);
+  ctx.lineTo(x + 3, y + brick.h - 3);
+  ctx.stroke();
+}
+
+function drawLaunchTrampoline(ctx, transition, camX, camY) {
+  if (transition.phase === 'stop') return;
+  const x = transition.trampolineX - camX;
+  const y = 13 * TILE - camY;
+  ctx.strokeStyle = '#d9e2ec';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x + 7, y);
+  ctx.lineTo(x + 12, y - 15);
+  ctx.lineTo(x + 17, y);
+  ctx.lineTo(x + 22, y - 15);
+  ctx.lineTo(x + 27, y);
+  ctx.stroke();
+  ctx.fillStyle = '#ef476f';
+  ctx.fillRect(x + 2, y - 21, 30, 7);
+  ctx.fillStyle = '#ffe566';
+  ctx.fillRect(x + 6, y - 20, 22, 3);
 }
 
 function drawMidway(ctx, mid, camX, camY) {
@@ -435,6 +537,167 @@ function drawScale(ctx, scale, camX, camY) {
   ctx.fillRect(sx + 8, sy + 7, 4, 4);
 }
 
+function drawSuperJumpOrb(ctx, orb, camX, camY) {
+  const x = orb.x - camX + orb.w / 2;
+  const y = orb.y - camY + orb.h / 2 + Math.sin(Date.now() / 150) * 4;
+  const pulse = 9 + Math.sin(Date.now() / 100) * 2;
+  ctx.save();
+  ctx.shadowColor = '#7ee8ff';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#3185fc';
+  ctx.beginPath();
+  ctx.arc(x, y, pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d9f7ff';
+  ctx.beginPath();
+  ctx.arc(x - 3, y - 3, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffe566';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 7);
+  ctx.lineTo(x, y - 7);
+  ctx.moveTo(x, y - 7);
+  ctx.lineTo(x - 4, y - 2);
+  ctx.moveTo(x, y - 7);
+  ctx.lineTo(x + 4, y - 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBarnyEgg(ctx, egg, camX, camY) {
+  const x = egg.x - camX;
+  const y = egg.y - camY + Math.sin(Date.now() / 220) * 2;
+  ctx.fillStyle = '#f7f0c0';
+  ctx.beginPath();
+  ctx.ellipse(x + egg.w / 2, y + egg.h / 2, egg.w / 2, egg.h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#65a30d';
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 10, 3, 0, Math.PI * 2);
+  ctx.arc(x + 15, y + 18, 3.5, 0, Math.PI * 2);
+  ctx.arc(x + 8, y + 24, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBarnyCompanion(ctx, player, camX, camY) {
+  if (player.ridingBarny) {
+    drawBarnyMount(ctx, player, camX, camY);
+    return;
+  }
+  const dir = player.facing || 1;
+  const x = player.x - camX - dir * 38 + 13;
+  const y = player.y - camY + 10 + Math.sin(Date.now() / 150) * 3;
+
+  if (player.barnyHatchTimer > 60) {
+    ctx.fillStyle = '#f7f0c0';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 12, 11, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#596b2d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 7, y + 5);
+    ctx.lineTo(x - 2, y + 10);
+    ctx.lineTo(x + 3, y + 4);
+    ctx.lineTo(x + 8, y + 11);
+    ctx.stroke();
+    return;
+  }
+
+  ctx.save();
+  ctx.strokeStyle = '#4d7c0f';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, y + 13);
+  ctx.lineTo(x - 9, y + 22);
+  ctx.moveTo(x + 2, y + 13);
+  ctx.lineTo(x + 10, y + 22);
+  ctx.moveTo(x - 1, y + 9);
+  ctx.lineTo(x - 10, y + 2);
+  ctx.lineTo(x - 13, y + 9);
+  ctx.moveTo(x + 3, y + 9);
+  ctx.lineTo(x + 12, y + 2);
+  ctx.lineTo(x + 15, y + 9);
+  ctx.stroke();
+  ctx.fillStyle = '#65a30d';
+  ctx.fillRect(x - 3, y + 4, 7, 15);
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y + 5);
+  ctx.lineTo(x, y - 5);
+  ctx.lineTo(x + 8, y + 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(x - 3, y, 1.5, 0, Math.PI * 2);
+  ctx.arc(x + 4, y, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#4d7c0f';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - 3, y - 4);
+  ctx.lineTo(x - 8, y - 10);
+  ctx.moveTo(x + 4, y - 4);
+  ctx.lineTo(x + 9, y - 10);
+  ctx.stroke();
+  ctx.fillStyle = '#d9f99d';
+  ctx.font = '5px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('Barny', x, y - 14);
+  ctx.restore();
+}
+
+function drawBarnyMount(ctx, player, camX, camY) {
+  const dir = player.facing || 1;
+  const x = player.x - camX + player.w / 2;
+  const y = player.y - camY + 18;
+  const step = Math.sin(player.animFrame * 2.5) * 4;
+  ctx.save();
+  ctx.strokeStyle = '#4d7c0f';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y + 4);
+  ctx.lineTo(x - 13 - step, y + 14);
+  ctx.lineTo(x - 17 - step, y + 20);
+  ctx.moveTo(x + 5, y + 4);
+  ctx.lineTo(x + 13 + step, y + 14);
+  ctx.lineTo(x + 17 + step, y + 20);
+  ctx.stroke();
+  ctx.fillStyle = '#65a30d';
+  ctx.beginPath();
+  ctx.ellipse(x, y, 14, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + dir * 7, y - 3);
+  ctx.lineTo(x + dir * 18, y - 13);
+  ctx.lineTo(x + dir * 22, y - 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#d9f99d';
+  ctx.beginPath();
+  ctx.arc(x + dir * 17, y - 7, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(x + dir * 18, y - 7, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#4d7c0f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x + dir * 8, y - 2);
+  ctx.lineTo(x + dir * 20, y + 5);
+  ctx.lineTo(x + dir * 24, y - 2);
+  ctx.stroke();
+  ctx.fillStyle = '#d9f99d';
+  ctx.font = '5px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('Barny', x, y + 29);
+  ctx.restore();
+}
+
 function drawItem(ctx, item, camX, camY) {
   const sx = item.x - camX;
   const sy = item.y - camY;
@@ -458,7 +721,11 @@ function drawEnemy(ctx, enemy, camX, camY) {
   const flash = enemy.hurtTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
   if (flash) return;
 
-  if (enemy.type === 'fly') {
+  if (enemy.type === 'pegasus') {
+    drawPegasus(ctx, enemy, sx, sy);
+  } else if (enemy.type === 'wingedSnake') {
+    drawWingedSnake(ctx, enemy, sx, sy);
+  } else if (enemy.type === 'fly') {
     ctx.fillStyle = '#c060ff';
     ctx.beginPath();
     ctx.ellipse(sx + 14, sy + 14, 12, 9, 0, 0, Math.PI * 2);
@@ -485,13 +752,59 @@ function drawEnemy(ctx, enemy, camX, camY) {
     }
   } else if (enemy.type === 'boss') {
     drawGiantOwl(ctx, enemy, sx, sy);
-  } else if (enemy.type === 'koopa' && enemy.shell) {
-    drawOwl(ctx, sx, sy, enemy.vx, true);
-  } else if (enemy.type === 'koopa') {
-    drawOwl(ctx, sx, sy, enemy.vx, false);
   } else {
     drawSnake(ctx, sx, sy, enemy.vx);
   }
+}
+
+function drawPegasus(ctx, enemy, sx, sy) {
+  const dir = enemy.vx >= 0 ? 1 : -1;
+  const flap = Math.sin(Date.now() / 90) * 5;
+  ctx.fillStyle = 'rgba(235,248,255,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(sx + 17, sy + 11 - flap, 15, 6, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(sx + 20, sy + 15 + flap, 14, 5, 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f7f0ff';
+  ctx.beginPath();
+  ctx.ellipse(sx + 19, sy + 18, 16, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx + 19 + dir * 13, sy + 10, 8, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#8b5cf6';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(sx + 19 - dir * 13, sy + 17);
+  ctx.lineTo(sx + 19 - dir * 22, sy + 9);
+  ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(sx + 19 + dir * 15, sy + 9, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawWingedSnake(ctx, enemy, sx, sy) {
+  const dir = enemy.vx >= 0 ? 1 : -1;
+  const flap = Math.sin(Date.now() / 75) * 4;
+  ctx.fillStyle = 'rgba(220,245,255,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(sx + 11, sy + 8 - flap, 10, 5, -0.5, 0, Math.PI * 2);
+  ctx.ellipse(sx + 19, sy + 9 - flap, 10, 5, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#277da1';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx + 4, sy + 20);
+  ctx.quadraticCurveTo(sx + 13, sy + 7, sx + 20, sy + 19);
+  ctx.stroke();
+  ctx.fillStyle = '#219ebc';
+  ctx.beginPath();
+  ctx.ellipse(sx + 20 + dir * 5, sy + 14, 8, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffef5a';
+  ctx.beginPath();
+  ctx.arc(sx + 20 + dir * 8, sy + 12, 2, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawGiantOwl(ctx, enemy, sx, sy) {
@@ -650,67 +963,6 @@ function drawSnake(ctx, sx, sy, vx) {
   ctx.fill();
 }
 
-function drawOwl(ctx, sx, sy, vx, tucked) {
-  if (tucked) {
-    ctx.fillStyle = '#8b5a2b';
-    ctx.beginPath();
-    ctx.ellipse(sx + 14, sy + 11, 12, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#c48a44';
-    ctx.beginPath();
-    ctx.ellipse(sx + 14, sy + 11, 7, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(sx + 10, sy + 10, 3, 0, Math.PI * 2);
-    ctx.arc(sx + 18, sy + 10, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#111';
-    ctx.fillRect(sx + 9, sy + 9, 2, 2);
-    ctx.fillRect(sx + 17, sy + 9, 2, 2);
-    return;
-  }
-
-  const look = vx > 0 ? 1 : -1;
-  ctx.fillStyle = '#6b4423';
-  ctx.beginPath();
-  ctx.moveTo(sx + 6, sy + 10);
-  ctx.lineTo(sx + 4, sy + 1);
-  ctx.lineTo(sx + 11, sy + 8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(sx + 22, sy + 10);
-  ctx.lineTo(sx + 24, sy + 1);
-  ctx.lineTo(sx + 17, sy + 8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#c48a44';
-  ctx.beginPath();
-  ctx.ellipse(sx + 14, sy + 18, 12, 11, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#8b5a2b';
-  ctx.beginPath();
-  ctx.ellipse(sx + 14, sy + 20, 7, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(sx + 9, sy + 12, 5, 0, Math.PI * 2);
-  ctx.arc(sx + 19, sy + 12, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(sx + 9 + look, sy + 12, 2, 0, Math.PI * 2);
-  ctx.arc(sx + 19 + look, sy + 12, 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#f4a261';
-  ctx.beginPath();
-  ctx.moveTo(sx + 14, sy + 16);
-  ctx.lineTo(sx + 11, sy + 20);
-  ctx.lineTo(sx + 17, sy + 20);
-  ctx.fill();
-}
-
 function eyes(ctx, sx, sy, vx, size = 4) {
   const look = vx > 0 ? 1 : -1;
   ctx.fillStyle = '#fff';
@@ -721,6 +973,45 @@ function eyes(ctx, sx, sy, vx, size = 4) {
   ctx.fillRect(sx + 17 + look, sy + 13, 2, 2);
 }
 
+function drawDoriArena(ctx, dori, camX, camY) {
+  const x = dori.x - camX;
+  const y = dori.y - camY;
+  ctx.strokeStyle = '#ffe566';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x - 46, y + 30);
+  ctx.lineTo(x - 46, y - 38);
+  ctx.moveTo(x + 74, y + 30);
+  ctx.lineTo(x + 74, y - 38);
+  ctx.stroke();
+  ctx.fillStyle = '#173b72';
+  ctx.fillRect(x - 43, y - 38, 114, 18);
+  ctx.fillStyle = '#bde0fe';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText(dori.completed ? 'DORI CHAMPION' : 'TAIL ARENA', x + 14, y - 26);
+  ctx.textAlign = 'left';
+
+  drawChameleon(ctx, {
+    ...dori,
+    onGround: true,
+    vx: 0,
+    vy: 0,
+    powered: false,
+    camouflaged: false,
+    invincible: 0,
+    bodyColor: '#3185fc',
+    bellyColor: '#cceeff',
+    tailStandUntil: 0,
+    accessory: null,
+  }, camX, camY);
+  ctx.fillStyle = '#bde0fe';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('Dori', x + dori.w / 2, y - 5);
+  ctx.textAlign = 'left';
+}
+
 export function drawChameleon(ctx, player, camX, camY) {
   const px = player.x - camX;
   const py = player.y - camY;
@@ -729,8 +1020,12 @@ export function drawChameleon(ctx, player, camX, camY) {
   const flicker = player.invincible > 0 && Math.floor(Date.now() / 70) % 2 === 0;
   if (flicker) return;
 
-  let body = COLORS.chameleon.default;
+  let body = player.bodyColor || player.customization?.baseColor || COLORS.chameleon.default;
   if (player.powered) body = COLORS.chameleon.powered;
+  if (player.emote === 'dance') {
+    const discoColors = ['#ff4d9d', '#43d9ff', '#ffe566', '#9b5de5', '#3dcc6a'];
+    body = discoColors[Math.floor(player.emoteTimer / 6) % discoColors.length];
+  }
   if (player.camouflaged) {
     ctx.globalAlpha = 0.35;
     body = COLORS.chameleon.camouflage;
@@ -753,6 +1048,8 @@ export function drawChameleon(ctx, player, camX, camY) {
     ctx.rotate(Math.PI / 2);
     ctx.translate(-(px + player.w / 2), -(py + player.h / 2));
   }
+
+  if (player.emote === 'dance') drawDiscoEffect(ctx, player, px, py, bounce);
 
   const hx = px + player.w / 2 + player.facing * 8;
   drawAccessory(ctx, player.accessory, hx, py + 10 + bounce, player.facing, 'back');
@@ -781,6 +1078,8 @@ export function drawChameleon(ctx, player, camX, camY) {
   ctx.ellipse(hx, py + 10 + bounce, 10, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  drawCustomizationMarks(ctx, player, px, py, hx, bounce);
+
   ctx.fillRect(hx + player.facing * 2 - 2, py + 1 + bounce, 4, 7);
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -808,14 +1107,100 @@ export function drawChameleon(ctx, player, camX, camY) {
     ctx.moveTo(px + player.w / 2, py + 18 + bounce);
     ctx.lineTo(px + player.w / 2 + player.facing * 12, py + 8 + bounce + wave);
     ctx.stroke();
+  } else if (player.emote === 'dance') {
+    const pose = Math.floor(player.emoteTimer / 8) % 2 === 0 ? 1 : -1;
+    ctx.strokeStyle = body;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(px + player.w / 2 - 5, py + 18 + bounce);
+    ctx.lineTo(px - 3, py + 7 + bounce - pose * 5);
+    ctx.moveTo(px + player.w / 2 + 5, py + 18 + bounce);
+    ctx.lineTo(px + player.w + 3, py + 7 + bounce + pose * 5);
+    ctx.stroke();
   }
 
   ctx.fillStyle = '#1b4332';
-  ctx.fillRect(px + 5, py + player.h - 4 + bounce, 6, 4);
-  ctx.fillRect(px + player.w - 11, py + player.h - 4 + bounce, 6, 4);
+  const discoStep = player.emote === 'dance' && Math.floor(player.emoteTimer / 8) % 2 === 0 ? 4 : 0;
+  ctx.fillRect(px + 5, py + player.h - 4 + bounce - discoStep, 6, 4);
+  ctx.fillRect(px + player.w - 11, py + player.h - 4 + bounce - (player.emote === 'dance' ? 4 - discoStep : 0), 6, 4);
 
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+
+function drawCustomizationMarks(ctx, player, px, py, hx, bounce) {
+  const design = player.customization;
+  if (!design || (!design.strokes?.length && !design.tattoos?.length)) return;
+  const scale = 0.11;
+  const bodyX = px + player.w / 2;
+  const bodyY = py + 18 + bounce;
+  const offsetX = bodyX - 205 * scale;
+  const offsetY = bodyY - 190 * scale;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(bodyX, bodyY, 13, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(hx, py + 10 + bounce, 10, 9, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const stroke of design.strokes || []) {
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = Math.max(1, stroke.size * scale);
+    ctx.beginPath();
+    ctx.moveTo(offsetX + stroke.x1 * scale, offsetY + stroke.y1 * scale);
+    ctx.lineTo(offsetX + stroke.x2 * scale, offsetY + stroke.y2 * scale);
+    ctx.stroke();
+  }
+  const tattooIcons = { star: '★', heart: '♥', bolt: 'ϟ' };
+  for (const tattoo of design.tattoos || []) {
+    ctx.fillStyle = tattoo.color;
+    ctx.font = `${Math.max(5, tattoo.size * scale)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      tattooIcons[tattoo.id] || '★',
+      offsetX + tattoo.x * scale,
+      offsetY + tattoo.y * scale
+    );
+  }
+  ctx.restore();
+}
+
+function drawDiscoEffect(ctx, player, px, py, bounce) {
+  const cx = px + player.w / 2;
+  const ballY = py - 21;
+  const spin = player.emoteTimer * 0.35;
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  const colors = ['#ff4d9d', '#43d9ff', '#ffe566', '#9b5de5'];
+  for (let i = 0; i < 4; i++) {
+    const angle = spin + i * Math.PI / 2;
+    ctx.strokeStyle = colors[i];
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, ballY);
+    ctx.lineTo(cx + Math.cos(angle) * 42, py + 28 + Math.sin(angle) * 10);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#d9f7ff';
+  ctx.beginPath();
+  ctx.arc(cx, ballY, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#607d9b';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, ballY);
+  ctx.lineTo(cx + 9, ballY);
+  ctx.moveTo(cx, ballY - 9);
+  ctx.lineTo(cx, ballY + 9);
+  ctx.stroke();
+  ctx.fillStyle = colors[Math.floor(player.emoteTimer / 5) % colors.length];
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(px - 8 + i * 11, py + 32 + bounce + (i % 2) * 3, 5, 3);
+  }
+  ctx.restore();
 }
 
 function drawGroundPoundImpact(ctx, player, camX, camY) {
@@ -932,14 +1317,14 @@ function drawTongue(ctx, tongue, camX, camY) {
   const sx = tongue.x - camX;
   const sy = tongue.y - camY;
   const ex = sx + tongue.dir * tongue.len;
-  ctx.strokeStyle = '#ff4d6d';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = tongue.barnyGrab ? '#65a30d' : '#ff4d6d';
+  ctx.lineWidth = tongue.barnyGrab ? 6 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(sx, sy);
   ctx.lineTo(ex, sy);
   ctx.stroke();
-  ctx.fillStyle = '#ff8fa3';
+  ctx.fillStyle = tongue.barnyGrab ? '#a3e635' : '#ff8fa3';
   ctx.beginPath();
   ctx.arc(ex, sy, 5, 0, Math.PI * 2);
   ctx.fill();

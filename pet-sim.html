@@ -13,6 +13,7 @@
 <body>
   <div id="game-container">
     <a href="index.html" id="home-link">← Games</a>
+    <button id="fullscreen-btn" type="button" aria-label="Full screen" title="Full screen">⛶</button>
     <canvas id="game" width="800" height="480"></canvas>
     <div id="hud">
       <div class="hud-row">
@@ -40,6 +41,7 @@
     <aside id="sit-rail" class="hidden">
       <h2>Babysit</h2>
       <p class="sit-sub">Click a pet to leave or take</p>
+      <input id="sit-search" type="search" placeholder="Search pets" maxlength="24" autocomplete="off" spellcheck="false">
       <button type="button" id="sit-heal">Heal walking pets</button>
       <div id="sit-list"></div>
     </aside>

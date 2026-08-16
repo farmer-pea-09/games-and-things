@@ -91,6 +91,10 @@ h1 {
   background: linear-gradient(180deg, #c41e3a 0%, #0b3d2e 100%);
 }
 
+.game-card.coloring {
+  background: linear-gradient(180deg, #ffb703 0%, #fb8500 100%);
+}
+
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;

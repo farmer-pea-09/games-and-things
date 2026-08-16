@@ -8,9 +8,10 @@ export function updateEnemies(world, playerOrPlayers) {
     if (!enemy.alive) continue;
     if (enemy.hurtTimer > 0) enemy.hurtTimer--;
 
-    if (enemy.type === 'fly') {
+    if (enemy.type === 'fly' || enemy.type === 'pegasus' || enemy.type === 'wingedSnake') {
       enemy.flyPhase += 0.045;
-      enemy.y = enemy.flyY + Math.sin(enemy.flyPhase) * 36;
+      const amplitude = enemy.type === 'pegasus' ? 24 : 36;
+      enemy.y = enemy.flyY + Math.sin(enemy.flyPhase) * amplitude;
       enemy.x += enemy.vx;
       if (enemy.x < 16 || enemy.x > world.mapW * TILE - 40) enemy.vx *= -1;
     } else if (enemy.type === 'spike') {

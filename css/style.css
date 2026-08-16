@@ -39,6 +39,44 @@ body {
   color: #fff;
 }
 
+#fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  border: 2px solid #ffe566;
+  border-radius: 4px;
+  background: rgba(8, 28, 21, 0.82);
+  color: #fff;
+  padding: 7px 9px;
+  font: 6px 'Press Start 2P', monospace;
+  cursor: pointer;
+}
+
+#fullscreen-btn:hover {
+  background: #40916c;
+}
+
+#game-container:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #081c15;
+}
+
+#game-container:fullscreen #game {
+  width: min(100vw, calc(100vh * 5 / 3));
+  height: min(100vh, calc(100vw * 3 / 5));
+}
+
+#game-container:fullscreen #controls-help {
+  bottom: 10px;
+}
+
 #game {
   display: block;
   image-rendering: pixelated;
@@ -198,6 +236,105 @@ body {
   font: 8px 'Press Start 2P', monospace;
   text-align: center;
   text-transform: uppercase;
+}
+
+.emote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+#overlay-content .emote-grid button {
+  min-height: 74px;
+  margin: 0;
+  line-height: 2;
+}
+
+.tail-meter {
+  position: relative;
+  width: min(460px, 72vw);
+  height: 34px;
+  margin: 18px auto;
+  overflow: hidden;
+  border: 3px solid #d8ffc2;
+  background: #173b72;
+}
+
+.tail-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3185fc 0%, #ffe566 50%, #3dcc6a 100%);
+  transition: width 70ms linear;
+}
+
+.tail-dori,
+.tail-player {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  font-size: 6px;
+  text-shadow: 1px 1px #000;
+}
+
+.tail-dori {
+  left: 7px;
+}
+
+.tail-player {
+  right: 7px;
+}
+
+.tail-your-turn {
+  color: #ffe566;
+  animation: tail-pulse 0.35s steps(2) infinite;
+}
+
+@keyframes tail-pulse {
+  50% { transform: scale(1.08); }
+}
+
+#customizer-canvas {
+  display: block;
+  width: min(420px, 76vw);
+  height: auto;
+  margin: 0 auto 12px;
+  border: 3px solid #ffe566;
+  background: #bde9ff;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.custom-label {
+  margin-top: 8px;
+  color: #b7e4c7;
+}
+
+.custom-tools {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 5px 0;
+}
+
+#overlay-content .custom-tools button {
+  min-width: 42px;
+  margin: 0;
+  padding: 8px;
+}
+
+#overlay-content .custom-colors button,
+#overlay-content [data-ink] {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border: 3px solid #d8ffc2;
+  background: var(--swatch);
+}
+
+#overlay-content .custom-tools button.selected {
+  outline: 3px solid #ffe566;
+  transform: translateY(-2px);
 }
 
 #controls-help {

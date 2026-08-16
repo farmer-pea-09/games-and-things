@@ -48,9 +48,16 @@ body {
 #care-buttons {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 8px 12px;
   background: #2b1810;
+}
+
+#care-buttons.on-walk [data-care="food"],
+#care-buttons.on-walk [data-care="water"],
+#care-buttons.on-walk [data-care="sleep"] {
+  opacity: 0.38;
 }
 
 #care-buttons button {
@@ -61,9 +68,9 @@ body {
   background: #5c3a28;
   border: 3px solid #e07a5f;
   border-radius: 4px;
-  padding: 8px 10px;
+  padding: 8px 8px;
   cursor: pointer;
-  min-width: 92px;
+  min-width: 78px;
   user-select: none;
 }
 
@@ -235,6 +242,21 @@ body {
   color: #fff;
   cursor: pointer;
   border-radius: 4px;
+}
+
+#overlay-content.shop-panel {
+  min-width: 280px;
+}
+
+#overlay-content.shop-panel button {
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+}
+
+#overlay-content .shop-note {
+  color: #e9c46a;
+  min-height: 16px;
 }
 
 #overlay-content button:hover {

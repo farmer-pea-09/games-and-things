@@ -84,11 +84,17 @@ export function createPlayer(save, spawn) {
     groundPounding: false,
     groundPoundImpact: 0,
     accessory: save?.accessory ?? null,
+    customization: save?.customization ?? null,
     emotes: new Set(save?.emotes || []),
     emote: null,
     emoteTimer: 0,
+    barny: !!save?.barny,
+    barnyHatchTimer: 0,
+    barnyMountPending: false,
+    ridingBarny: !!save?.barny,
     actionHeld: false,
     heldEgg: null,
+    heldBrick: null,
     aimX: null,
     aimY: null,
   };
@@ -100,7 +106,7 @@ export function showMessage(player, msg) {
 }
 
 export function triggerEmote(player, key) {
-  const emote = EMOTE_KEYS[key];
+  const emote = EMOTE_KEYS[key] || (Object.values(EMOTE_KEYS).includes(key) ? key : null);
   if (!emote) return;
   if (!player.emotes?.has(emote)) {
     showMessage(player, `Buy emote ${key} at the Bug Boutique!`);
@@ -138,6 +144,14 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
     player.emoteTimer--;
     if (player.emoteTimer === 0) player.emote = null;
   }
+  if (player.barnyHatchTimer > 0) {
+    player.barnyHatchTimer--;
+    if (player.barnyHatchTimer === 0 && player.barnyMountPending) {
+      player.barnyMountPending = false;
+      player.ridingBarny = true;
+      showMessage(player, 'Ride on, Barny!');
+    }
+  }
   if (player.messageTimer > 0) player.messageTimer--;
   else player.message = '';
 
@@ -163,18 +177,20 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
   player.downHeld = downDown;
   const ducking = downDown && player.onGround && !isTailStanding(player);
   const running = keys.has('a');
-  const speed = running ? RUN_SPEED : WALK_SPEED;
+  const mountSpeed = player.ridingBarny ? 1.16 : 1;
+  const speed = (running ? RUN_SPEED : WALK_SPEED) * mountSpeed;
   const acceleration = player.onGround ? GROUND_ACCEL : AIR_ACCEL;
+  const mountAcceleration = player.ridingBarny ? 1.16 : 1;
 
   player.camouflaged = ducking && Math.abs(player.vx) < 0.35 && !player.tongue;
 
   if (!player.camouflaged) {
     if (keys.has('arrowleft')) {
-      player.vx -= acceleration * (running ? 1.2 : 1);
+      player.vx -= acceleration * (running ? 1.2 : 1) * mountAcceleration;
       player.facing = -1;
     }
     if (keys.has('arrowright') || keys.has('d')) {
-      player.vx += acceleration * (running ? 1.2 : 1);
+      player.vx += acceleration * (running ? 1.2 : 1) * mountAcceleration;
       player.facing = 1;
     }
   }
@@ -208,7 +224,7 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
       player.jumpSquat = JUMPSQUAT_FRAMES;
       player.jumpBuffer = 0;
     } else if (canAirJump && player.jumpSquat <= 0) {
-      player.vy = AIR_JUMP_FORCE;
+      player.vy = AIR_JUMP_FORCE * (player.ridingBarny ? 1.08 : 1) * (world.jumpMultiplier || 1);
       player.onGround = false;
       player.coyote = 0;
       player.jumpBuffer = 0;
@@ -222,7 +238,7 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
     player.jumpSquat--;
     player.vx *= 0.92;
     if (player.jumpSquat === 0) {
-      player.vy = JUMP_FORCE;
+      player.vy = JUMP_FORCE * (player.ridingBarny ? 1.16 : 1) * (world.jumpMultiplier || 1);
       player.onGround = false;
       player.coyote = 0;
       player.jumpKind = 'ground';
@@ -255,7 +271,14 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
   if (actionPressed && !player.groundPounding && !player.camouflaged) {
     if (player.heldEgg != null) {
       throwHeldEgg(player, world);
-    } else if (!pickUpNestEgg(player, world) && !player.tongue && player.tongueCooldown <= 0) {
+    } else if (player.heldBrick != null) {
+      throwHeldBrick(player, world);
+    } else if (
+      !pickUpNestEgg(player, world) &&
+      !pickUpCarryBrick(player, world) &&
+      !player.tongue &&
+      player.tongueCooldown <= 0
+    ) {
       startTongue(player);
       sfx('tongue');
     }
@@ -267,12 +290,15 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
     player.vx *= 0.82;
     player.vy = GROUND_POUND_SPEED;
   } else {
-    player.vy += GRAVITY;
-    player.vy = Math.min(player.vy, MAX_FALL);
+    const gravityMultiplier = world.gravityMultiplier || 1;
+    player.vy += GRAVITY * gravityMultiplier;
+    player.vy = Math.min(player.vy, MAX_FALL * Math.max(0.72, gravityMultiplier));
   }
 
   moveAndCollide(player, world);
   updateBossEggs(player, world, updateSharedWorld);
+  updateCarryBricks(player, world, updateSharedWorld);
+  if (updateSharedWorld) updateButtonsAndGates(world, world._players || [player]);
   if (player.groundPounding && player.onGround) finishGroundPound(player, world);
   if (player.onGround) {
     player.airJumpAvailable = true;
@@ -286,6 +312,8 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
 
   collectPickups(player, world);
   checkMidway(player, world);
+  checkDoriChallenge(player, world);
+  checkSkyLaunch(player, world);
   checkGoal(player, world);
 
   if (Math.abs(player.vx) > 0.3 || !player.onGround || isTailStanding(player)) player.animFrame += 0.22;
@@ -307,12 +335,13 @@ function trySuperJump(player) {
     showMessage(player, 'Super jump needs the ground!');
     return;
   }
-  player.vy = SUPER_JUMP_FORCE;
+  player.vy = player._world?.superJumpForce || SUPER_JUMP_FORCE;
   player.onGround = false;
   player.coyote = 0;
   player.jumpBuffer = 0;
   player.superJumping = 28;
-  player.superJumpReadyAt = now + SUPER_JUMP_COOLDOWN_MS;
+  const cooldown = player._world?.superJumpCooldownMs || SUPER_JUMP_COOLDOWN_MS;
+  player.superJumpReadyAt = now + cooldown;
   showMessage(player, 'Super jump!');
   sfx('super');
 }
@@ -355,7 +384,7 @@ function finishGroundPound(player, world) {
       Math.abs(enemyCenter - center) <= GROUND_POUND_RADIUS &&
       Math.abs(enemyFeet - feet) <= 36
     ) {
-      damageEnemy(player, enemy, false, center, feet);
+      damageEnemy(player, enemy, false, center, feet, 'ground-pound');
     }
   }
 }
@@ -490,6 +519,8 @@ function startTongue(player) {
     len: 0,
     extending: true,
     dir: player.facing,
+    barnyGrab: !!player.ridingBarny,
+    maxLen: player.ridingBarny ? TONGUE_MAX_LEN * 1.4 : TONGUE_MAX_LEN,
   };
 }
 
@@ -600,15 +631,145 @@ function respawnBossEgg(egg) {
   egg.vy = 0;
 }
 
+function pickUpCarryBrick(player, world) {
+  let nearest = null;
+  let nearestDistance = 46;
+  const cx = player.x + player.w / 2;
+  const cy = player.y + player.h / 2;
+  for (const brick of world.carryBricks || []) {
+    if (brick.state !== 'floor') continue;
+    const distance = Math.hypot(brick.x + brick.w / 2 - cx, brick.y + brick.h / 2 - cy);
+    if (distance < nearestDistance) {
+      nearest = brick;
+      nearestDistance = distance;
+    }
+  }
+  if (!nearest) return false;
+  nearest.state = 'held';
+  nearest.heldBy = player.slot ?? 0;
+  nearest.vx = 0;
+  nearest.vy = 0;
+  player.heldBrick = nearest.id;
+  showMessage(player, 'Brick ready! Aim and press Z to throw.');
+  sfx('coin');
+  return true;
+}
+
+function throwHeldBrick(player, world) {
+  const brick = world.carryBricks?.find((entry) => entry.id === player.heldBrick);
+  if (!brick) {
+    player.heldBrick = null;
+    return;
+  }
+  player.heldBrick = null;
+  brick.state = 'thrown';
+  brick.heldBy = null;
+  brick.x = player.x + player.w / 2 - brick.w / 2 + player.facing * 12;
+  brick.y = player.y + 2;
+  let dx = player.facing;
+  let dy = -0.55;
+  if (Number.isFinite(player.aimX) && Number.isFinite(player.aimY)) {
+    dx = player.aimX - (brick.x + brick.w / 2);
+    dy = player.aimY - (brick.y + brick.h / 2);
+  }
+  const distance = Math.max(1, Math.hypot(dx, dy));
+  brick.vx = dx / distance * 9.5;
+  brick.vy = dy / distance * 9.5;
+  showMessage(player, 'Brick throw!');
+  sfx('bump');
+}
+
+function updateCarryBricks(player, world, updateSharedWorld) {
+  for (const brick of world.carryBricks || []) {
+    if (brick.state === 'held') {
+      if (brick.heldBy === (player.slot ?? 0)) {
+        brick.x = player.x + player.w / 2 - brick.w / 2;
+        brick.y = player.y - brick.h + 4;
+      }
+      continue;
+    }
+    if (!updateSharedWorld || brick.state !== 'thrown') continue;
+
+    const previousX = brick.x;
+    brick.x += brick.vx;
+    brick.y += brick.vy;
+    brick.vy = Math.min(brick.vy + 0.45, 10);
+    brick.vx *= 0.985;
+
+    const centerY = brick.y + brick.h / 2;
+    const wallX = brick.vx >= 0 ? brick.x + brick.w : brick.x;
+    const wallTile = getTile(world.tiles, Math.floor(wallX / TILE), Math.floor(centerY / TILE));
+    if (isSolid(wallTile)) {
+      brick.x = previousX;
+      brick.vx *= -0.25;
+    }
+
+    const footX = brick.x + brick.w / 2;
+    const footY = brick.y + brick.h;
+    const tx = Math.floor(footX / TILE);
+    const ty = Math.floor(footY / TILE);
+    const below = getTile(world.tiles, tx, ty);
+    if (brick.vy >= 0 && (isSolid(below) || isPlatform(below))) {
+      brick.y = ty * TILE - brick.h;
+      brick.vy = 0;
+      brick.vx *= 0.5;
+      if (Math.abs(brick.vx) < 0.35) {
+        brick.vx = 0;
+        brick.state = 'floor';
+      }
+    }
+
+    if (brick.y > world.mapH * TILE + 60 || brick.x < -80 || brick.x > world.mapW * TILE + 80) {
+      respawnCarryBrick(brick);
+    }
+  }
+}
+
+function updateButtonsAndGates(world, players) {
+  if (!world.buttons?.length || !world.gates?.length) return;
+  for (const button of world.buttons) {
+    const pressedByPlayer = players.some((character) => (
+      character &&
+      !character.dead &&
+      character.x + character.w > button.x + 2 &&
+      character.x < button.x + button.w - 2 &&
+      character.y + character.h >= button.y &&
+      character.y + character.h <= button.y + button.h + 4
+    ));
+    const pressedByBrick = (world.carryBricks || []).some((brick) => (
+      brick.state !== 'held' &&
+      brick.x + brick.w > button.x + 2 &&
+      brick.x < button.x + button.w - 2 &&
+      brick.y + brick.h >= button.y &&
+      brick.y + brick.h <= button.y + button.h + 5
+    ));
+    button.pressed = pressedByPlayer || pressedByBrick;
+  }
+  world.gateOpen = world.buttons.some((button) => button.pressed);
+  for (const gate of world.gates) {
+    const groupOpen = world.buttons.some((button) => button.group === gate.group && button.pressed);
+    setTile(world.tiles, gate.tx, gate.ty, groupOpen ? TILE_TYPES.EMPTY : TILE_TYPES.GATE);
+  }
+}
+
+function respawnCarryBrick(brick) {
+  brick.x = brick.homeX;
+  brick.y = brick.homeY;
+  brick.vx = 0;
+  brick.vy = 0;
+  brick.state = 'floor';
+  brick.heldBy = null;
+}
+
 function updateTongue(player, world) {
   if (!player.tongue) return;
   const t = player.tongue;
   t.x = player.x + (t.dir > 0 ? player.w - 2 : 2);
-  t.y = player.y + 12;
+  t.y = player.y + (t.barnyGrab ? 20 : 12);
 
   if (t.extending) {
     t.len += TONGUE_SPEED;
-    if (t.len >= TONGUE_MAX_LEN) t.extending = false;
+    if (t.len >= t.maxLen) t.extending = false;
   } else {
     t.len -= TONGUE_SPEED * 1.35;
     if (t.len <= 0) {
@@ -648,7 +809,14 @@ function updateTongue(player, world) {
   for (const enemy of world.enemies) {
     if (!enemy.alive) continue;
     if (tipX > enemy.x && tipX < enemy.x + enemy.w && tipY > enemy.y && tipY < enemy.y + enemy.h) {
-      damageEnemy(player, enemy, true, tipX, tipY);
+      if (player.ridingBarny && enemy.type !== 'boss' && enemy.type !== 'spike') {
+        enemy.alive = false;
+        player.score += STOMP_BONUS;
+        showMessage(player, 'Barny gobbled an enemy!');
+        sfx('stomp');
+      } else {
+        damageEnemy(player, enemy, true, tipX, tipY, 'tongue');
+      }
       t.extending = false;
     }
   }
@@ -680,6 +848,29 @@ function collectPickups(player, world) {
   for (const scale of world.scales) {
     if (!scale.collected && overlap(player, { x: scale.x, y: scale.y, w: 20, h: 20 })) {
       takeScale(player, scale);
+    }
+  }
+
+  for (const orb of world.superOrbs || []) {
+    if (!orb.collected && overlap(player, orb)) {
+      orb.collected = true;
+      player.superJumpReadyAt = 0;
+      player.score += 500;
+      showMessage(player, 'Sky Orb! Super jump recharged!');
+      sfx('power');
+    }
+  }
+
+  for (const egg of world.barnyEggs || []) {
+    if (!egg.collected && overlap(player, egg)) {
+      egg.collected = true;
+      player.barny = true;
+      player.barnyHatchTimer = 120;
+      player.barnyMountPending = true;
+      player.ridingBarny = false;
+      player.score += 1000;
+      showMessage(player, "The egg hatched! It's Barny!");
+      sfx('life');
     }
   }
 }
@@ -743,6 +934,34 @@ function checkMidway(player, world) {
   }
 }
 
+function checkDoriChallenge(player, world) {
+  const dori = world.doris?.[0];
+  if (!dori || dori.completed || dori.requested || world.tailContest?.active) return;
+  if (overlap(player, dori)) {
+    dori.requested = true;
+    dori.requestedBy = player.slot ?? 0;
+    showMessage(player, 'Dori challenges everyone to a tail contest!');
+    sfx('bump');
+  }
+}
+
+function checkSkyLaunch(player, world) {
+  if (world.id !== '1-2' || world.skyTransition?.active) return;
+  if (player.x + player.w > 205 * TILE) {
+    world.skyTransition = {
+      active: true,
+      requested: true,
+      phase: 'stop',
+      timer: 45,
+      alpha: 0,
+      trampolineX: 211 * TILE,
+    };
+    player.vx = 0;
+    showMessage(player, 'What is happening to the ground?!');
+    sfx('bump');
+  }
+}
+
 function checkGoal(player, world) {
   if (world.completed) return;
   if (player.x + player.w > world.flagX + 8) {
@@ -792,6 +1011,11 @@ function killPlayer(player, world, msg) {
     if (egg) respawnBossEgg(egg);
     player.heldEgg = null;
   }
+  if (player.heldBrick != null) {
+    const brick = world.carryBricks?.find((entry) => entry.id === player.heldBrick);
+    if (brick) respawnCarryBrick(brick);
+    player.heldBrick = null;
+  }
   player.tailStandUntil = 0;
   showMessage(player, player.lives <= 0 ? 'Game Over!' : msg);
   sfx('hurt');
@@ -827,7 +1051,8 @@ export function stompEnemy(player, enemy) {
       enemy,
       false,
       player.x + player.w / 2,
-      feet
+      feet,
+      'stomp'
     );
     if (!damaged) return false;
     player.vy = JUMP_FORCE * 0.58;
@@ -836,10 +1061,10 @@ export function stompEnemy(player, enemy) {
   return false;
 }
 
-function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null) {
+function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null, source = 'other') {
   if (enemy.type === 'spike') return false;
   if (enemy.type === 'boss') {
-    if (enemy.state !== 'dizzy') {
+    if (enemy.state !== 'dizzy' && source !== 'stomp') {
       showMessage(player, 'Throw a nest egg to make the owl dizzy!');
       sfx('bump');
       return false;

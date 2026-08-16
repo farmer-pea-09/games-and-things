@@ -1,9 +1,9 @@
 import { isMuted } from './audio.js';
 
 export const SHOP_ITEMS = [
-  { id: 'wave', type: 'emote', name: 'Wave', icon: '👋', price: 8, key: '1' },
-  { id: 'dance', type: 'emote', name: 'Happy Dance', icon: '🎵', price: 15, key: '2' },
-  { id: 'twirl', type: 'emote', name: 'Tail Twirl', icon: '🌀', price: 25, key: '3' },
+  { id: 'wave', type: 'emote', name: 'Wave', icon: '👋', price: 8, key: 'E' },
+  { id: 'dance', type: 'emote', name: 'Happy Dance', icon: '🎵', price: 15, key: 'E' },
+  { id: 'twirl', type: 'emote', name: 'Tail Twirl', icon: '🌀', price: 25, key: 'E' },
   { id: 'flowers', type: 'accessory', name: 'Flower Crown', icon: '🌸', price: 10 },
   { id: 'explorer', type: 'accessory', name: 'Explorer Hat', icon: '🤠', price: 20 },
   { id: 'cape', type: 'accessory', name: 'Golden Cape', icon: '🟨', price: 35 },
@@ -94,7 +94,7 @@ export function showBugShop(save, onChange, onClose) {
     content.innerHTML = `
       <h2>🦗 Bug Boutique</h2>
       <p class="shop-balance">Your bugs: <strong>${save.coins}</strong></p>
-      <p class="shop-note">Buy emotes and accessories. Emotes use keys 1–3 during a quest.</p>
+      <p class="shop-note">Buy emotes and accessories. Press E during a quest to choose an owned emote.</p>
       <div class="shop-grid">${cards}</div>
       <button id="unequip-btn" class="shop-secondary">Remove accessory</button>
       <button id="close-shop" class="shop-secondary">Back to map</button>
