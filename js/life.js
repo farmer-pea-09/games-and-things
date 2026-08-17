@@ -32,14 +32,29 @@ const CAFE_KEYS = [
   { id: 'lid', key: 'f', label: 'LID', color: '#c04028' },
 ];
 const OFFICE_KEYS = [
-  { id: 'in', key: 'a', label: 'IN', color: '#3d6b4f' },
-  { id: 'out', key: 's', label: 'OUT', color: '#3a78c8' },
-  { id: 'shred', key: 'd', label: 'SHRED', color: '#c04028' },
+  { id: 'auto', key: 'a', label: 'AUTO', color: '#3a78c8', ask: 'Auto insurance' },
+  { id: 'home', key: 's', label: 'HOME', color: '#3d6b4f', ask: 'Home insurance' },
+  { id: 'health', key: 'd', label: 'HEALTH', color: '#c04028', ask: 'Health plan' },
+  { id: 'life', key: 'f', label: 'LIFE', color: '#8a4ac8', ask: 'Life policy' },
 ];
 const MARKET_KEYS = [
-  { id: 'fruit', key: 'a', label: 'FRUIT', color: '#d84848' },
-  { id: 'can', key: 's', label: 'CAN', color: '#8a8a8a' },
-  { id: 'bread', key: 'd', label: 'BREAD', color: '#e0a050' },
+  { id: 'fruit', key: 'a', label: 'FRUIT', color: '#d84848', ask: 'Fruit' },
+  { id: 'can', key: 's', label: 'CAN', color: '#8a8a8a', ask: 'Canned stuff' },
+  { id: 'bread', key: 'd', label: 'BREAD', color: '#e0a050', ask: 'Bread' },
+  { id: 'bag', key: 'f', label: 'BAG', color: '#2a9d8f', ask: 'A bag, please' },
+];
+const CAFE_WANTS = ['Iced latte', 'Oat mocha', 'Bagel', 'Cap', 'Muffin', 'Drip', 'Tea', 'Toast'];
+const LINE_NAMES = ['Nico', 'Alex', 'Tourist', 'Kid', 'Ms. Hale', 'Riley', 'Sam', 'Jo', 'Bo', 'Priya'];
+const LINE_SHIRTS = ['#457b9d', '#e76f51', '#2a9d8f', '#9b5de5', '#f4a261', '#c47838', '#3d6b4f'];
+const GIRL_NEIGHBORS = [
+  { id: 'riley', name: 'Lila', role: 'Roommate', hair: '#d4a017', shirt: '#e07a9a' },
+  { id: 'nico', name: 'Maya', role: 'Neighbor', hair: '#3b2a1a', shirt: '#c47838' },
+  { id: 'alex', name: 'Sophie', role: 'Neighbor', hair: '#8b2e1a', shirt: '#9b5de5' },
+];
+const BOY_NEIGHBORS = [
+  { id: 'riley', name: 'Owen', role: 'Roommate', hair: '#3b2a1a', shirt: '#3a78c8' },
+  { id: 'nico', name: 'Leo', role: 'Neighbor', hair: '#111111', shirt: '#2a9d8f' },
+  { id: 'alex', name: 'Sam', role: 'Neighbor', hair: '#5c4d3c', shirt: '#457b9d' },
 ];
 
 const PETS = {
@@ -75,6 +90,7 @@ let toast = '';
 let toastTimer = 0;
 let prompt = null;
 let customers = [];
+let fade = null;
 let particles = [];
 let riley = { x: 250, y: 280, vx: 12, face: 1 };
 let nicoHere = false;
@@ -84,7 +100,9 @@ let workTips = 0;
 let jobGame = null;
 let saveTimer = 0;
 let hairPick = 0;
+let genderPick = 'boy';
 let nameDraft = 'Remy';
+let babyNameDraft = 'Juniper';
 let multiplayerRole = null;
 let multiplayerCode = '';
 let ownPeerId = '';
@@ -168,6 +186,7 @@ function pal() {
 function newState() {
   return {
     name: 'Remy',
+    gender: 'boy',
     hair: HAIR[0],
     shirt: '#2a9d8f',
     day: 1,
@@ -207,7 +226,12 @@ function newState() {
     pet: null,
     petOut: false,
     petSick: false,
-    people: { riley: 58, hale: 42, priya: 50, nico: 40, moss: 28, alex: 35 },
+    people: { riley: 58, hale: 42, priya: 50, nico: 40, moss: 28, alex: 35, dot: 48 },
+    datingId: '',
+    spouseId: '',
+    marriedDay: 0,
+    pregnant: 0,
+    babies: [],
     flags: { intro: false, fridgeBroke: false, promoted: false, officeOffer: false },
     eventDay: 0,
     dead: false,
@@ -216,6 +240,34 @@ function newState() {
 }
 
 let state = newState();
+
+function neighborCast() {
+  return state.gender === 'girl' ? BOY_NEIGHBORS : GIRL_NEIGHBORS;
+}
+
+function neighborOf(id) {
+  return neighborCast().find((n) => n.id === id) || { id, name: id, role: 'Neighbor', hair: HAIR[0], shirt: '#3a78c8' };
+}
+
+function personName(id) {
+  if (id === 'hale') return 'Ms. Hale';
+  if (id === 'priya') return 'Priya';
+  if (id === 'moss') return 'Dr. Moss';
+  if (id === 'boss') return 'Mr. Stack';
+  if (id === 'dot') return 'Ms. Dot';
+  return neighborOf(id).name;
+}
+
+function neighborGender() {
+  return state.gender === 'girl' ? 'boy' : 'girl';
+}
+
+function isSpouseHome() {
+  if (!state.spouseId) return false;
+  if (state.spouseId === 'riley') return true;
+  const h = hourOf(state.minutes);
+  return h >= 17 || h < 9 || isWeekend(state.day);
+}
 
 function job() {
   return JOBS[state.jobId] || JOBS.none;
@@ -279,6 +331,19 @@ const WALLS = {
     { x: 0, y: 0, w: 18, h: 480 },
     { x: 782, y: 0, w: 18, h: 480 },
   ],
+  market: [
+    { x: 0, y: 0, w: 800, h: 18 },
+    { x: 0, y: 462, w: 800, h: 18 },
+    { x: 0, y: 0, w: 18, h: 480 },
+    { x: 782, y: 0, w: 18, h: 480 },
+    { x: 90, y: 210, w: 420, h: 24 },
+  ],
+  daycare: [
+    { x: 0, y: 0, w: 800, h: 18 },
+    { x: 0, y: 462, w: 800, h: 18 },
+    { x: 0, y: 0, w: 18, h: 480 },
+    { x: 782, y: 0, w: 18, h: 480 },
+  ],
 };
 
 function hitsWall(x, y) {
@@ -319,10 +384,16 @@ function interactables() {
       { id: 'couch', name: 'Couch', x: 230, y: 250, verb: 'Relax' },
       { id: 'sink', name: 'Sink', x: 430, y: 80, verb: 'Clean' },
       { id: 'door', name: 'Front door', x: 740, y: 400, verb: 'Go outside' },
-      { id: 'riley', name: 'Riley', x: riley.x, y: riley.y, verb: 'Talk' },
+      { id: 'riley', name: personName('riley'), x: riley.x, y: riley.y, verb: state.spouseId === 'riley' ? 'Talk spouse' : 'Talk' },
     ];
-    if (state.pet) list.push({ id: 'bowl', name: 'Pet bowl', x: 200, y: 360, verb: 'Feed pet' });
-    if (state.pet && !state.petOut) list.push({ id: 'pet', name: state.pet.name, x: state.pet.x, y: state.pet.y, verb: 'Pet' });
+    if (state.spouseId && state.spouseId !== 'riley' && isSpouseHome()) {
+      list.push({ id: state.spouseId, name: personName(state.spouseId), x: 420, y: 300, verb: 'Talk spouse' });
+    }
+    state.babies.filter((baby) => !baby.atDaycare).forEach((baby, i) => {
+      list.push({ id: `baby:${state.babies.indexOf(baby)}`, name: baby.name, x: 160 + i * 40, y: 320, verb: 'Hold' });
+    });
+    if (state.pet && !state.pet.atDaycare) list.push({ id: 'bowl', name: 'Pet bowl', x: 200, y: 360, verb: 'Feed pet' });
+    if (state.pet && !state.petOut && !state.pet.atDaycare) list.push({ id: 'pet', name: state.pet.name, x: state.pet.x, y: state.pet.y, verb: 'Pet' });
     return addRemotes(list);
   }
   if (state.scene === 'town') {
@@ -333,9 +404,10 @@ function interactables() {
       { id: 'clinic', name: 'Clinic', x: 580, y: 110, verb: 'See doctor' },
       { id: 'grocery', name: 'Market', x: 380, y: 270, verb: (job().game === 'market' && inClockWindow()) ? 'Clock in' : (state.openings?.market ? 'Apply' : 'Shop') },
       { id: 'petshop', name: 'Pet shop', x: 600, y: 270, verb: 'Pet shop' },
+      { id: 'daycare', name: 'Daycare', x: 700, y: 360, verb: 'Daycare' },
       { id: 'park', name: 'Oak Park', x: 150, y: 270, verb: 'Park' },
     ];
-    if (nicoHere) list.push({ id: 'nico', name: 'Nico', x: 170, y: 250, verb: 'Talk' });
+    if (nicoHere) list.push({ id: 'nico', name: personName('nico'), x: 170, y: 250, verb: state.spouseId === 'nico' ? 'Talk spouse' : 'Talk' });
     if (haleHere) list.push({ id: 'hale', name: 'Ms. Hale', x: 120, y: 360, verb: 'Talk' });
     return addRemotes(list);
   }
@@ -343,7 +415,7 @@ function interactables() {
     const list = [
       { id: 'counter', name: 'Counter', x: 300, y: 200, verb: 'Clock in' },
       { id: 'priya', name: 'Priya', x: 520, y: 160, verb: 'Talk' },
-      { id: 'alex', name: 'Alex', x: 640, y: 300, verb: 'Talk' },
+      { id: 'alex', name: personName('alex'), x: 640, y: 300, verb: state.spouseId === 'alex' ? 'Talk spouse' : 'Talk' },
       { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
     ];
     return addRemotes(list);
@@ -352,6 +424,19 @@ function interactables() {
     return addRemotes([
       { id: 'deskjob', name: 'Your desk', x: 280, y: 220, verb: 'Clock in' },
       { id: 'boss', name: 'Mr. Stack', x: 520, y: 140, verb: 'Talk' },
+      { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
+    ]);
+  }
+  if (state.scene === 'market') {
+    return addRemotes([
+      { id: 'register', name: 'Register', x: 300, y: 200, verb: 'Clock in' },
+      { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
+    ]);
+  }
+  if (state.scene === 'daycare') {
+    return addRemotes([
+      { id: 'daydesk', name: 'Front desk', x: 280, y: 200, verb: 'Drop off / pick up' },
+      { id: 'dot', name: 'Ms. Dot', x: 520, y: 180, verb: 'Talk' },
       { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
     ]);
   }
@@ -380,9 +465,121 @@ function goScene(scene, x, y) {
   state.scene = scene;
   state.x = x;
   state.y = y;
-  if (scene !== 'work' && scene !== 'office' && state.working) {
+  if (scene !== 'work' && scene !== 'office' && scene !== 'market' && state.working) {
     state.working = false;
   }
+  if (scene === 'town' || scene === 'home') customers = [];
+}
+
+function fadeTo(text, then) {
+  fade = { t: 0, max: 0.42, hold: 0.55, phase: 'in', text, then };
+}
+
+function updateFade(dt) {
+  if (!fade) return;
+  fade.t += dt;
+  if (fade.phase === 'in' && fade.t >= fade.max) {
+    fade.phase = 'hold';
+    fade.t = 0;
+    fade.then?.();
+    fade.then = null;
+  } else if (fade.phase === 'hold' && fade.t >= fade.hold) {
+    fade.phase = 'out';
+    fade.t = 0;
+  } else if (fade.phase === 'out' && fade.t >= fade.max) {
+    fade = null;
+  }
+}
+
+function drawFade() {
+  if (!fade) return;
+  let a = 1;
+  if (fade.phase === 'in') a = clamp(fade.t / fade.max, 0, 1);
+  else if (fade.phase === 'out') a = 1 - clamp(fade.t / fade.max, 0, 1);
+  ctx.fillStyle = `rgba(0,0,0,${a})`;
+  ctx.fillRect(0, 0, W, H);
+  if (a > 0.35 && fade.text) {
+    ctx.fillStyle = `rgba(255,248,239,${clamp(a * 1.2, 0, 1)})`;
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(fade.text, 400, 236);
+    ctx.textAlign = 'left';
+  }
+}
+
+function workMeta(kind) {
+  return {
+    cafe: { scene: 'work', name: 'Bean & Oak', x: 80, y: 390, standX: 300, standY: 260 },
+    office: { scene: 'office', name: 'Stack & File', x: 80, y: 390, standX: 280, standY: 260 },
+    market: { scene: 'market', name: 'Corner Market', x: 80, y: 390, standX: 300, standY: 260 },
+  }[kind];
+}
+
+function fadeToWork(kind, clockIn) {
+  const meta = workMeta(kind);
+  if (!meta || fade) return;
+  fadeTo(`Walking to ${meta.name}...`, () => {
+    state.scene = meta.scene;
+    state.x = clockIn ? meta.standX : meta.x;
+    state.y = clockIn ? meta.standY : meta.y;
+    fillWorkQueue(kind);
+    if (clockIn) startShiftGame(state.morningDone ? 'afternoon' : 'morning');
+  });
+}
+
+function makeLineCustomer(kind, slot) {
+  const cafeWant = pick(CAFE_WANTS);
+  const desk = kind === 'office' ? pick(OFFICE_KEYS) : pick(MARKET_KEYS);
+  return {
+    name: pick(LINE_NAMES),
+    hair: pick(HAIR),
+    shirt: pick(LINE_SHIRTS),
+    kind,
+    slot,
+    x: queueX(kind),
+    y: 460,
+    tx: queueX(kind),
+    ty: queueY(slot),
+    done: false,
+    want: kind === 'cafe' ? cafeWant : desk.ask,
+    key: kind === 'cafe' ? null : desk.key,
+    label: kind === 'cafe' ? cafeWant : desk.label,
+  };
+}
+
+function queueX(kind) {
+  return kind === 'office' ? 248 : 210;
+}
+
+function queueY(slot) {
+  return 268 + slot * 34;
+}
+
+function fillWorkQueue(kind) {
+  customers = [];
+  const n = 5;
+  for (let i = 0; i < n; i++) customers.push(makeLineCustomer(kind, i));
+  layoutQueue();
+}
+
+function layoutQueue() {
+  const waiting = customers.filter((c) => !c.done);
+  waiting.forEach((c, i) => {
+    c.slot = i;
+    c.tx = queueX(c.kind);
+    c.ty = queueY(i);
+  });
+}
+
+function addCustomerToBack(kind) {
+  const waiting = customers.filter((c) => !c.done);
+  if (waiting.length >= 6) return;
+  customers.push(makeLineCustomer(kind, waiting.length));
+  layoutQueue();
+}
+
+function frontCustomer() {
+  return customers.find((c) => !c.done) || null;
 }
 
 function shopsOpen() {
@@ -396,7 +593,7 @@ function workOpen() {
 }
 
 function doAction(id) {
-  if (state.dead || menu) return;
+  if (state.dead || menu || fade) return;
   const h = hourOf(state.minutes);
   if (String(id).startsWith('player:')) return talkRemote(id.slice(7));
 
@@ -431,7 +628,7 @@ function doAction(id) {
     return;
   }
   if (id === 'door') {
-    if (state.pet) state.petOut = true;
+    if (state.pet && !state.pet.atDaycare) state.petOut = true;
     return goScene('town', 90, 400);
   }
   if (id === 'home') {
@@ -440,33 +637,38 @@ function doAction(id) {
   }
   if (id === 'bowl') return feedPet();
   if (id === 'pet') return petPet();
-  if (id === 'riley') return talkRiley();
-  if (id === 'nico') return talkNico();
+  if (id === 'riley') return talkNeighbor('riley');
+  if (id === 'nico') return talkNeighbor('nico');
   if (id === 'hale') return talkHale();
+  if (id === 'alex') return talkNeighbor('alex');
   if (id === 'cafe') {
-    if (job().game === 'cafe' && inClockWindow()) return tryClockIn();
+    if (job().game === 'cafe' && inClockWindow()) return fadeToWork('cafe', true);
     if (state.openings?.cafe && job().game !== 'cafe') return applyJob('cafe');
     if (!shopsOpen() && !workOpen()) return showToast('Cafe is closed.');
-    return goScene('work', 80, 390);
+    return fadeToWork('cafe', false);
   }
   if (id === 'office') {
-    if (job().game === 'office' && inClockWindow()) return tryClockIn();
+    if (job().game === 'office' && inClockWindow()) return fadeToWork('office', true);
     if (state.openings?.office && job().game !== 'office') return applyJob('office');
     if (h < 8 || h >= 18) return showToast('Office is locked.');
-    return goScene('office', 80, 390);
+    return fadeToWork('office', false);
   }
   if (id === 'clinic') return openClinic();
   if (id === 'grocery') return groceryAction();
   if (id === 'petshop') return openPetShop();
+  if (id === 'daycare') return enterDaycare();
+  if (id === 'daydesk') return openDaycareDesk();
+  if (id === 'dot') return talkDot();
   if (id === 'park') return parkTime();
   if (id === 'counter') return cafeAction();
   if (id === 'deskjob') return officeAction();
+  if (id === 'register') return groceryAction();
   if (id === 'priya') return talkPriya();
-  if (id === 'alex') return talkAlex();
   if (id === 'boss') return talkBoss();
+  if (String(id).startsWith('baby:')) return holdBaby(Number(id.slice(5)));
   if (id === 'exit') {
     if (state.working) return leaveWork(true);
-    return goScene('town', id === 'exit' && state.scene === 'office' ? 360 : 140, 150);
+    return goScene('town', state.scene === 'office' ? 360 : state.scene === 'daycare' ? 700 : state.scene === 'market' ? 380 : 140, state.scene === 'daycare' ? 360 : 150);
   }
 }
 
@@ -555,12 +757,50 @@ function newDay(fromSleep) {
   customers = [];
   if (fromSleep || state.day > 1) rollOpenings();
   state.mess = clamp(state.mess + 6, 0, 100);
-  if (state.pet) {
+  if (state.pet && !state.pet.atDaycare) {
     state.pet.hunger = clamp(state.pet.hunger - 22, 0, 100);
     state.pet.happy = clamp(state.pet.happy - 12, 0, 100);
     state.pet.clean = clamp(state.pet.clean - 10, 0, 100);
     if (state.pet.hunger < 18 || state.pet.happy < 15) state.petSick = true;
+  } else if (state.pet?.atDaycare) {
+    state.pet.hunger = clamp(state.pet.hunger + 20, 0, 100);
+    state.pet.happy = clamp(state.pet.happy + 14, 0, 100);
+    state.pet.clean = clamp(state.pet.clean + 12, 0, 100);
+    state.petSick = false;
   }
+  if (state.pregnant > 0) {
+    state.pregnant += 1;
+    if (state.pregnant >= 3) {
+      birthBaby();
+    } else {
+      showToast('You feel extra tired. A baby is on the way.');
+    }
+  }
+  let nightBill = 0;
+  for (const baby of state.babies) {
+    baby.ageDays += 1;
+    if (baby.atDaycare) {
+      baby.hunger = clamp(baby.hunger + 28, 0, 100);
+      baby.happy = clamp(baby.happy + 16, 0, 100);
+      nightBill += 22;
+    } else {
+      baby.hunger = clamp(baby.hunger - 18, 0, 100);
+      baby.happy = clamp(baby.happy - 8, 0, 100);
+      if (baby.hunger < 20) bump('mood', -6);
+    }
+  }
+  if (state.pet?.atDaycare) nightBill += 18;
+  if (nightBill) {
+    if (state.money >= nightBill) {
+      state.money -= nightBill;
+      showToast(`Ms. Dot kept them overnight. $${nightBill}. Pick up today.`);
+    } else {
+      bump('mood', -10);
+      addRel('dot', -8);
+      showToast('Ms. Dot kept them overnight. You still owe the desk.');
+    }
+  }
+  if (state.babies.some((b) => !b.atDaycare)) state.mess = clamp(state.mess + 8, 0, 100);
 
   const d = weekday(state.day);
   if (d === 0) {
@@ -769,9 +1009,13 @@ function officeAction() {
 
 function groceryAction() {
   const j = job();
-  if (j.game === 'market' && inClockWindow()) return tryClockIn();
+  if (j.game === 'market' && inClockWindow()) {
+    if (state.scene === 'town') return fadeToWork('market', true);
+    return tryClockIn();
+  }
   if (state.openings?.market && j.game !== 'market') return applyJob('market');
-  return openGrocery();
+  if (state.scene === 'town') return openGrocery();
+  return tryClockIn();
 }
 
 function applyJob(place) {
@@ -866,12 +1110,22 @@ function startShiftGame(part) {
     state.x = j.game === 'office' ? 280 : 300;
     state.y = 260;
   }
+  if (j.game === 'market') {
+    state.scene = 'market';
+    state.x = 300;
+    state.y = 260;
+  }
+  if (!customers.length) fillWorkQueue(j.game);
   if (j.game === 'cafe') nextCafeOrder();
-  showToast(part === 'morning' ? 'Morning rush! Work until lunch.' : 'Afternoon shift. Work until 5.');
+  else nextDeskOrder();
+  showToast(part === 'morning' ? 'Line is out the door. Work until lunch.' : 'Afternoon line. Work until 5.');
 }
 
 function nextCafeOrder() {
   if (!jobGame) return;
+  addCustomerToBack('cafe');
+  layoutQueue();
+  const front = frontCustomer();
   const n = 2 + Math.min(2, Math.floor(jobGame.combo / 5));
   const recipe = [];
   for (let i = 0; i < n; i++) recipe.push(pick(CAFE_KEYS));
@@ -879,9 +1133,42 @@ function nextCafeOrder() {
     recipe,
     t: clamp(7.2 - jobGame.combo * 0.12, 4.2, 7.2),
     max: 7.2,
-    name: pick(['Nico', 'Alex', 'Tourist', 'Kid', 'Ms. Hale', 'Riley']),
+    name: front?.name || pick(LINE_NAMES),
+    want: front?.want || pick(CAFE_WANTS),
   };
   jobGame.input = [];
+}
+
+function nextDeskOrder() {
+  if (!jobGame) return;
+  addCustomerToBack(jobGame.kind);
+  layoutQueue();
+  const front = frontCustomer();
+  const table = jobGame.kind === 'office' ? OFFICE_KEYS : MARKET_KEYS;
+  const item = front?.key ? (table.find((k) => k.key === front.key) || pick(table)) : pick(table);
+  if (front && !front.key) {
+    front.key = item.key;
+    front.want = item.ask;
+    front.label = item.label;
+  }
+  jobGame.order = {
+    t: clamp(6.8 - jobGame.combo * 0.1, 3.8, 6.8),
+    max: 6.8,
+    name: front?.name || pick(LINE_NAMES),
+    want: front?.want || item.ask,
+    key: front?.key || item.key,
+    label: front?.label || item.label,
+  };
+}
+
+function finishFrontCustomer(ok) {
+  const front = frontCustomer();
+  if (front) {
+    front.done = true;
+    front.tx = front.x + (ok ? -80 : 90);
+    front.ty = 500;
+  }
+  layoutQueue();
 }
 
 function handleWorkKey(k) {
@@ -901,6 +1188,7 @@ function handleWorkKey(k) {
         if (Math.random() < 0.4) jobGame.tips += 1 + Math.floor(jobGame.combo / 5);
         jobGame.flash = pick(['NICE', 'ORDER UP', 'TIP!', 'YES']);
         jobGame.flashT = 0.45;
+        finishFrontCustomer(true);
         nextCafeOrder();
       }
     } else {
@@ -908,27 +1196,29 @@ function handleWorkKey(k) {
       jobGame.misses += 1;
       jobGame.flash = 'WRONG';
       jobGame.flashT = 0.45;
+      finishFrontCustomer(false);
       nextCafeOrder();
     }
     return true;
   }
 
-  const table = jobGame.kind === 'office' ? OFFICE_KEYS : MARKET_KEYS;
-  const falling = jobGame.papers[0];
-  if (!falling) return true;
-  if (falling.key === key) {
-    jobGame.papers.shift();
+  const want = jobGame.order?.key;
+  if (!want) return true;
+  if (want === key) {
     jobGame.served += 1;
     jobGame.combo += 1;
     jobGame.score += 1 + Math.floor(jobGame.combo / 4);
-    jobGame.flash = 'FILED';
+    jobGame.flash = jobGame.kind === 'office' ? 'COVERED' : 'BAGGED';
     jobGame.flashT = 0.3;
+    finishFrontCustomer(true);
+    nextDeskOrder();
   } else {
-    jobGame.papers.shift();
     jobGame.combo = 0;
     jobGame.misses += 1;
     jobGame.flash = 'NOPE';
     jobGame.flashT = 0.35;
+    finishFrontCustomer(false);
+    nextDeskOrder();
   }
   return true;
 }
@@ -937,33 +1227,16 @@ function updateJobGame(dt) {
   if (!jobGame || menu) return;
   jobGame.time -= dt;
   if (jobGame.flashT > 0) jobGame.flashT -= dt;
-  if (jobGame.kind === 'cafe' && jobGame.order) {
+  if (jobGame.order) {
     jobGame.order.t -= dt;
     if (jobGame.order.t <= 0) {
       jobGame.combo = 0;
       jobGame.misses += 1;
       jobGame.flash = 'TOO SLOW';
       jobGame.flashT = 0.4;
-      nextCafeOrder();
-    }
-  } else {
-    jobGame.spawn -= dt;
-    if (jobGame.spawn <= 0) {
-      const table = jobGame.kind === 'office' ? OFFICE_KEYS : MARKET_KEYS;
-      const item = pick(table);
-      jobGame.papers.push({
-        ...item,
-        x: rand(220, 560),
-        y: 70,
-        v: 90 + jobGame.combo * 8 + jobGame.served * 2,
-      });
-      jobGame.spawn = clamp(1.05 - jobGame.served * 0.03, 0.45, 1.05);
-    }
-    for (const p of jobGame.papers) p.y += p.v * dt;
-    while (jobGame.papers.length && jobGame.papers[0].y > 390) {
-      jobGame.papers.shift();
-      jobGame.combo = 0;
-      jobGame.misses += 1;
+      finishFrontCustomer(false);
+      if (jobGame.kind === 'cafe') nextCafeOrder();
+      else nextDeskOrder();
     }
   }
   if (jobGame.time <= 0) {
@@ -993,10 +1266,11 @@ function endShiftGame(reason) {
       choices: [{
         label: 'Go eat',
         run: () => {
-          if (state.scene === 'work' || state.scene === 'office') {
+          if (state.scene === 'work' || state.scene === 'office' || state.scene === 'market') {
             state.scene = 'town';
             state.x = j.game === 'office' ? 360 : j.game === 'market' ? 380 : 140;
             state.y = 150;
+            customers = [];
           }
         },
       }],
@@ -1027,10 +1301,11 @@ function endShiftGame(reason) {
   } else {
     showToast(`Clocked out. Afternoon pay $${pay}. Served ${served}.`);
   }
-  if (state.scene === 'work' || state.scene === 'office') {
+  if (state.scene === 'work' || state.scene === 'office' || state.scene === 'market') {
     state.scene = 'town';
-    state.x = j.game === 'office' ? 360 : 140;
+    state.x = j.game === 'office' ? 360 : j.game === 'market' ? 380 : 140;
     state.y = 150;
+    customers = [];
   }
 }
 
@@ -1060,94 +1335,49 @@ function fired(why = 'late') {
   });
 }
 
-function drawJobGame() {
+function drawJobHud() {
   const g = jobGame;
   if (!g) return;
-  const j = job();
-  drawRect(0, 0, W, H, '#1a140c');
-  drawRect(40, 24, 720, 432, '#fff6d8');
-  drawRect(40, 24, 720, 8, '#c47838');
-  drawRect(40, 448, 720, 8, '#c47838');
-  ctx.fillStyle = '#c04028';
-  ctx.font = '12px "Press Start 2P", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(g.part === 'morning' ? 'MORNING SHIFT' : 'AFTERNOON SHIFT', 400, 54);
-  ctx.fillStyle = '#402010';
+  drawRect(16, 8, 768, 86, 'rgba(32, 24, 12, 0.82)');
+  ctx.fillStyle = '#f0d060';
   ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillText(j.place, 400, 74);
   ctx.textAlign = 'left';
-  ctx.fillText(`SCORE ${g.score}`, 64, 100);
-  ctx.fillText(`COMBO ${g.combo}`, 250, 100);
-  ctx.fillText(`SERVED ${g.served}`, 430, 100);
+  ctx.fillText(g.part === 'morning' ? 'MORNING LINE' : 'AFTERNOON LINE', 28, 28);
+  ctx.fillStyle = '#fff8ef';
+  ctx.fillText(`SERVED ${g.served}`, 28, 48);
+  ctx.fillText(`COMBO ${g.combo}`, 180, 48);
   ctx.fillStyle = '#c47838';
-  ctx.fillText(`${Math.ceil(g.time)}s`, 640, 100);
-  drawRect(64, 110, 672, 10, '#5a3a18');
-  drawRect(66, 112, (668 * g.time) / 44, 6, '#3d9e4a');
+  ctx.fillText(`${Math.ceil(g.time)}s`, 340, 48);
+  drawRect(28, 62, 400, 10, '#5a3a18');
+  drawRect(30, 64, (396 * g.time) / 44, 6, '#3d9e4a');
 
   if (g.kind === 'cafe' && g.order) {
-    ctx.fillStyle = '#402010';
-    ctx.font = '8px "Press Start 2P", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${g.order.name} wants`, 400, 150);
+    ctx.fillStyle = '#fff8ef';
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.fillText(`${g.order.name}: ${g.order.want}`, 450, 28);
     g.order.recipe.forEach((step, i) => {
-      const x = 220 + i * 90;
-      const on = i < g.input.length;
-      drawRect(x, 170, 70, 70, on ? '#3d9e4a' : step.color);
-      ctx.strokeStyle = '#201810';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x, 170, 70, 70);
+      const x = 450 + i * 54;
+      drawRect(x, 36, 48, 36, i < g.input.length ? '#3d9e4a' : step.color);
       ctx.fillStyle = '#fff6d8';
-      ctx.font = '8px "Press Start 2P", monospace';
-      ctx.fillText(step.label, x + 35, 210);
-    });
-    drawRect(220, 258, 360, 12, '#5a3a18');
-    drawRect(222, 260, 356 * clamp(g.order.t / g.order.max, 0, 1), 8, '#e07040');
-    ctx.fillStyle = '#402010';
-    ctx.font = '7px "Press Start 2P", monospace';
-    ctx.fillText('A brew  S milk  D pour  F lid', 400, 300);
-    CAFE_KEYS.forEach((step, i) => {
-      const x = 90 + i * 160;
-      drawRect(x, 330, 130, 90, step.color);
-      ctx.strokeStyle = '#201810';
-      ctx.strokeRect(x, 330, 130, 90);
-      ctx.fillStyle = '#fff6d8';
-      ctx.font = '10px "Press Start 2P", monospace';
-      ctx.fillText(step.key.toUpperCase(), x + 65, 372);
-      ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillText(step.label, x + 65, 396);
+      ctx.font = '6px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(step.label, x + 24, 58);
     });
     ctx.textAlign = 'left';
-  } else {
-    const table = g.kind === 'office' ? OFFICE_KEYS : MARKET_KEYS;
-    ctx.fillStyle = '#402010';
+    drawRect(450, 76, 200, 8, '#5a3a18');
+    drawRect(452, 78, 196 * clamp(g.order.t / g.order.max, 0, 1), 4, '#e07040');
+  } else if (g.order) {
+    ctx.fillStyle = '#fff8ef';
     ctx.font = '7px "Press Start 2P", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(g.kind === 'office' ? 'Sort the papers before they hit the floor' : 'Bag the groceries', 400, 140);
-    for (const p of g.papers) {
-      drawRect(p.x - 40, p.y, 80, 36, p.color);
-      ctx.strokeStyle = '#201810';
-      ctx.strokeRect(p.x - 40, p.y, 80, 36);
-      ctx.fillStyle = '#fff6d8';
-      ctx.font = '8px "Press Start 2P", monospace';
-      ctx.fillText(p.label, p.x, p.y + 24);
-    }
-    table.forEach((bin, i) => {
-      const x = 120 + i * 200;
-      drawRect(x, 360, 160, 70, bin.color);
-      ctx.strokeStyle = '#201810';
-      ctx.strokeRect(x, 360, 160, 70);
-      ctx.fillStyle = '#fff6d8';
-      ctx.font = '10px "Press Start 2P", monospace';
-      ctx.fillText(bin.key.toUpperCase(), x + 80, 392);
-      ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillText(bin.label, x + 80, 414);
-    });
-    ctx.textAlign = 'left';
+    ctx.fillText(`${g.order.name}: ${g.order.want}`, 450, 32);
+    ctx.fillText(g.kind === 'office' ? 'A auto  S home  D health  F life' : 'A fruit  S can  D bread  F bag', 450, 52);
+    drawRect(450, 64, 200, 8, '#5a3a18');
+    drawRect(452, 66, 196 * clamp(g.order.t / g.order.max, 0, 1), 4, '#e07040');
   }
   if (g.flashT > 0) {
     ctx.textAlign = 'center';
     ctx.fillStyle = g.flash === 'WRONG' || g.flash === 'TOO SLOW' || g.flash === 'NOPE' ? '#c04028' : '#3d9e4a';
-    ctx.font = '16px "Press Start 2P", monospace';
+    ctx.font = '14px "Press Start 2P", monospace';
     ctx.fillText(g.flash, 400, 130);
     ctx.textAlign = 'left';
   }
@@ -1161,7 +1391,8 @@ function leaveWork(early) {
   }
   state.working = false;
   const j = job();
-  goScene('town', j.scene === 'office' ? 360 : 140, 150);
+  customers = [];
+  goScene('town', j.scene === 'office' ? 360 : j.game === 'market' ? 380 : 140, 150);
 }
 
 function openGrocery() {
@@ -1196,6 +1427,110 @@ function openPetShop() {
   `);
 }
 
+function daycareOpen() {
+  const h = hourOf(state.minutes);
+  return h >= 8 && h < 18;
+}
+
+function enterDaycare() {
+  if (!daycareOpen()) return showToast('Little Oak Daycare is closed. 8:00 to 6:00.');
+  fadeTo('Walking to Little Oak Daycare...', () => {
+    state.scene = 'daycare';
+    state.x = 80;
+    state.y = 390;
+  });
+}
+
+function talkDot() {
+  const kids = state.babies.filter((b) => b.atDaycare).map((b) => b.name);
+  const pet = state.pet?.atDaycare ? state.pet.name : '';
+  const who = [...kids, pet].filter(Boolean);
+  openEvent({
+    title: 'Ms. Dot',
+    body: who.length
+      ? `Ms. Dot: “${who.join(' and ')} had snack, nap, and a tiny crisis. All standard.”`
+      : 'Ms. Dot: “Kids $12. Pets $8. I have juice boxes and a surprising amount of glitter.”',
+    choices: [
+      { label: 'Thanks', run: () => addRel('dot', 3) },
+      { label: 'Front desk', run: () => openDaycareDesk() },
+    ],
+  });
+}
+
+function openDaycareDesk() {
+  if (!daycareOpen() && state.scene !== 'daycare') return showToast('Daycare is closed.');
+  const drops = [];
+  state.babies.forEach((baby, i) => {
+    if (baby.atDaycare) {
+      drops.push(`<button type="button" data-act="pick-kid" data-arg="${i}">Pick up ${esc(baby.name)}</button>`);
+    } else {
+      drops.push(`<button type="button" data-act="drop-kid" data-arg="${i}">Drop off ${esc(baby.name)} $12</button>`);
+    }
+  });
+  if (state.pet) {
+    if (state.pet.atDaycare) drops.push(`<button type="button" data-act="pick-pet">Pick up ${esc(state.pet.name)}</button>`);
+    else drops.push(`<button type="button" data-act="drop-pet">Drop off ${esc(state.pet.name)} $8</button>`);
+  }
+  if (!drops.length) drops.push('<p class="muted">No kids or pets to drop off yet. Have a baby or adopt first.</p>');
+  openMenu('shop', `
+    <h2>Little Oak Daycare</h2>
+    <p class="muted">Ms. Dot watches tiny humans and tiny animals until 6:00. Overnight is extra.</p>
+    <div class="choice-list">
+      ${drops.join('')}
+      <button type="button" class="ghost" data-act="close">Leave desk</button>
+    </div>
+  `);
+}
+
+function dropKid(index) {
+  const baby = state.babies[index];
+  if (!baby || baby.atDaycare) return;
+  if (!trySpend(12, 'daycare')) return;
+  baby.atDaycare = true;
+  addRel('dot', 4);
+  spendTime(10);
+  closeMenu();
+  showToast(`${baby.name} got a cubby and a sticker.`);
+  openDaycareDesk();
+}
+
+function pickKid(index) {
+  const baby = state.babies[index];
+  if (!baby || !baby.atDaycare) return;
+  baby.atDaycare = false;
+  baby.hunger = clamp(baby.hunger + 12, 0, 100);
+  baby.happy = clamp(baby.happy + 10, 0, 100);
+  addRel('dot', 2);
+  spendTime(8);
+  closeMenu();
+  showToast(`${baby.name} smells like crayons and applesauce.`);
+  openDaycareDesk();
+}
+
+function dropPet() {
+  if (!state.pet || state.pet.atDaycare) return;
+  if (!trySpend(8, 'pet daycare')) return;
+  state.pet.atDaycare = true;
+  state.petOut = false;
+  addRel('dot', 4);
+  spendTime(10);
+  closeMenu();
+  showToast(`${state.pet.name} got a bowl and a sunbeam.`);
+  openDaycareDesk();
+}
+
+function pickPet() {
+  if (!state.pet?.atDaycare) return;
+  state.pet.atDaycare = false;
+  state.pet.hunger = clamp(state.pet.hunger + 16, 0, 100);
+  state.pet.happy = clamp(state.pet.happy + 12, 0, 100);
+  addRel('dot', 2);
+  spendTime(8);
+  closeMenu();
+  showToast(`${state.pet.name} zoomed back to you.`);
+  openDaycareDesk();
+}
+
 function openClinic() {
   if (hourOf(state.minutes) < 8 || hourOf(state.minutes) >= 19) return showToast('Clinic is closed.');
   openMenu('shop', `
@@ -1203,6 +1538,7 @@ function openClinic() {
     <p class="muted">Dr. Moss has stickers and strong opinions about sleep.</p>
     <div class="choice-list">
       <button type="button" data-act="heal">Checkup $40 — restore health</button>
+      ${state.pregnant ? '<button type="button" data-act="baby-check">Baby checkup $25</button>' : ''}
       <button type="button" data-act="vet"${state.pet ? '' : ' disabled'}>Vet $50 — help ${state.pet ? esc(state.pet.name) : 'a pet'}</button>
       <button type="button" class="ghost" data-act="close">Leave</button>
     </div>
@@ -1226,6 +1562,7 @@ function adoptPet(kind) {
     clean: 70,
     x: 220,
     y: 340,
+    atDaycare: false,
   };
   state.petFood += 2;
   bump('mood', 18);
@@ -1236,6 +1573,7 @@ function adoptPet(kind) {
 
 function feedPet() {
   if (!state.pet) return;
+  if (state.pet.atDaycare) return showToast(`${state.pet.name} is at daycare.`);
   if (state.petFood <= 0) return showToast('No pet food. Market is on the street.');
   state.petFood -= 1;
   state.pet.hunger = clamp(state.pet.hunger + 40, 0, 100);
@@ -1247,6 +1585,7 @@ function feedPet() {
 
 function petPet() {
   if (!state.pet) return;
+  if (state.pet.atDaycare) return showToast(`${state.pet.name} is at daycare.`);
   state.pet.happy = clamp(state.pet.happy + 12, 0, 100);
   bump('mood', 8);
   bump('energy', -2);
@@ -1259,8 +1598,8 @@ function petPet() {
 }
 
 function parkTime() {
-  const withPet = state.pet && (state.petOut || state.scene === 'town');
-  if (state.pet && !state.petOut && dist(state.x, state.y, 150, 270) < 70) {
+  const withPet = state.pet && !state.pet.atDaycare && (state.petOut || state.scene === 'town');
+  if (state.pet && !state.pet.atDaycare && !state.petOut && dist(state.x, state.y, 150, 270) < 70) {
     state.petOut = true;
   }
   bump('mood', 8);
@@ -1278,85 +1617,175 @@ function parkTime() {
   if (nicoHere) addRel('nico', 3);
 }
 
-function talkRiley() {
-  const lines = [];
-  if (state.mess > 65) lines.push('Riley: “The dishes are forming a union.”');
-  if (state.pet && state.pet.hunger < 30) lines.push(`Riley: “${state.pet.name} just stared into my soul. Feed them.”`);
-  if (!state.rentPaid && weekday(state.day) >= 5) lines.push('Riley: “Please do not make me explain Ms. Hale again.”');
-  if (state.jobId === 'none') lines.push('Riley: “Unemployed looks good on nobody. Cafe is hiring. Again.”');
-  if (!lines.length) lines.push(pick([
-    'Riley: “I saved you the good mug. The one that is not chipped. As much.”',
-    'Riley: “If we order pizza I will do half the dishes. Emotionally.”',
-    'Riley: “You live here. I live here. The crumbs also live here.”',
-  ]));
+function talkNeighbor(id) {
+  const n = neighborOf(id);
+  const rel = Math.round(state.people[id] || 0);
+  const spouse = state.spouseId === id;
+  const dating = state.datingId === id;
+  const they = neighborGender() === 'girl' ? 'she' : 'he';
+  const them = neighborGender() === 'girl' ? 'her' : 'him';
+  let body = `${n.name}: “`;
+  if (spouse) body += pick(['I made tea. Sit with me.', 'Our place. Our mess. I like it.', 'Kiss the baby for me if they wake.']);
+  else if (dating) body += pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']);
+  else if (rel >= 70) body += pick(['I keep looking at you. It is a problem.', 'Want to be more than hallway friends?', 'If you asked me out I would say yes.']);
+  else body += pick(['The hallway light is a character now.', 'Want to be a person with me for twenty minutes?', 'You live here. I live here. Hi.']);
+  body += `” Hearts ${rel}.`;
+  const choices = [
+    {
+      label: 'Chat',
+      run: () => {
+        bump('mood', 8);
+        addRel(id, 6);
+        spendTime(20);
+      },
+    },
+  ];
+  if (!spouse && rel >= 45) {
+    choices.push({
+      label: dating ? 'Go on a date $18' : 'Ask out $18',
+      run: () => {
+        if (!trySpend(18, 'date')) return;
+        bump('mood', 16);
+        bump('energy', -6);
+        addRel(id, 12);
+        state.datingId = id;
+        spendTime(50);
+        showToast(`${n.name} laughs like rent is optional.`);
+      },
+    });
+  }
+  if (!spouse && (dating || rel >= 80)) {
+    choices.push({
+      label: 'Propose $50',
+      run: () => proposeTo(id),
+    });
+  }
+  if (spouse) {
+    choices.push({
+      label: 'Kiss',
+      run: () => {
+        bump('mood', 14);
+        addRel(id, 4);
+        spendTime(10);
+        showToast(`${n.name} kisses you in the kitchen light.`);
+      },
+    });
+    if (!state.pregnant && state.babies.length < 3 && state.day - (state.marriedDay || 0) >= 2) {
+      choices.push({
+        label: 'Try for a baby',
+        run: () => {
+          state.pregnant = 1;
+          bump('energy', -10);
+          bump('mood', 10);
+          spendTime(40);
+          showToast(`${n.name} holds your hand. Something new is coming.`);
+        },
+      });
+    }
+  }
+  choices.push({ label: 'Later', run: () => {} });
+  openEvent({ title: n.name, body, choices });
+}
+
+function proposeTo(id) {
+  const n = neighborOf(id);
+  if (state.spouseId) return showToast(`You already married ${personName(state.spouseId)}.`);
+  if ((state.people[id] || 0) < 80) return showToast(`${n.name} likes you. Not that much yet. Talk more.`);
+  if (!trySpend(50, 'a ring')) return;
+  state.spouseId = id;
+  state.datingId = id;
+  state.marriedDay = state.day;
+  addRel(id, 20);
+  bump('mood', 24);
   openEvent({
-    title: 'Riley',
-    body: `${lines[0]} Relationship ${Math.round(state.people.riley)}.`,
+    title: 'Married',
+    body: `${n.name} says yes. Oak Street claps from behind a curtain. You can try for a baby in a couple of days.`,
+    choices: [{ label: 'We live here now', run: () => showToast(`${n.name} is family.`) }],
+  });
+}
+
+function holdBaby(index) {
+  const baby = state.babies[index];
+  if (!baby) return;
+  openEvent({
+    title: baby.name,
+    body: `${baby.name} is ${baby.ageDays + 1} day(s) old. Hunger ${Math.round(baby.hunger)}. Joy ${Math.round(baby.happy)}.`,
     choices: [
       {
-        label: 'Chat ($0, +mood)',
+        label: 'Feed',
         run: () => {
-          bump('mood', 8);
-          addRel('riley', 5);
+          if (state.food <= 0 && state.snacks <= 0) return showToast('No food for a tiny person.');
+          if (state.food > 0) state.food -= 1;
+          else state.snacks -= 1;
+          baby.hunger = clamp(baby.hunger + 40, 0, 100);
+          baby.happy = clamp(baby.happy + 8, 0, 100);
+          bump('energy', -6);
           spendTime(20);
+          showToast(`${baby.name} eats. You are a parent.`);
         },
       },
       {
-        label: 'Order pizza $22',
+        label: 'Hold',
         run: () => {
-          if (!trySpend(22, 'pizza')) return;
-          bump('hunger', 30);
-          bump('mood', 12);
-          addRel('riley', 10);
-          spendTime(50);
-          showToast('Pizza. You are a household.');
+          baby.happy = clamp(baby.happy + 16, 0, 100);
+          bump('mood', 10);
+          bump('energy', -4);
+          spendTime(15);
         },
       },
-      {
-        label: state.people.riley >= 70 && !state.rentPaid ? 'Ask Riley to cover $40 of rent' : 'Back to the mess',
-        run: () => {
-          if (state.people.riley >= 70 && !state.rentPaid) {
-            state.money += 40;
-            addRel('riley', -8);
-            bump('mood', -4);
-            showToast('Riley Venmos $40. “This is not a lifestyle.”');
-          }
-        },
-      },
+      { label: 'Set down', run: () => {} },
     ],
   });
 }
 
-function talkNico() {
+function birthBaby() {
+  state.pregnant = 0;
+  const spouse = personName(state.spouseId || 'riley');
   openEvent({
-    title: 'Nico',
-    body: pick([
-      'Nico: “The park ducks have a union now. I respect it.”',
-      'Nico: “Want to be a person with me for twenty minutes?”',
-      'Nico: “If you skip work I will pretend I did not see you.”',
-    ]) + ` Friendship ${Math.round(state.people.nico)}.`,
-    choices: [
-      {
-        label: 'Hang out $0',
-        run: () => {
-          bump('mood', 10);
-          addRel('nico', 8);
-          spendTime(30);
-        },
-      },
-      {
-        label: 'Get fries $12',
-        run: () => {
-          if (!trySpend(12, 'fries')) return;
-          bump('hunger', 16);
-          bump('mood', 14);
-          addRel('nico', 10);
-          spendTime(40);
-        },
-      },
-      { label: 'Wave and keep walking', run: () => addRel('nico', -1) },
-    ],
+    title: 'A baby',
+    body: `${spouse} and you have a baby. Name them. Feed them. Do not lose them in the laundry.`,
+    choices: [{
+      label: 'Name the baby',
+      run: () => openBabyName(),
+    }],
   });
+}
+
+function openBabyName() {
+  openMenu('new', `
+    <h2>Baby name</h2>
+    <p class="muted">A tiny Oak Street person.</p>
+    <input id="baby-name-input" type="text" maxlength="12" value="${esc(babyNameDraft)}" autocomplete="off" spellcheck="false">
+    <div class="menu-actions">
+      <button type="button" data-act="name-baby">Name them</button>
+    </div>
+  `);
+  const input = document.getElementById('baby-name-input');
+  if (input) {
+    input.focus();
+    input.addEventListener('input', () => { babyNameDraft = input.value; });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') nameBaby();
+    });
+  }
+}
+
+function nameBaby() {
+  const input = document.getElementById('baby-name-input');
+  const name = (input?.value || babyNameDraft || 'Juniper').trim().slice(0, 12) || 'Juniper';
+  state.babies.push({
+    name,
+    ageDays: 0,
+    hunger: 70,
+    happy: 80,
+    gender: Math.random() < 0.5 ? 'boy' : 'girl',
+    hair: pick(HAIR),
+    atDaycare: false,
+  });
+  bump('mood', 20);
+  bump('energy', -16);
+  closeMenu();
+  showToast(`${name} lives here now. Tiny bills incoming.`);
 }
 
 function talkHale() {
@@ -1389,17 +1818,6 @@ function talkPriya() {
     choices: [
       { label: 'Yes chef', run: () => { addRel('priya', 4); bump('mood', -2); spendTime(8); } },
       { label: 'Ask about hours', run: () => showToast('Weekdays 9 to 5. Late is a personality I do not fund.') },
-    ],
-  });
-}
-
-function talkAlex() {
-  openEvent({
-    title: 'Alex',
-    body: 'Alex: “If Priya asks, I have been steaming milk this whole time. Emotionally.”',
-    choices: [
-      { label: 'Cover for each other', run: () => { addRel('alex', 8); bump('mood', 6); spendTime(10); } },
-      { label: 'Back to the line', run: () => {} },
     ],
   });
 }
@@ -1744,22 +2162,30 @@ function openEvent(ev) {
 
 function openLife() {
   const j = job();
+  const roommate = neighborOf('riley');
   const ppl = [
-    ['Riley', 'riley', 'Roommate'],
+    [roommate.name, 'riley', state.spouseId === 'riley' ? 'Spouse' : roommate.role],
+    [personName('nico'), 'nico', state.spouseId === 'nico' ? 'Spouse' : 'Neighbor'],
+    [personName('alex'), 'alex', state.spouseId === 'alex' ? 'Spouse' : 'Neighbor'],
     ['Ms. Hale', 'hale', 'Landlord'],
     ['Priya', 'priya', 'Cafe boss'],
-    ['Alex', 'alex', 'Coworker'],
-    ['Nico', 'nico', 'Friend'],
     ['Dr. Moss', 'moss', 'Clinic'],
   ].map(([name, id, role]) => `
     <div class="row"><span>${name} · ${role}</span><span>${Math.round(state.people[id])}</span></div>
   `).join('');
+  const family = state.spouseId || state.babies.length
+    ? `<h3>Family</h3>
+       ${state.spouseId ? `<div class="row"><span>Married to</span><span>${esc(personName(state.spouseId))}</span></div>` : ''}
+       ${state.pregnant ? '<div class="row"><span>Baby on the way</span><span>yes</span></div>' : ''}
+       ${state.babies.map((b) => `<div class="row"><span>${esc(b.name)}${b.atDaycare ? ' · daycare' : ''}</span><span>${b.ageDays + 1}d · eat ${Math.round(b.hunger)}</span></div>`).join('')}`
+    : '';
   const pet = state.pet
     ? `<h3>${esc(state.pet.name)} the ${state.pet.kind}${state.petSick ? ' (sick)' : ''}</h3>
        <div class="row"><span>Hunger</span><span>${Math.round(state.pet.hunger)}</span></div>
        <div class="row"><span>Happy</span><span>${Math.round(state.pet.happy)}</span></div>
        <div class="row"><span>Clean</span><span>${Math.round(state.pet.clean)}</span></div>
-       <div class="row"><span>Pet food</span><span>${state.petFood}</span></div>`
+       <div class="row"><span>Pet food</span><span>${state.petFood}</span></div>
+       ${state.pet.atDaycare ? '<p class="muted">At Little Oak Daycare.</p>' : ''}`
     : '<p class="muted">No pet yet. Whisker Window is on the street.</p>';
   openMenu('life', `
     <h2>${esc(state.name)} · Life</h2>
@@ -1771,6 +2197,7 @@ function openLife() {
     <div class="row"><span>Apartment mess</span><span>${Math.round(state.mess)}</span></div>
     <div class="row"><span>Job misses</span><span>${state.misses}</span></div>
     ${pet}
+    ${family}
     <h3>People</h3>
     <div class="people-list">${ppl}</div>
     <div class="menu-actions">
@@ -1804,8 +2231,8 @@ function openBoot() {
       <button type="button" data-act="join-invite">Log in</button>
     </div>
     <div class="menu-actions">
+      <button type="button" data-act="new">New life</button>
       ${continueBtn}
-      <button type="button" class="ghost" data-act="new">New life</button>
     </div>
   `);
   const input = document.getElementById('boot-room-input');
@@ -1814,12 +2241,25 @@ function openBoot() {
   });
 }
 
+function openGender() {
+  openMenu('new', `
+    <h2>Boy or Girl?</h2>
+    <p>Pick you. If you are a boy, the neighbors are girls. If you are a girl, the neighbors are boys. Date them. Marry them. Have babies.</p>
+    <div class="menu-actions">
+      <button type="button" data-act="gender" data-arg="boy">Boy</button>
+      <button type="button" data-act="gender" data-arg="girl">Girl</button>
+    </div>
+  `);
+}
+
 function openNew() {
   const swatches = HAIR.map((c, i) =>
     `<button type="button" class="swatch${i === hairPick ? ' on' : ''}" data-act="hair" data-arg="${i}" style="background:${c}"></button>`
   ).join('');
+  const other = genderPick === 'girl' ? 'boys' : 'girls';
   openMenu('new', `
     <h2>Move-in day</h2>
+    <p class="muted">You are a ${genderPick}. Neighbors will be ${other}.</p>
     <p class="muted">Name on the mailbox.</p>
     <input id="name-input" type="text" maxlength="12" value="${esc(nameDraft)}" autocomplete="off" spellcheck="false">
     <p class="muted">Hair</p>
@@ -1843,13 +2283,17 @@ function startGame() {
   const name = (input?.value || nameDraft || 'Remy').trim().slice(0, 12) || 'Remy';
   state = newState();
   state.name = name;
+  state.gender = genderPick === 'girl' ? 'girl' : 'boy';
   state.hair = HAIR[hairPick];
+  state.shirt = state.gender === 'girl' ? '#e07a9a' : '#2a9d8f';
   closeMenu();
   save();
+  const roommate = personName('riley');
+  const other = state.gender === 'girl' ? 'boys' : 'girls';
   openEvent({
     title: `Welcome to 4B, ${state.name}`,
-    body: 'Riley has the other room. Rent is due Sunday. Work is a game: clock in at 9:00, play the morning rush, lunch at noon, back at 1:00. Late means fired. A pet is optional.',
-    choices: [{ label: 'I live here now', run: () => showToast('Work at 9:00 sharp. Late is fired. Lunch at noon.') }],
+    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. Rent is due Sunday. Work at 9:00.`,
+    choices: [{ label: 'I live here now', run: () => showToast('Talk to neighbors. Hearts up. Then propose.') }],
   });
   afterEnterLife();
 }
@@ -1868,6 +2312,8 @@ function load() {
     if (!raw) return false;
     const data = JSON.parse(raw);
     state = { ...newState(), ...data };
+    if (!Array.isArray(state.babies)) state.babies = [];
+    if (state.gender !== 'girl') state.gender = 'boy';
     state.dead = false;
     state.working = false;
     return true;
@@ -2180,17 +2626,28 @@ overlayContent.addEventListener('click', (e) => {
       closeMenu();
       showToast('Same street. Same problems. Hi.');
       afterEnterLife();
+    } else {
+      showToast('No save. Start a new life.');
+      openGender();
     }
-  } else if (act === 'join-invite') joinInviteNow();
-  else if (act === 'new') openNew();
-  else if (act === 'hair') {
+  }   else if (act === 'join-invite') joinInviteNow();
+  else if (act === 'new') openGender();
+  else if (act === 'gender') {
+    genderPick = arg === 'girl' ? 'girl' : 'boy';
+    openNew();
+  } else if (act === 'hair') {
     hairPick = Number(arg);
     openNew();
   } else if (act === 'start') startGame();
+  else if (act === 'name-baby') nameBaby();
+  else if (act === 'drop-kid') dropKid(Number(arg));
+  else if (act === 'pick-kid') pickKid(Number(arg));
+  else if (act === 'drop-pet') dropPet();
+  else if (act === 'pick-pet') pickPet();
   else if (act === 'restart') {
     localStorage.removeItem(SAVE_KEY);
     state = newState();
-    openNew();
+    openGender();
   } else if (act === 'hub') {
     netStop();
     window.location.href = 'index.html';
@@ -2224,6 +2681,15 @@ overlayContent.addEventListener('click', (e) => {
     spendTime(40);
     closeMenu();
     showToast('Dr. Moss: “Eat. Sleep. I cannot prescribe rent.”');
+  } else if (act === 'baby-check') {
+    if (!state.pregnant) return;
+    if (!trySpend(25, 'baby checkup')) return;
+    bump('health', 8);
+    bump('mood', 8);
+    addRel('moss', 6);
+    spendTime(30);
+    closeMenu();
+    showToast('Dr. Moss: “Tiny person is on schedule. You still have to eat.”');
   } else if (act === 'vet') {
     if (!state.pet) return;
     if (!trySpend(50, 'vet')) return;
@@ -2274,7 +2740,7 @@ function updateStats(dt) {
   if (state.hunger < 8) bump('health', -5 * hours);
   if (state.energy < 5) bump('health', -4 * hours);
   if (state.mood < 15) bump('health', -2 * hours);
-  if (state.pet) {
+  if (state.pet && !state.pet.atDaycare) {
     state.pet.hunger = clamp(state.pet.hunger - 3.2 * hours, 0, 100);
     state.pet.happy = clamp(state.pet.happy - 2.1 * hours, 0, 100);
     if (state.petSick) {
@@ -2314,34 +2780,28 @@ function updateWorld(dt) {
   if (riley.x < 180 || riley.x > 360) riley.vx *= -1;
   riley.face = riley.vx > 0 ? 1 : -1;
 
-  if (state.pet && state.scene === 'home' && !state.petOut) {
+  if (state.pet && state.scene === 'home' && !state.petOut && !state.pet.atDaycare) {
     state.pet.x += Math.sin(lastTime / 900) * 8 * dt;
     state.pet.y += Math.cos(lastTime / 1100) * 6 * dt;
     state.pet.x = clamp(state.pet.x, 160, 360);
     state.pet.y = clamp(state.pet.y, 300, 400);
   }
 
-  if (state.working && !jobGame && state.scene === 'work' && customers.filter((c) => !c.done).length < 3) {
-    if (Math.random() < dt * 0.35) {
-      customers.push({
-        x: rand(140, 400),
-        y: rand(260, 360),
-        done: false,
-        hair: pick(HAIR),
-        shirt: pick(['#457b9d', '#e76f51', '#2a9d8f', '#9b5de5', '#f4a261']),
-      });
-    }
-  }
-
-  if (state.working && !jobGame && hourOf(state.minutes) >= 17) {
+  if (state.working && hourOf(state.minutes) >= 17) {
     state.working = false;
   }
+
+  for (const c of customers) {
+    c.x += (c.tx - c.x) * Math.min(1, dt * 4);
+    c.y += (c.ty - c.y) * Math.min(1, dt * 4);
+  }
+  customers = customers.filter((c) => !c.done || c.y < 520);
 
   if (state.petOut && state.scene === 'home') state.petOut = false;
 }
 
 function updatePlayer(dt) {
-  if (menu || state.dead || jobGame) return;
+  if (menu || state.dead || jobGame || fade) return;
   let dx = 0;
   let dy = 0;
   if (keys.has('w') || keys.has('arrowup')) dy -= 1;
@@ -2388,7 +2848,7 @@ function skyColor() {
   return pal().sky;
 }
 
-function drawPerson(x, y, hair, shirt, face, walk, look) {
+function drawPerson(x, y, hair, shirt, face, walk, look, gender) {
   const s = 2;
   const ox = Math.round(x);
   const oy = Math.round(y);
@@ -2397,7 +2857,8 @@ function drawPerson(x, y, hair, shirt, face, walk, look) {
   const out = '#201810';
   const skin = '#f3c89a';
   const shade = '#dca070';
-  const pants = '#3a5a86';
+  const girl = gender === 'girl';
+  const pants = girl ? shadeHex(shirt, 0.85) : '#3a5a86';
   const shoe = '#4a3020';
 
   ctx.fillStyle = 'rgba(32, 24, 16, 0.28)';
@@ -2418,8 +2879,13 @@ function drawPerson(x, y, hair, shirt, face, walk, look) {
     p(-5, -19, 10, 7, shadeHex(hair, 0.88));
     p(-5, -11, 10, 8, out);
     p(-4, -10, 8, 7, shirt);
-    p(-4, -3, 3, 3, pants);
-    p(1, -3, 3, 3, pants);
+    if (girl) {
+      p(-6, -14, 2, 8, hair);
+      p(4, -14, 2, 8, hair);
+      p(-5, -3, 10, 4, pants);
+    }
+    p(-4, -3, 3, 3, girl ? skin : pants);
+    p(1, -3, 3, 3, girl ? skin : pants);
     p(-4 + (step ? -1 : 0), 0, 3, 2, shoe);
     p(1 + (step ? 1 : 0), 0, 3, 2, shoe);
     ctx.restore();
@@ -2446,10 +2912,15 @@ function drawPerson(x, y, hair, shirt, face, walk, look) {
   p(-5, -11, 10, 8, out);
   p(-4, -10, 8, 7, shirt);
   p(-3, -9, 6, 3, shadeHex(shirt, 1.12));
+  if (girl) {
+    p(-6, -14, 2, 10, hair);
+    p(4, -14, 2, 10, hair);
+    p(-5, -4, 10, 5, pants);
+  }
   p(-5, -8, 2, 3, skin);
   p(3, -8, 2, 3, skin);
-  p(-4, -3, 3, 4, pants);
-  p(1, -3, 3, 4, pants);
+  p(-4, -3, 3, 4, girl ? skin : pants);
+  p(1, -3, 3, 4, girl ? skin : pants);
   if (step) {
     p(-5, -2, 3, 3, pants);
     p(2, -1, 3, 3, pants);
@@ -2460,6 +2931,24 @@ function drawPerson(x, y, hair, shirt, face, walk, look) {
     p(1, 1, 3, 2, shoe);
   }
   ctx.restore();
+}
+
+function drawBaby(baby, x, y) {
+  const ox = Math.round(x);
+  const oy = Math.round(y);
+  ctx.fillStyle = 'rgba(32,24,16,0.2)';
+  ctx.fillRect(ox - 6, oy, 12, 3);
+  ctx.fillStyle = '#201810';
+  ctx.fillRect(ox - 6, oy - 16, 12, 10);
+  ctx.fillStyle = baby.hair || '#3b2a1a';
+  ctx.fillRect(ox - 5, oy - 20, 10, 6);
+  ctx.fillStyle = '#f3c89a';
+  ctx.fillRect(ox - 4, oy - 16, 8, 6);
+  ctx.fillStyle = baby.gender === 'girl' ? '#e07a9a' : '#3a78c8';
+  ctx.fillRect(ox - 5, oy - 10, 10, 8);
+  ctx.fillStyle = '#fff8f0';
+  ctx.fillRect(ox - 3, oy - 15, 2, 2);
+  ctx.fillRect(ox + 1, oy - 15, 2, 2);
 }
 
 function drawPet(pet, x, y) {
@@ -2516,6 +3005,34 @@ function drawLabel(text, x, y) {
   ctx.fillStyle = '#fff6d8';
   ctx.fillText(text, x, y);
   ctx.textAlign = 'left';
+}
+
+function drawBubble(text, x, y) {
+  const label = String(text || '');
+  const w = clamp(18 + label.length * 7.2, 70, 200);
+  const bx = Math.round(x - w / 2);
+  const by = Math.round(y - 62);
+  drawRect(bx, by, w, 20, '#fffdf4');
+  drawRect(bx, by, w, 2, '#c47838');
+  drawRect(bx + w / 2 - 3, by + 20, 6, 4, '#fffdf4');
+  ctx.fillStyle = '#402010';
+  ctx.font = '6px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, by + 14);
+  ctx.textAlign = 'left';
+}
+
+function drawQueue() {
+  const waiting = customers.filter((c) => !c.done).sort((a, b) => a.slot - b.slot);
+  const leaving = customers.filter((c) => c.done);
+  for (const c of [...leaving, ...waiting].reverse()) {
+    drawPerson(c.x, c.y, c.hair, c.shirt, 1, 0, c.done ? 'down' : 'up');
+  }
+  const front = waiting[0];
+  if (front) {
+    drawBubble(front.want, front.x, front.y);
+    if (front.slot === 0) drawLabel(front.name, front.x, front.y - 48);
+  }
 }
 
 function drawWoodFloor() {
@@ -2682,8 +3199,14 @@ function drawHome() {
   drawLabel('bed', 90, 40);
   drawLabel('bath', 318, 30);
   drawLabel('kitchen', 640, 30);
-  drawPerson(riley.x, riley.y, '#5c4d3c', '#3d6b4f', riley.face, lastTime / 1000, riley.vx > 0 ? 'right' : 'left');
-  if (state.pet && !state.petOut) drawPet(state.pet, state.pet.x, state.pet.y);
+  const roomie = neighborOf('riley');
+  drawPerson(riley.x, riley.y, roomie.hair, roomie.shirt, riley.face, lastTime / 1000, riley.vx > 0 ? 'right' : 'left', neighborGender());
+  if (state.spouseId && state.spouseId !== 'riley' && isSpouseHome()) {
+    const sp = neighborOf(state.spouseId);
+    drawPerson(420, 300, sp.hair, sp.shirt, -1, 0, 'left', neighborGender());
+  }
+  state.babies.filter((baby) => !baby.atDaycare).forEach((baby, i) => drawBaby(baby, 160 + i * 40, 320));
+  if (state.pet && !state.petOut && !state.pet.atDaycare) drawPet(state.pet, state.pet.x, state.pet.y);
 }
 
 function drawTown() {
@@ -2712,12 +3235,16 @@ function drawTown() {
   drawHouse(292, 200, 140, 72, '#f0c878', '#c06030', 'Market');
   if (state.openings?.market) drawLabel('HIRING', 362, 196);
   drawHouse(512, 200, 140, 72, '#e8d0a8', '#c070b0', 'Pets');
+  drawHouse(668, 318, 112, 80, '#f4ead4', '#e9c46a', 'Daycare');
   drawHouse(28, 328, 128, 88, '#f3d5a8', '#d84848', '4B');
   drawTree(250, 430);
   drawTree(470, 430);
   drawTree(720, 160);
-  if (nicoHere) drawPerson(170, 250, '#d4a017', '#e07040', 1, 0, 'down');
-  if (haleHere) drawPerson(120, 360, '#3a3028', '#6a6e78', 1, 0, 'down');
+  if (nicoHere) {
+    const n = neighborOf('nico');
+    drawPerson(170, 250, n.hair, n.shirt, 1, 0, 'down', neighborGender());
+  }
+  if (haleHere) drawPerson(120, 360, '#3a3028', '#6a6e78', 1, 0, 'down', 'girl');
 }
 
 function drawWork() {
@@ -2740,11 +3267,10 @@ function drawWork() {
   drawRect(560, 300, 28, 22, '#8b5a32');
   drawRect(600, 300, 28, 22, '#8b5a32');
   drawLabel('Bean & Oak', 400, 36);
-  drawPerson(520, 160, '#1a1a1a', '#8a4ac8', -1, 0, 'down');
-  drawPerson(640, 300, '#8b2e1a', '#3a78c8', -1, 0, 'left');
-  for (const c of customers) {
-    if (!c.done) drawPerson(c.x, c.y, c.hair, c.shirt, -1, 0, 'up');
-  }
+  drawPerson(520, 160, '#1a1a1a', '#8a4ac8', -1, 0, 'down', 'girl');
+  const alex = neighborOf('alex');
+  drawPerson(640, 300, alex.hair, alex.shirt, -1, 0, 'left', neighborGender());
+  drawQueue();
 }
 
 function drawOffice() {
@@ -2770,13 +3296,57 @@ function drawOffice() {
   drawRect(42, 354, 36, 84, '#8b5a32');
   drawLabel('Stack & File', 400, 36);
   drawPerson(520, 140, '#111111', '#2b2d42', -1, 0, 'down');
+  drawLabel('Insurance', 246, 148);
+  drawQueue();
+}
+
+function drawMarket() {
+  drawRect(0, 0, W, 100, '#f0c878');
+  drawRect(0, 92, W, 8, '#c06030');
+  drawWoodFloor();
+  drawRect(80, 156, 440, 56, '#6a4428');
+  drawRect(86, 148, 428, 14, '#8b5a32');
+  drawRect(96, 118, 64, 34, '#d84848');
+  drawRect(180, 118, 64, 34, '#8a8a8a');
+  drawRect(264, 118, 64, 34, '#e0a050');
+  drawRect(348, 118, 64, 34, '#2a9d8f');
+  drawRect(520, 160, 70, 180, '#c89850');
+  drawRect(610, 160, 70, 180, '#d4a85c');
+  drawRect(36, 348, 48, 96, '#6a4428');
+  drawRect(42, 354, 36, 84, '#8b5a32');
+  drawLabel('Corner Market', 400, 36);
+  drawQueue();
+}
+
+function drawDaycare() {
+  drawRect(0, 0, W, 100, '#f7d6e0');
+  drawRect(0, 92, W, 8, '#e9c46a');
+  drawWoodFloor();
+  drawRect(40, 130, 220, 90, '#f4ead4');
+  drawRect(48, 138, 80, 50, '#8ecae6');
+  drawRect(140, 138, 80, 50, '#e07a9a');
+  drawRect(280, 150, 160, 56, '#6a4428');
+  drawRect(286, 142, 148, 14, '#f0d060');
+  drawRect(500, 140, 90, 70, '#c47838');
+  drawRect(510, 148, 28, 22, '#fff6d8');
+  drawRect(548, 148, 28, 22, '#fff6d8');
+  drawRect(36, 348, 48, 96, '#6a4428');
+  drawRect(42, 354, 36, 84, '#8b5a32');
+  drawLabel('Little Oak', 400, 36);
+  drawPerson(520, 180, '#d4a017', '#e9c46a', -1, 0, 'down', 'girl');
+  state.babies.filter((b) => b.atDaycare).forEach((baby, i) => {
+    drawBaby(baby, 180 + (i % 3) * 70, 300 + Math.floor(i / 3) * 40);
+  });
+  if (state.pet?.atDaycare) drawPet(state.pet, 360, 340);
 }
 
 function drawPrompt() {
   if (jobGame) {
     promptLabel.textContent = jobGame.kind === 'cafe'
       ? 'A brew · S milk · D pour · F lid'
-      : 'A / S / D match the falling label';
+      : jobGame.kind === 'office'
+        ? 'A auto · S home · D health · F life'
+        : 'A fruit · S can · D bread · F bag';
     actLabel.textContent = 'Work';
     return;
   }
@@ -2802,7 +3372,7 @@ function drawHudBars() {
     : (state.shift === 'lunch' ? `${job().title} · lunch` : job().title);
   if (state.pet) {
     petLabel.classList.remove('hidden');
-    petLabel.textContent = `🐾 ${state.pet.name} · eat ${Math.round(state.pet.hunger)} · joy ${Math.round(state.pet.happy)}${state.petSick ? ' · sick' : ''}`;
+    petLabel.textContent = `🐾 ${state.pet.name}${state.pet.atDaycare ? ' · daycare' : ''} · eat ${Math.round(state.pet.hunger)} · joy ${Math.round(state.pet.happy)}${state.petSick ? ' · sick' : ''}`;
   } else {
     petLabel.classList.add('hidden');
   }
@@ -2810,14 +3380,12 @@ function drawHudBars() {
 }
 
 function render() {
-  if (jobGame) {
-    drawJobGame();
-    return;
-  }
   if (state.scene === 'home') drawHome();
   else if (state.scene === 'town') drawTown();
   else if (state.scene === 'work') drawWork();
   else if (state.scene === 'office') drawOffice();
+  else if (state.scene === 'market') drawMarket();
+  else if (state.scene === 'daycare') drawDaycare();
 
   for (const remote of remotes.values()) {
     if (remote.scene !== state.scene) continue;
@@ -2832,8 +3400,8 @@ function render() {
     );
     drawLabel(remote.name || 'Friend', remote.x, remote.y - 46);
   }
-  drawPerson(state.x, state.y, state.hair, state.shirt, state.face, state.moving, state.look);
-  if (state.pet && state.petOut && state.scene !== 'home') {
+  drawPerson(state.x, state.y, state.hair, state.shirt, state.face, state.moving, state.look, state.gender);
+  if (state.pet && state.petOut && !state.pet.atDaycare && state.scene !== 'home') {
     drawPet(state.pet, state.x - 20 * state.face, state.y + 6);
   }
 
@@ -2845,18 +3413,22 @@ function render() {
     ctx.fillStyle = 'rgba(220, 90, 40, 0.12)';
     ctx.fillRect(0, 0, W, H);
   }
+  if (jobGame) drawJobHud();
+  drawFade();
 }
 
 function loop(t) {
   const dt = Math.min(0.05, (t - lastTime) / 1000 || 0.016);
   lastTime = t;
-  if (jobGame && !menu && !state.dead) {
+  updateFade(dt);
+  if (jobGame && !menu && !state.dead && !fade) {
     updateJobGame(dt);
+    updateWorld(dt);
     if (toastTimer > 0) {
       toastTimer -= dt;
       if (toastTimer <= 0) toast = '';
     }
-  } else if (!menu && !state.dead) {
+  } else if (!menu && !state.dead && !fade) {
     if (multiplayerRole !== 'guest') {
       const speed = state.shift === 'lunch' ? 0.28 : 1;
       state.minutes += (dt * speed * 60) / SEC_PER_HOUR;
@@ -2898,7 +3470,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (typing) return;
   if (jobGame && e.repeat) return;
-  if (jobGame && handleWorkKey(k)) return;
+  if (jobGame && !fade && handleWorkKey(k)) return;
   if (k === 'p' && menu !== 'new' && menu !== 'event' && menu !== 'end') {
     openMultiplayerMenu();
     return;
