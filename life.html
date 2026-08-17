@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oak Street Life</title>
+  <link rel="stylesheet" href="css/life.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <button id="fullscreen-btn" type="button" aria-label="Full screen" title="Full screen">⛶</button>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <span id="day-label">Mon · Day 1</span>
+        <span id="time-label">7:00 AM</span>
+        <span id="money-label">$100</span>
+        <span id="job-label">Barista</span>
+      </div>
+      <div class="bars">
+        <div class="bar" title="Energy"><i>⚡</i><span><b id="energy-bar"></b></span></div>
+        <div class="bar" title="Hunger"><i>🍽</i><span><b id="hunger-bar"></b></span></div>
+        <div class="bar" title="Mood"><i>☺</i><span><b id="mood-bar"></b></span></div>
+        <div class="bar" title="Hygiene"><i>🚿</i><span><b id="hygiene-bar"></b></span></div>
+        <div class="bar" title="Health"><i>❤</i><span><b id="health-bar"></b></span></div>
+      </div>
+      <p id="pet-label" class="hidden"></p>
+      <p id="prompt-label"></p>
+      <p id="toast-label"></p>
+    </div>
+    <div id="action-bar">
+      <button type="button" id="act-btn"><kbd>Z</kbd> <span id="act-label">Do</span></button>
+      <button type="button" id="life-btn"><kbd>E</kbd> Life</button>
+      <button type="button" id="play-btn"><kbd>P</kbd> Play</button>
+      <button type="button" id="pause-btn"><kbd>Esc</kbd> Pause</button>
+    </div>
+    <div id="overlay">
+      <div id="overlay-content">
+        <h2>Oak Street Life</h2>
+        <p>You live in 4B. Riley has the other bedroom. Rent is due every Sunday. Bean &amp; Oak hired you as a barista. A pet would help, until it also has bills.</p>
+        <p>Eat. Sleep. Show up. Pay people. Try not to get evicted.</p>
+      </div>
+    </div>
+    <div id="controls-help">
+      <kbd>WASD</kbd> move · <kbd>Z</kbd> do · <kbd>A S D F</kbd> work · <kbd>P</kbd> online · <kbd>Esc</kbd> pause
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('life')) {
+      await import('./js/life.js');
+    }
+  </script>
+</body>
+</html>

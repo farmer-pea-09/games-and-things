@@ -1,5 +1,16 @@
 const PREFIX = 'gatch-';
-const PEER_SRC = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+const PEER_SRCS = [
+  'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
+];
+const PEER_OPTS = {
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ],
+  },
+};
 export const MAX_PLAYERS = 3;
 
 let PeerCtor = null;
@@ -10,15 +21,10 @@ let role = null;
 let roomCode = '';
 let handlers = {};
 
-function loadPeer() {
-  if (PeerCtor) return Promise.resolve(PeerCtor);
-  if (window.Peer) {
-    PeerCtor = window.Peer;
-    return Promise.resolve(PeerCtor);
-  }
+function loadPeerScript(src) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = PEER_SRC;
+    script.src = src;
     script.async = true;
     script.onload = () => {
       PeerCtor = window.Peer;
@@ -28,6 +34,23 @@ function loadPeer() {
     script.onerror = () => reject(new Error('Could not load multiplayer'));
     document.head.appendChild(script);
   });
+}
+
+async function loadPeer() {
+  if (PeerCtor) return PeerCtor;
+  if (window.Peer) {
+    PeerCtor = window.Peer;
+    return PeerCtor;
+  }
+  let lastError = new Error('Could not load multiplayer');
+  for (const src of PEER_SRCS) {
+    try {
+      return await loadPeerScript(src);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 function send(conn, message) {
@@ -91,14 +114,14 @@ export function netStop() {
   roomCode = '';
 }
 
-export async function netHost(code, nextHandlers = {}) {
+export async function netHost(code, nextHandlers = {}, idPrefix = PREFIX) {
   netStop();
   handlers = nextHandlers;
   role = 'host';
   roomCode = code;
   await loadPeer();
   return new Promise((resolve, reject) => {
-    peer = new PeerCtor(PREFIX + code);
+    peer = new PeerCtor(idPrefix + code, PEER_OPTS);
     const timer = setTimeout(() => reject(new Error('Hosting timed out')), 12000);
     peer.on('open', () => {
       clearTimeout(timer);
@@ -113,14 +136,14 @@ export async function netHost(code, nextHandlers = {}) {
   });
 }
 
-export async function netJoin(code, nextHandlers = {}) {
+export async function netJoin(code, nextHandlers = {}, idPrefix = PREFIX) {
   netStop();
   handlers = nextHandlers;
   role = 'guest';
   roomCode = code;
   await loadPeer();
   return new Promise((resolve, reject) => {
-    peer = new PeerCtor();
+    peer = new PeerCtor(PEER_OPTS);
     let joined = false;
     const timer = setTimeout(() => reject(new Error('Join timed out')), 12000);
     const fail = (error) => {
@@ -131,7 +154,7 @@ export async function netJoin(code, nextHandlers = {}) {
     };
     peer.on('error', fail);
     peer.on('open', () => {
-      hostConn = peer.connect(PREFIX + code, { reliable: true });
+      hostConn = peer.connect(idPrefix + code, { reliable: true });
       hostConn.on('data', (message) => {
         if (!message || typeof message !== 'object') return;
         if (message.t === 'full') {
@@ -161,8 +184,16 @@ export function makeRoomCode() {
   return code;
 }
 
+let inviteOrigin = '';
+
+export function setInviteOrigin(origin) {
+  inviteOrigin = String(origin || '').replace(/\/$/, '');
+}
+
 export function inviteUrl(code) {
-  const url = new URL(location.href);
+  const url = inviteOrigin
+    ? new URL(location.pathname + location.search, inviteOrigin)
+    : new URL(location.href);
   url.searchParams.delete('room');
   url.searchParams.set('play', code);
   return url.toString();

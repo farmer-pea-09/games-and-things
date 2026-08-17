@@ -39,7 +39,52 @@ h1 {
   font-size: 8px;
   line-height: 1.8;
   color: #d4b896;
-  margin-bottom: 36px;
+  margin-bottom: 20px;
+}
+
+.hub-join {
+  margin: 0 auto 32px;
+  max-width: 520px;
+  padding: 16px;
+  border: 3px solid #e9c46a;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hub-join p {
+  font-size: 8px;
+  color: #e9c46a;
+  margin-bottom: 12px;
+}
+
+.hub-join-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hub-join input,
+.hub-join select,
+.hub-join button {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 12px;
+  border: 2px solid #e9c46a;
+  background: #1a120c;
+  color: #fff8ef;
+}
+
+.hub-join input {
+  width: 140px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.hub-join button {
+  background: #e9c46a;
+  color: #1a120c;
+  cursor: pointer;
 }
 
 .game-grid {
@@ -69,6 +114,10 @@ h1 {
 
 .game-card.farm {
   background: linear-gradient(180deg, #e94560 0%, #b5179e 100%);
+}
+
+.game-card.life {
+  background: linear-gradient(180deg, #e8a87c 0%, #2a9d8f 100%);
 }
 
 .game-card.pet {

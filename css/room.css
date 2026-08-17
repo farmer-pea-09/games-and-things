@@ -52,6 +52,37 @@
   color: #1a120c;
 }
 
+.room-gate-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 20px;
+}
+
+.room-gate-form input,
+.room-gate-form button {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 12px;
+  border: 2px solid #e9c46a;
+}
+
+.room-gate-form input {
+  width: 160px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: #1a120c;
+  color: #fff8ef;
+}
+
+.room-gate-form button {
+  background: #e9c46a;
+  color: #1a120c;
+  cursor: pointer;
+}
+
 .room-badge {
   position: fixed;
   top: 12px;

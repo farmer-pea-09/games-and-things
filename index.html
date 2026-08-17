@@ -14,12 +14,30 @@
   <main class="hub">
     <p class="hub-kicker">Games and Things</p>
     <h1>Pick a game</h1>
-    <p class="hub-sub">Seven little worlds. Each play gets a one-time room code.</p>
+    <p class="hub-sub">Eight little worlds. Friends log in with a room code.</p>
+    <form id="hub-join-form" class="hub-join">
+      <p>Joining a friend?</p>
+      <div class="hub-join-row">
+        <input id="hub-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
+        <select id="hub-game" aria-label="Game">
+          <option value="life.html">Oak Street Life</option>
+          <option value="chameleon.html">Chameleon World</option>
+          <option value="pet-sim.html">Pet Simulator</option>
+        </select>
+        <button type="submit">Log in</button>
+      </div>
+    </form>
     <div class="game-grid">
       <a class="game-card farm" href="farm.html" data-game="farm">
         <span class="game-art" aria-hidden="true">🌾</span>
         <h2>A Farmer's Life</h2>
         <p>Till the soil, plant seeds, water crops, and sell your harvest. Seasons change every week.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card life" href="life.html" data-game="life">
+        <span class="game-art" aria-hidden="true">🏠</span>
+        <h2>Oak Street Life</h2>
+        <p>Hold down a job, pay the bills, care for a pet, and survive whatever the week throws at you.</p>
         <span class="play-label">Play</span>
       </a>
       <a class="game-card pet" href="pet.html" data-game="pet">

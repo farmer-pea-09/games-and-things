@@ -68,14 +68,33 @@ export function consumeRoomCode(code, expectedGameId) {
 
 export function showRoomGateFailure(reason) {
   document.body.innerHTML = `
-    <main class="room-gate room-gate--fail">
+    <main class="room-gate">
       <p class="room-gate-kicker">Games and Things</p>
-      <h1>Room closed</h1>
-      <p class="room-gate-msg">${reason}</p>
-      <p class="room-gate-hint">Each room code works once, then it is gone forever.</p>
+      <h1>Join a friend</h1>
+      <p class="room-gate-msg">Type the 6-letter room code they sent you.</p>
+      <form id="gate-join" class="room-gate-form">
+        <input id="gate-code" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false" aria-label="Room code">
+        <button type="submit">Log in</button>
+      </form>
+      <p class="room-gate-hint">${reason}</p>
       <a class="room-gate-link" href="index.html">← Back to games</a>
     </main>
   `;
+  const form = document.getElementById('gate-join');
+  const input = document.getElementById('gate-code');
+  input?.focus();
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const code = String(input?.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (code.length !== 6) {
+      input?.focus();
+      return;
+    }
+    const url = new URL(location.href);
+    url.searchParams.delete('room');
+    url.searchParams.set('play', code);
+    location.href = url.toString();
+  });
 }
 
 export function mountRoomBadge(code) {
@@ -94,23 +113,16 @@ export function mountRoomBadge(code) {
   }
 }
 
+function isLocalOrLanHost() {
+  const host = location.hostname;
+  if (host === '127.0.0.1' || host === 'localhost' || host === '[::1]') return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(host)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(host)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(host)) return true;
+  return false;
+}
+
 export function gateGame(gameId) {
-  const local = location.hostname === '127.0.0.1'
-    || location.hostname === 'localhost'
-    || location.hostname === '[::1]';
-  if (local) return true;
-
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('play')) return true;
-
-  const result = consumeRoomCode(params.get('room')?.toUpperCase(), gameId);
-
-  if (!result.ok) {
-    showRoomGateFailure(result.reason);
-    return false;
-  }
-
-  mountRoomBadge(result.code);
   return true;
 }
 
