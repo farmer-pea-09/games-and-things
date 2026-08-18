@@ -503,6 +503,7 @@ function interactables() {
       { id: 'lakexit', name: 'Oak Street', x: 50, y: 420, verb: 'Back to town' },
       { id: 'dock', name: 'Dock', x: 270, y: 300, verb: 'Fish' },
       { id: 'picnic', name: 'Picnic grounds', x: 620, y: 300, verb: 'Picnic' },
+      { id: 'rest', name: 'Shade bench', x: 720, y: 310, verb: 'Rest' },
       { id: 'fishshop', name: "Bo's Catch", x: 620, y: 140, verb: 'Sell fish' },
     ];
     if (partnerId() && spouseAtPicnic()) {
@@ -524,7 +525,7 @@ function nearestAction() {
   let best = null;
   let bestD = 70;
   for (const item of interactables()) {
-    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'fishshop' ? 24 : 0;
+    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'rest' || item.id === 'fishshop' ? 24 : 0;
     const d = dist(state.x, state.y, item.x, item.y);
     if (d < bestD + extra) {
       best = item;
@@ -745,6 +746,7 @@ function doAction(id) {
   if (id === 'lakexit') return fadeTo('Walking back to Oak Street...', () => goScene('town', 480, 430));
   if (id === 'dock') return fishAtDock();
   if (id === 'picnic') return picnicTime();
+  if (id === 'rest') return restAtLake();
   if (id === 'fishshop') return openFishShop();
   if (id === 'counter') return cafeAction();
   if (id === 'deskjob') return officeAction();
@@ -1759,6 +1761,21 @@ function picnicTime() {
     showToast(`Nice blanket. Your ${spouseWord()} would love this. Talk to them, then come back.`);
   } else {
     showToast('Picnic grounds. Cheap sky. Slightly damp blanket of peace.');
+  }
+}
+
+function restAtLake() {
+  if (state.energy > 92) return showToast('Already rested. The bench will keep.');
+  bump('energy', 16);
+  bump('mood', 6);
+  bump('hunger', -3);
+  spendTime(35);
+  const withSomeone = !!(partnerId() && spouseAtPicnic());
+  if (withSomeone) {
+    addRel(partnerId(), 3);
+    showToast(`${personName(partnerId())} sits close. Shade, lake, quiet.`);
+  } else {
+    showToast('Shade bench. The lake does the talking. Energy comes back.');
   }
 }
 
@@ -3267,13 +3284,15 @@ function updatePlayer(dt) {
   if (menu || state.dead || jobGame || fade) return;
   let dx = 0;
   let dy = 0;
+  const running = keys.has('q') || keys.has('keyq');
   if (keys.has('w') || keys.has('arrowup')) dy -= 1;
   if (keys.has('s') || keys.has('arrowdown')) dy += 1;
   if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
   if (keys.has('d') || keys.has('arrowright')) dx += 1;
   if (dx || dy) {
     const len = Math.hypot(dx, dy) || 1;
-    const spd = 110 * (state.energy < 20 ? 0.7 : 1);
+    const tired = state.energy < 12 ? 0.75 : 1;
+    const spd = (running ? 250 : 110) * tired;
     const nx = state.x + (dx / len) * spd * dt;
     const ny = state.y + (dy / len) * spd * dt;
     if (!hitsWall(nx, state.y)) state.x = nx;
@@ -3283,7 +3302,8 @@ function updatePlayer(dt) {
     state.face = dx < 0 ? -1 : dx > 0 ? 1 : state.face;
     if (Math.abs(dy) > Math.abs(dx)) state.look = dy < 0 ? 'up' : 'down';
     else if (dx) state.look = dx < 0 ? 'left' : 'right';
-    state.moving += dt;
+    state.moving += dt * (running ? 2.2 : 1);
+    if (running) bump('energy', -8 * dt / SEC_PER_HOUR);
   } else {
     state.moving = 0;
   }
@@ -3851,6 +3871,13 @@ function drawLake() {
   drawRect(592, 292, 12, 8, '#e07a9a');
   drawLabel('Picnic', 616, 258);
 
+  drawRect(678, 292, 92, 28, '#6a4428');
+  drawRect(682, 286, 84, 12, '#8b5a32');
+  drawRect(678, 318, 10, 14, '#5a3820');
+  drawRect(760, 318, 10, 14, '#5a3820');
+  drawRect(690, 290, 22, 10, '#3d6b4f');
+  drawLabel('Rest', 724, 278);
+
   drawRect(560, 88, 120, 78, '#6a4428');
   drawRect(566, 82, 108, 14, '#c04028');
   drawRect(572, 100, 40, 28, '#8ecae6');
@@ -3885,6 +3912,7 @@ function drawPrompt() {
   prompt = a;
   let text = a ? `${a.verb} · ${a.name}` : (state.scene === 'town' ? 'Street' : state.scene === 'lake' ? 'Lake' : 'Walk around');
   if (state.shift === 'lunch') text = 'LUNCH · eat, then clock in by 1:00';
+  if ((keys.has('q') || keys.has('keyq')) && !jobGame) text = `RUN · ${text}`;
   promptLabel.textContent = text;
   actLabel.textContent = a ? a.verb : 'Do';
 }
@@ -3991,10 +4019,13 @@ function loop(t) {
 }
 
 window.addEventListener('keydown', (e) => {
-  const typing = e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+  const typing = e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
   const k = e.key.toLowerCase();
-  if (!typing && (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || k === ' ')) e.preventDefault();
-  if (!typing) keys.add(k);
+  if (!typing && (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || k === 'q')) e.preventDefault();
+  if (!typing) {
+    keys.add(k);
+    if (e.code) keys.add(e.code.toLowerCase());
+  }
   if (k === 'escape') {
     if (menu === 'pause') closeMenu();
     else if (menu && menu !== 'boot' && menu !== 'new' && menu !== 'end' && menu !== 'event') closeMenu();
@@ -4017,7 +4048,10 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
   keys.delete(e.key.toLowerCase());
+  if (e.code) keys.delete(e.code.toLowerCase());
 });
+
+window.addEventListener('blur', () => keys.clear());
 
 document.getElementById('act-btn').addEventListener('click', () => {
   const a = nearestAction();

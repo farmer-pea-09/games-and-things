@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oak Street Life</title>
-  <link rel="stylesheet" href="css/life.css?v=lake3">
+  <link rel="stylesheet" href="css/life.css?v=sprintq2">
   <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,13 +47,13 @@
       </div>
     </div>
     <div id="controls-help">
-      <kbd>WASD</kbd> move · <kbd>Z</kbd> lake at the bottom of the street · type to your spouse
+      <kbd>WASD</kbd> walk · hold <kbd>Q</kbd> + walk to run · <kbd>Z</kbd> do
     </div>
   </div>
   <script type="module">
-    import { gateGame } from './js/room-code.js?v=lake3';
+    import { gateGame } from './js/room-code.js?v=sprintq2';
     if (gateGame('life')) {
-      await import('./js/life.js?v=lake3');
+      await import('./js/life.js?v=sprintq2');
     }
   </script>
 </body>
