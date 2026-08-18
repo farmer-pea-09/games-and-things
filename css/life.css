@@ -309,6 +309,66 @@ body {
   flex-wrap: wrap;
 }
 
+.spouse-log {
+  text-align: left;
+  max-height: 168px;
+  overflow-y: auto;
+  background: #fffdf4;
+  border: 2px solid #c47838;
+  padding: 8px;
+  margin: 8px 0;
+}
+
+.spouse-line {
+  font-size: 7px;
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.spouse-line b {
+  display: block;
+  color: #c47838;
+  margin-bottom: 2px;
+}
+
+.spouse-line.you b {
+  color: #3d6b4f;
+}
+
+.spouse-search {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0 4px;
+}
+
+.spouse-search input[type="search"],
+.spouse-search input[type="text"] {
+  font-family: inherit;
+  font-size: 8px;
+  padding: 10px 14px;
+  width: 280px;
+  max-width: 100%;
+  margin: 0;
+  border: 2px solid #c47838;
+  border-radius: 18px;
+  background: #fffdf4;
+  color: #402010;
+}
+
+.spouse-search input[type="search"]::placeholder,
+.spouse-search input[type="text"]::placeholder {
+  color: #a08058;
+}
+
+.spouse-search button {
+  margin-top: 0;
+  border-radius: 18px;
+  padding: 10px 14px;
+}
+
 #overlay-content .join-row button {
   margin-top: 0;
 }

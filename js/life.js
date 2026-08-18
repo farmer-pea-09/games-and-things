@@ -63,6 +63,19 @@ const PETS = {
   bird: { id: 'bird', label: 'Bird', price: 45, food: 8 },
 };
 
+const FISH = {
+  minnow: { id: 'minnow', name: 'Minnow', price: 4, weight: 28 },
+  perch: { id: 'perch', name: 'Yellow perch', price: 9, weight: 24 },
+  bass: { id: 'bass', name: 'Largemouth bass', price: 16, weight: 18 },
+  trout: { id: 'trout', name: 'Rainbow trout', price: 22, weight: 12 },
+  catfish: { id: 'catfish', name: 'Catfish', price: 14, weight: 12 },
+  king: { id: 'king', name: 'King carp', price: 45, weight: 6 },
+};
+
+function emptyFish() {
+  return { minnow: 0, perch: 0, bass: 0, trout: 0, catfish: 0, king: 0 };
+}
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -113,6 +126,8 @@ let pendingInvite = (new URLSearchParams(location.search).get('play') || '')
   .toUpperCase()
   .replace(/[^A-Z0-9]/g, '')
   .slice(0, 6);
+let spouseLog = [];
+let spouseLastAsk = '';
 
 fetch('/__lan.json', { cache: 'no-store' })
   .then((res) => (res.ok ? res.json() : null))
@@ -232,6 +247,8 @@ function newState() {
     marriedDay: 0,
     pregnant: 0,
     babies: [],
+    fish: emptyFish(),
+    invitedSpouse: false,
     flags: { intro: false, fridgeBroke: false, promoted: false, officeOffer: false },
     eventDay: 0,
     dead: false,
@@ -267,6 +284,32 @@ function isSpouseHome() {
   if (state.spouseId === 'riley') return true;
   const h = hourOf(state.minutes);
   return h >= 17 || h < 9 || isWeekend(state.day);
+}
+
+function spouseWord() {
+  if (state.spouseId) return neighborGender() === 'girl' ? 'wife' : 'husband';
+  return neighborGender() === 'girl' ? 'girlfriend' : 'boyfriend';
+}
+
+function partnerId() {
+  return state.spouseId || state.datingId || '';
+}
+
+function spouseAtPicnic() {
+  if (!partnerId() || state.scene !== 'lake') return false;
+  if (state.invitedSpouse) return true;
+  const h = hourOf(state.minutes);
+  return isWeekend(state.day) || h >= 16;
+}
+
+function fishTotal() {
+  const bag = state.fish || emptyFish();
+  return Object.values(bag).reduce((n, v) => n + (v || 0), 0);
+}
+
+function fishValue() {
+  const bag = state.fish || emptyFish();
+  return Object.keys(FISH).reduce((n, id) => n + (bag[id] || 0) * FISH[id].price, 0);
 }
 
 function job() {
@@ -344,6 +387,12 @@ const WALLS = {
     { x: 0, y: 0, w: 18, h: 480 },
     { x: 782, y: 0, w: 18, h: 480 },
   ],
+  lake: [
+    { x: 0, y: 0, w: 800, h: 12 },
+    { x: 0, y: 468, w: 800, h: 12 },
+    { x: 0, y: 0, w: 12, h: 480 },
+    { x: 788, y: 0, w: 12, h: 480 },
+  ],
 };
 
 function hitsWall(x, y) {
@@ -352,7 +401,15 @@ function hitsWall(x, y) {
   for (const w of walls) {
     if (r.x < w.x + w.w && r.x + r.w > w.x && r.y < w.y + w.h && r.y + r.h > w.y) return true;
   }
+  if (inLakeWater(x, y)) return true;
   return false;
+}
+
+function inLakeWater(x, y) {
+  if (state.scene !== 'lake') return false;
+  const onDock = x >= 200 && x <= 340 && y >= 190 && y <= 360;
+  if (onDock) return false;
+  return x > 48 && x < 450 && y > 70 && y < 240;
 }
 
 function dist(ax, ay, bx, by) {
@@ -406,6 +463,7 @@ function interactables() {
       { id: 'petshop', name: 'Pet shop', x: 600, y: 270, verb: 'Pet shop' },
       { id: 'daycare', name: 'Daycare', x: 700, y: 360, verb: 'Daycare' },
       { id: 'park', name: 'Oak Park', x: 150, y: 270, verb: 'Park' },
+      { id: 'lakepath', name: 'Lake path', x: 480, y: 430, verb: 'Walk to the lake' },
     ];
     if (nicoHere) list.push({ id: 'nico', name: personName('nico'), x: 170, y: 250, verb: state.spouseId === 'nico' ? 'Talk spouse' : 'Talk' });
     if (haleHere) list.push({ id: 'hale', name: 'Ms. Hale', x: 120, y: 360, verb: 'Talk' });
@@ -440,17 +498,37 @@ function interactables() {
       { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
     ]);
   }
+  if (state.scene === 'lake') {
+    const list = [
+      { id: 'lakexit', name: 'Oak Street', x: 50, y: 420, verb: 'Back to town' },
+      { id: 'dock', name: 'Dock', x: 270, y: 300, verb: 'Fish' },
+      { id: 'picnic', name: 'Picnic grounds', x: 620, y: 300, verb: 'Picnic' },
+      { id: 'fishshop', name: "Bo's Catch", x: 620, y: 140, verb: 'Sell fish' },
+    ];
+    if (partnerId() && spouseAtPicnic()) {
+      const id = partnerId();
+      list.push({
+        id,
+        name: personName(id),
+        x: 580,
+        y: 280,
+        verb: 'Talk spouse',
+      });
+    }
+    return addRemotes(list);
+  }
   return addRemotes([]);
 }
 
 function nearestAction() {
   let best = null;
-  let bestD = 52;
+  let bestD = 70;
   for (const item of interactables()) {
+    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'fishshop' ? 24 : 0;
     const d = dist(state.x, state.y, item.x, item.y);
-    if (d < bestD) {
+    if (d < bestD + extra) {
       best = item;
-      bestD = d;
+      bestD = d - extra;
     }
   }
   return best;
@@ -468,7 +546,7 @@ function goScene(scene, x, y) {
   if (scene !== 'work' && scene !== 'office' && scene !== 'market' && state.working) {
     state.working = false;
   }
-  if (scene === 'town' || scene === 'home') customers = [];
+  if (scene === 'town' || scene === 'home' || scene === 'lake') customers = [];
 }
 
 function fadeTo(text, then) {
@@ -660,6 +738,14 @@ function doAction(id) {
   if (id === 'daydesk') return openDaycareDesk();
   if (id === 'dot') return talkDot();
   if (id === 'park') return parkTime();
+  if (id === 'lakepath') {
+    if (state.pet && !state.pet.atDaycare) state.petOut = true;
+    return fadeTo('The path down to the lake...', () => goScene('lake', 60, 420));
+  }
+  if (id === 'lakexit') return fadeTo('Walking back to Oak Street...', () => goScene('town', 480, 430));
+  if (id === 'dock') return fishAtDock();
+  if (id === 'picnic') return picnicTime();
+  if (id === 'fishshop') return openFishShop();
   if (id === 'counter') return cafeAction();
   if (id === 'deskjob') return officeAction();
   if (id === 'register') return groceryAction();
@@ -756,6 +842,7 @@ function newDay(fromSleep) {
   workTips = 0;
   customers = [];
   if (fromSleep || state.day > 1) rollOpenings();
+  state.invitedSpouse = false;
   state.mess = clamp(state.mess + 6, 0, 100);
   if (state.pet && !state.pet.atDaycare) {
     state.pet.hunger = clamp(state.pet.hunger - 22, 0, 100);
@@ -1617,16 +1704,117 @@ function parkTime() {
   if (nicoHere) addRel('nico', 3);
 }
 
+function fishAtDock() {
+  if (hourOf(state.minutes) < 6 || hourOf(state.minutes) >= 22) {
+    return showToast('Too dark. The lake keeps its secrets.');
+  }
+  if (state.energy < 12) return showToast('Too tired to fish. Eat or sleep first.');
+  bump('energy', -10);
+  bump('hygiene', -4);
+  spendTime(25);
+  if (Math.random() < 0.08) {
+    bump('mood', -2);
+    return showToast('A nibble. Then nothing. The lake laughs.');
+  }
+  const season = seasonId();
+  const h = hourOf(state.minutes);
+  const bag = [];
+  for (const [id, fish] of Object.entries(FISH)) {
+    let w = fish.weight;
+    if (id === 'trout' && season === 0) w += 8;
+    if (id === 'bass' && season === 1) w += 8;
+    if (id === 'catfish' && (h >= 18 || h < 8)) w += 10;
+    if (id === 'king' && isWeekend(state.day)) w += 4;
+    if (season === 3) w = id === 'minnow' || id === 'perch' ? w + 10 : Math.max(2, w - 6);
+    for (let i = 0; i < w; i++) bag.push(id);
+  }
+  const id = pick(bag);
+  if (!state.fish) state.fish = emptyFish();
+  state.fish[id] = (state.fish[id] || 0) + 1;
+  bump('mood', id === 'king' ? 18 : 8);
+  showToast(id === 'king'
+    ? `KING CARP! ${FISH[id].name}. Bo will lose his mind.`
+    : `You caught a ${FISH[id].name}. Sell it at Bo's Catch.`);
+}
+
+function picnicTime() {
+  const withSpouse = !!(partnerId() && spouseAtPicnic());
+  if (state.food > 0) {
+    state.food -= 1;
+    bump('hunger', 28);
+  } else if (state.snacks > 0) {
+    state.snacks -= 1;
+    bump('hunger', 14);
+  } else {
+    bump('hunger', 4);
+  }
+  bump('mood', withSpouse ? 18 : 10);
+  bump('energy', 6);
+  bump('hygiene', -2);
+  spendTime(40);
+  if (withSpouse) {
+    addRel(partnerId(), 8);
+    showToast(`${personName(partnerId())} passes you strawberries. Ants attend.`);
+  } else if (partnerId()) {
+    showToast(`Nice blanket. Your ${spouseWord()} would love this. Talk to them, then come back.`);
+  } else {
+    showToast('Picnic grounds. Cheap sky. Slightly damp blanket of peace.');
+  }
+}
+
+function openFishShop() {
+  if (hourOf(state.minutes) < 7 || hourOf(state.minutes) >= 21) {
+    return showToast("Bo's Catch is closed. Come back in the morning.");
+  }
+  if (!state.fish) state.fish = emptyFish();
+  const rows = Object.keys(FISH).map((id) => {
+    const n = state.fish[id] || 0;
+    if (!n) return '';
+    return `<button type="button" data-act="sell-fish" data-arg="${id}">Sell ${esc(FISH[id].name)} $${FISH[id].price} · have ${n}</button>`;
+  }).filter(Boolean).join('');
+  const total = fishTotal();
+  const worth = fishValue();
+  openMenu('shop', `
+    <h2>Bo's Catch</h2>
+    <p class="muted">Bo buys whatever you pull out of Oak Lake. Cash today, fish smell forever.</p>
+    <div class="row"><span>In your bucket</span><span>${total} fish · $${worth}</span></div>
+    <div class="choice-list">
+      ${total ? `<button type="button" data-act="sell-fish" data-arg="all">Sell all $${worth}</button>${rows}` : '<p class="muted">Bucket is empty. Fish at the dock first.</p>'}
+      <button type="button" class="ghost" data-act="close">Leave</button>
+    </div>
+  `);
+}
+
+function sellFish(arg) {
+  if (!state.fish) state.fish = emptyFish();
+  if (arg === 'all') {
+    const worth = fishValue();
+    const n = fishTotal();
+    if (!n) return showToast('Nothing to sell.');
+    state.money += worth;
+    state.fish = emptyFish();
+    bump('mood', 6);
+    spendTime(8);
+    closeMenu();
+    return showToast(`Bo counts ${n} fish. +$${worth}.`);
+  }
+  const fish = FISH[arg];
+  if (!fish || !(state.fish[arg] > 0)) return showToast('You do not have that fish.');
+  state.fish[arg] -= 1;
+  state.money += fish.price;
+  bump('mood', 3);
+  spendTime(4);
+  showToast(`Sold a ${fish.name} for $${fish.price}.`);
+  openFishShop();
+}
+
 function talkNeighbor(id) {
+  if (state.spouseId === id || state.datingId === id) return openSpouseTalk(id);
   const n = neighborOf(id);
   const rel = Math.round(state.people[id] || 0);
-  const spouse = state.spouseId === id;
   const dating = state.datingId === id;
-  const they = neighborGender() === 'girl' ? 'she' : 'he';
-  const them = neighborGender() === 'girl' ? 'her' : 'him';
   let body = `${n.name}: “`;
-  if (spouse) body += pick(['I made tea. Sit with me.', 'Our place. Our mess. I like it.', 'Kiss the baby for me if they wake.']);
-  else if (dating) body += pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']);
+  if (dating) body += pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']);
   else if (rel >= 70) body += pick(['I keep looking at you. It is a problem.', 'Want to be more than hallway friends?', 'If you asked me out I would say yes.']);
   else body += pick(['The hallway light is a character now.', 'Want to be a person with me for twenty minutes?', 'You live here. I live here. Hi.']);
   body += `” Hearts ${rel}.`;
@@ -1640,7 +1828,7 @@ function talkNeighbor(id) {
       },
     },
   ];
-  if (!spouse && rel >= 45) {
+  if (rel >= 45) {
     choices.push({
       label: dating ? 'Go on a date $18' : 'Ask out $18',
       run: () => {
@@ -1654,37 +1842,266 @@ function talkNeighbor(id) {
       },
     });
   }
-  if (!spouse && (dating || rel >= 80)) {
+  if (dating || rel >= 80) {
     choices.push({
       label: 'Propose $50',
       run: () => proposeTo(id),
     });
   }
-  if (spouse) {
-    choices.push({
-      label: 'Kiss',
-      run: () => {
-        bump('mood', 14);
-        addRel(id, 4);
-        spendTime(10);
-        showToast(`${n.name} kisses you in the kitchen light.`);
-      },
-    });
-    if (!state.pregnant && state.babies.length < 3 && state.day - (state.marriedDay || 0) >= 2) {
-      choices.push({
-        label: 'Try for a baby',
-        run: () => {
-          state.pregnant = 1;
-          bump('energy', -10);
-          bump('mood', 10);
-          spendTime(40);
-          showToast(`${n.name} holds your hand. Something new is coming.`);
-        },
-      });
-    }
-  }
   choices.push({ label: 'Later', run: () => {} });
   openEvent({ title: n.name, body, choices });
+}
+
+function openSpouseTalk(id) {
+  const n = neighborOf(id);
+  const role = state.spouseId === id ? spouseWord() : (neighborGender() === 'girl' ? 'girlfriend' : 'boyfriend');
+  if (!spouseLog.length) {
+    spouseLog.push({
+      who: 'them',
+      text: pick([
+        `Hey ${state.name}. Type anything. I will answer.`,
+        `Hi. This is a real talk. Ask me about the lake, dinner, or us.`,
+        `I am here. Search bar, then say it.`,
+      ]),
+    });
+  }
+  const logHtml = spouseLog.slice(-10).map((line) => {
+    const who = line.who === 'you' ? state.name : n.name;
+    return `<div class="spouse-line ${line.who}"><b>${esc(who)}</b> ${esc(line.text)}</div>`;
+  }).join('');
+  const babyBtn = (state.spouseId === id && !state.pregnant && state.babies.length < 3 && state.day - (state.marriedDay || 0) >= 2)
+    ? '<button type="button" data-act="spouse-baby">Try for a baby</button>'
+    : '';
+  const picnicBtn = '<button type="button" data-act="spouse-picnic">Come to the picnic grounds</button>';
+  openMenu('spouse', `
+    <h2>${esc(n.name)} · your ${role}</h2>
+    <p class="muted">Hearts ${Math.round(state.people[id] || 0)}. Type in the search box, then Say.</p>
+    <div class="spouse-log" id="spouse-log">${logHtml}</div>
+    <div class="spouse-search">
+      <input id="spouse-input" type="text" maxlength="160" placeholder="Search, ask, say anything..." autocomplete="off" spellcheck="true">
+      <button type="button" data-act="spouse-say">Say</button>
+    </div>
+    <div class="choice-list">
+      <button type="button" data-act="spouse-kiss">Kiss</button>
+      ${picnicBtn}
+      ${babyBtn}
+      <button type="button" class="ghost" data-act="close">Later</button>
+    </div>
+  `);
+  const input = document.getElementById('spouse-input');
+  const log = document.getElementById('spouse-log');
+  if (log) log.scrollTop = log.scrollHeight;
+  if (input) {
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendSpouseSay();
+      }
+    });
+  }
+}
+
+function sendSpouseSay() {
+  const input = document.getElementById('spouse-input');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  const id = partnerId();
+  if (!id) return;
+  spouseLog.push({ who: 'you', text: text.slice(0, 160) });
+  const reply = spouseReply(text);
+  spouseLog.push({ who: 'them', text: reply });
+  if (spouseLog.length > 28) spouseLog = spouseLog.slice(-28);
+  spouseLastAsk = text.toLowerCase();
+  addRel(id, 2);
+  bump('mood', 4);
+  spendTime(3);
+  openSpouseTalk(id);
+}
+
+function said(t, ...needles) {
+  return needles.some((n) => t.includes(n));
+}
+
+function spouseVoice(kind) {
+  const id = partnerId();
+  const home = {
+    riley: {
+      soft: ['Our kitchen light is doing its ugly best.', 'I made the bed. Then I unmade it with a nap.'],
+      tease: ['You live in 4B. I married that.', 'Do not make me be the adult and the cute one.'],
+    },
+    nico: {
+      soft: ['I keep thinking about that lake path.', 'Walks fix more than talking, but talking is nice too.'],
+      tease: ['You found me on a sidewalk and then you kept me. Bold.', 'If we go outside I will pretend the bills cannot swim.'],
+    },
+    alex: {
+      soft: ['Cafe brain is still on. I will turn it off for you.', 'Tell me a small true thing and I will keep it.'],
+      tease: ['Priya is not invited to this conversation.', 'I will steal your hoodie. That is the marriage.'],
+    },
+  };
+  const pack = home[id] || home.riley;
+  return pick(pack[kind] || pack.soft);
+}
+
+function spouseReply(raw) {
+  const t = raw.toLowerCase().replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  const you = state.name;
+  const id = partnerId();
+  const name = personName(id);
+  const they = spouseWord();
+  const h = hourOf(state.minutes);
+  const clock = formatTime(state.minutes);
+  const baby = state.babies[0];
+  const fishN = fishTotal();
+  const repeat = spouseLastAsk && t === spouseLastAsk.replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  if (repeat) {
+    return pick([
+      `You said that already, ${you}. I heard you the first time. I still mean my answer.`,
+      `Same question, same heart. I am not a vending machine. I am your ${they}. Ask me the feeling under it.`,
+      `I remember. I am still here. Try me with a new sentence.`,
+    ]);
+  }
+
+  if (/^(hi|hey|hello|yo|sup|hola)\b/.test(t) || t === 'hi' || said(t, 'good morning', 'good night', 'good evening')) {
+    if (h < 11) return pick([`Morning, ${you}. You have that almost-awake face. Coffee, then the rest of the world.`, `Hey. It is ${clock}. I saved you the less burnt toast.`]);
+    if (h >= 21) return pick([`Hey, late person. Come sit. The day can stop chewing you now.`, `Hi love. Night is allowed. You do not have to earn sleep.`]);
+    return pick([`Hi ${you}. I am glad it is your voice and not a bill.`, `Hey. I missed that exact sound. What is on your mind?`]);
+  }
+
+  if (said(t, 'love you', 'i love', 'love u', 'in love', 'my love')) {
+    addRel(id, 3);
+    return pick([
+      `I love you too. Not the movie kind. The dishes-and-rent kind, which is better.`,
+      `Say it again later when I am annoying. I will still say it back.`,
+      `I know. I still like hearing it. I love you, ${you}. That is the whole plot.`,
+    ]);
+  }
+
+  if (said(t, 'kiss', 'hug', 'cuddle', 'hold me', 'miss you', 'missed you')) {
+    bump('mood', 4);
+    return pick([
+      `Come here. I am not going anywhere except maybe the lake if you ask nice.`,
+      `Missed you too. Oak Street is louder when you are in another room.`,
+      `Hug first. Words second. That is the deal.`,
+    ]);
+  }
+
+  if (said(t, 'how are you', 'how r you', 'how are u', 'how do you feel', 'you okay', 'you ok', 'are you ok')) {
+    if (state.people[id] >= 80) return pick([`I am good, actually. Married to you. Weird sentence. True though.`, `Tired in a soft way. Like a cat in a sun patch. How are you?`]);
+    if (state.money < 30) return pick([`I am a little tight in the chest about money. Not at you. At the math.`, `Okay-ish. The jar is skinny. We can fish. We can figure it out.`]);
+    return pick([`I am alright, ${you}. A little hungry, a little fond of you. Normal.`, `Fine. Better now that you asked like a human and not like a form.`]);
+  }
+
+  if (said(t, 'fish', 'fishing', 'lake', 'dock', 'carp', 'trout', 'bass', 'catch')) {
+    if (fishN) return `You have ${fishN} fish in the bucket. Bo's Catch by the picnic grounds pays cash. I will cheer like it is a sport.`;
+    return pick([
+      `Take the path by daycare. Dock is on the water. I like when you come back smelling like lake.`,
+      `Go fish. I will keep the blanket warm at the picnic grounds. Sell the pretty ones to Bo.`,
+      spouseVoice('soft') + ' Also: the lake is prettier when you are on that dock.',
+    ]);
+  }
+
+  if (said(t, 'picnic', 'blanket', 'strawberr', 'grounds', 'park')) {
+    if (state.scene === 'lake') {
+      state.invitedSpouse = true;
+      return pick([`I am already here. Sit. The ants RSVP'd.`, `Picnic grounds, us, a little food, a lot of sky. That is a date that does not cost $18.`]);
+    }
+    return pick([
+      `Yes. Lake path by daycare. I will meet you at the picnic grounds.`,
+      `Pack whatever is left in the fridge. I will bring the part where I look at you too long.`,
+    ]);
+  }
+
+  if (said(t, 'baby', 'babies', 'kid', 'kids', 'child', 'pregnant', 'family')) {
+    if (state.pregnant) return pick([`The baby is coming. I am scared in a hopeful way. Hold my hand when it gets loud.`, `I keep talking to your belly like a weirdo. They can deal.`]);
+    if (baby) return pick([`${baby.name} is ${baby.ageDays + 1} day(s) in. Tiny. Loud. Ours. Daycare is Little Oak if we need a minute.`, `I checked ${baby.name}. Still small. Still the point.`]);
+    return pick([`We can try when we are ready. No rush from me. A little rush from my heart, maybe.`, `A baby would make the apartment even smaller. I still want one with you, someday.`]);
+  }
+
+  if (said(t, 'pet', 'cat', 'dog', 'bird', 'animal') && state.pet) {
+    return pick([
+      `${state.pet.name} is a roommate with worse manners and better timing.`,
+      `Kiss ${state.pet.name} for me. Then kiss me so I do not get jealous of a ${state.pet.kind}.`,
+    ]);
+  }
+
+  if (said(t, 'work', 'job', 'boss', 'priya', 'shift', 'cafe', 'office', 'fired', 'money', 'rent', 'bill', 'broke', 'poor')) {
+    const j = job();
+    if (!state.rentPaid && weekday(state.day) >= 5) {
+      return `Rent is still out there being rent. Pay it at the desk before Ms. Hale grows another frown. We have $${Math.floor(state.money)}.`;
+    }
+    if (j.id === 'none') return pick([`No job is a plot twist I did not like. Apply at the signs. I will pack you a snack.`, `We can fish for a minute. Then you go get hired again. I believe in you in a practical way.`]);
+    return pick([
+      `${j.title} at ${j.place}. I know. Clock in on time. I will be proud in the quiet way.`,
+      `Work is a machine. You are a person. Come home anyway.`,
+      spouseVoice('tease') + ` Also work. Sadly.`,
+    ]);
+  }
+
+  if (said(t, 'food', 'eat', 'dinner', 'hungry', 'cook', 'breakfast', 'lunch', 'snack')) {
+    if (state.food <= 0 && state.snacks <= 0) return pick([`Fridge is performing modern art: empty. Market, or we picnic on vibes.`, `I would cook if ingredients existed. They do not. This is a tragedy in 4B.`]);
+    if (h >= 17) return pick([`Dinner can be real food or picnic leftovers. I vote sitting close.`, `I will heat something. You tell me about your day like it matters, because it does.`]);
+    return pick([`There are ${state.food} meals and ${state.snacks} snacks. We are not fancy. We are fed-ish.`, `Eat. I cannot kiss a person who is about to faint in a cute way.`]);
+  }
+
+  if (said(t, 'tired', 'sleep', 'bed', 'nap', 'exhaust')) {
+    return pick([`Then stop being a hero. Bed is that way. I will be the big spoon if you ask.`, `You sound like a person who worked. Sleep. I will still like you in the morning.`]);
+  }
+
+  if (said(t, 'sad', 'stress', 'cry', 'scared', 'anxious', 'lonely', 'hate', 'angry', 'mad')) {
+    bump('mood', 6);
+    return pick([
+      `Okay. Come here. You do not have to be impressive. You can just be mine for a minute.`,
+      `That sounds heavy. Put it down next to me. We will look at it together, then the lake.`,
+      `I hear you. I am not leaving. Say the ugly part if you want. Or sit. Both count.`,
+    ]);
+  }
+
+  if (said(t, 'weather', 'rain', 'sun', 'snow', 'season', 'spring', 'summer', 'winter', 'fall', 'autumn')) {
+    return pick([
+      `${seasonName()} on Oak Street. The lake still shows up. So do I.`,
+      `Sky is doing ${seasonName().toLowerCase()}. Picnic if it is kind. Couch if it is not.`,
+    ]);
+  }
+
+  if (said(t, 'what should', 'what do i', 'help me', 'advice', 'bored', 'what now')) {
+    if (fishN) return `Sell the fish at Bo's Catch, then picnic. Or kiss me first. I am biased.`;
+    if (!state.rentPaid && weekday(state.day) >= 5) return `Pay rent. Then the lake. Romance after the landlord, sadly.`;
+    if (h >= 16) return `Lake path by daycare. Fish a little. Picnic. Talk to me like this the whole way.`;
+    return pick([`Work if you have it. Lake if you do not. Me, either way.`, `Go outside. The path to the lake is waiting like a dog.`]);
+  }
+
+  if (said(t, 'who are you', 'your name', 'husband', 'wife', 'married', 'marry')) {
+    return pick([
+      `I am ${name}. Your ${they}. The person who said yes on purpose.`,
+      `${name}. Not a quest marker. A whole human who likes your face.`,
+    ]);
+  }
+
+  if (said(t, 'joke', 'funny', 'laugh', 'make me')) {
+    return pick([
+      `Why did the bass break up with the minnow? Too much school. I am sorry. I love you.`,
+      `Ms. Hale walked into a bar. She assessed the rent. That is the whole joke.`,
+      `I would tell a better joke but I spent my comedy points on marrying you.`,
+    ]);
+  }
+
+  const bits = [];
+  if (h >= 21) bits.push(`It is ${clock}. I want you home-ish.`);
+  else if (h < 8) bits.push(`Early. The street is still yawning.`);
+  if (state.mood < 35) bits.push(`You seem low. I noticed.`);
+  if (fishN) bits.push(`Fish in the bucket: ${fishN}.`);
+  if (baby) bits.push(`${baby.name} exists. Wild.`);
+  if (state.scene === 'lake') bits.push(`Lake air is good on you.`);
+  else bits.push(spouseVoice('soft'));
+  const extra = bits.length ? ` ${pick(bits)}` : '';
+  return pick([
+    `I heard you.${extra} Tell me the rest.`,
+    `Okay. I am listening like a person, not a menu.${extra}`,
+    `Mm. Say more, ${you}. I like when you use real sentences with me.`,
+    `That landed. I am your ${they}, not a search engine, but I will try.${extra}`,
+  ]);
 }
 
 function proposeTo(id) {
@@ -1695,11 +2112,12 @@ function proposeTo(id) {
   state.spouseId = id;
   state.datingId = id;
   state.marriedDay = state.day;
+  spouseLog = [{ who: 'them', text: `I said yes, ${state.name}. Talk to me whenever. Type it. I will answer like a person.` }];
   addRel(id, 20);
   bump('mood', 24);
   openEvent({
     title: 'Married',
-    body: `${n.name} says yes. Oak Street claps from behind a curtain. You can try for a baby in a couple of days.`,
+    body: `${n.name} says yes. Oak Street claps from behind a curtain. Talk to your ${neighborGender() === 'girl' ? 'wife' : 'husband'} and type anything. There is a lake path by daycare, picnic grounds, and Bo buys fish.`,
     choices: [{ label: 'We live here now', run: () => showToast(`${n.name} is family.`) }],
   });
 }
@@ -2194,6 +2612,7 @@ function openLife() {
     <div class="row"><span>Rent</span><span class="${state.rentPaid ? 'good' : 'warn'}">${state.rentPaid ? 'paid' : '$' + rentOwed() + ' due Sun'}</span></div>
     <div class="row"><span>Utilities</span><span class="${state.utilPaid ? 'good' : 'warn'}">${state.utilPaid ? 'paid' : '$' + utilOwed()}</span></div>
     <div class="row"><span>Meals / snacks</span><span>${state.food} / ${state.snacks}</span></div>
+    <div class="row"><span>Fish</span><span>${fishTotal()} · $${fishValue()}</span></div>
     <div class="row"><span>Apartment mess</span><span>${Math.round(state.mess)}</span></div>
     <div class="row"><span>Job misses</span><span>${state.misses}</span></div>
     ${pet}
@@ -2201,6 +2620,7 @@ function openLife() {
     <h3>People</h3>
     <div class="people-list">${ppl}</div>
     <div class="menu-actions">
+      <button type="button" data-act="go-lake">Go to the lake</button>
       <button type="button" class="ghost" data-act="close">Close</button>
     </div>
   `);
@@ -2286,13 +2706,15 @@ function startGame() {
   state.gender = genderPick === 'girl' ? 'girl' : 'boy';
   state.hair = HAIR[hairPick];
   state.shirt = state.gender === 'girl' ? '#e07a9a' : '#2a9d8f';
+  spouseLog = [];
+  spouseLastAsk = '';
   closeMenu();
   save();
   const roommate = personName('riley');
   const other = state.gender === 'girl' ? 'boys' : 'girls';
   openEvent({
     title: `Welcome to 4B, ${state.name}`,
-    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. Rent is due Sunday. Work at 9:00.`,
+    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. After you marry, talk to your husband or wife and type anything — they answer like a person. Path by daycare goes to the lake. Picnic there. Sell fish at Bo's Catch. Rent is due Sunday. Work at 9:00.`,
     choices: [{ label: 'I live here now', run: () => showToast('Talk to neighbors. Hearts up. Then propose.') }],
   });
   afterEnterLife();
@@ -2313,6 +2735,7 @@ function load() {
     const data = JSON.parse(raw);
     state = { ...newState(), ...data };
     if (!Array.isArray(state.babies)) state.babies = [];
+    state.fish = { ...emptyFish(), ...(data.fish || {}) };
     if (state.gender !== 'girl') state.gender = 'boy';
     state.dead = false;
     state.working = false;
@@ -2658,7 +3081,47 @@ overlayContent.addEventListener('click', (e) => {
   } else if (act === 'pay-rent') payRent();
   else if (act === 'pay-util') payUtil();
   else if (act === 'sick') callSick();
-  else if (act === 'buy') {
+  else if (act === 'go-lake') {
+    closeMenu();
+    if (state.pet && !state.pet.atDaycare) state.petOut = true;
+    fadeTo('The path down to the lake...', () => goScene('lake', 60, 420));
+  } else if (act === 'sell-fish') sellFish(arg);
+  else if (act === 'spouse-say') sendSpouseSay();
+  else if (act === 'spouse-kiss') {
+    const id = partnerId();
+    if (!id) return;
+    bump('mood', 14);
+    addRel(id, 4);
+    spendTime(10);
+    spouseLog.push({
+      who: 'them',
+      text: pick([
+        'That helped. Do it again later.',
+        'Kitchen light, lake light, I do not care. Kiss me anyway.',
+        `I love you, ${state.name}. That one counted.`,
+      ]),
+    });
+    openSpouseTalk(id);
+    showToast(`${personName(id)} kisses you.`);
+  } else if (act === 'spouse-baby') {
+    if (!state.spouseId || state.pregnant || state.babies.length >= 3) return;
+    if (state.day - (state.marriedDay || 0) < 2) return showToast('Give marriage a couple of days.');
+    state.pregnant = 1;
+    bump('energy', -10);
+    bump('mood', 10);
+    spendTime(40);
+    closeMenu();
+    showToast(`${personName(state.spouseId)} holds your hand. Something new is coming.`);
+  } else if (act === 'spouse-picnic') {
+    const id = partnerId();
+    if (!id) return;
+    state.invitedSpouse = true;
+    closeMenu();
+    if (state.pet && !state.pet.atDaycare) state.petOut = true;
+    fadeTo(`${personName(id)} walks you to the picnic grounds...`, () => {
+      goScene('lake', 600, 310);
+    });
+  } else if (act === 'buy') {
     const prices = { food: 16, snacks: 7, petfood: 12, toy: 15 };
     const cost = prices[arg];
     if (!trySpend(cost, arg)) return;
@@ -3237,9 +3700,12 @@ function drawTown() {
   drawHouse(512, 200, 140, 72, '#e8d0a8', '#c070b0', 'Pets');
   drawHouse(668, 318, 112, 80, '#f4ead4', '#e9c46a', 'Daycare');
   drawHouse(28, 328, 128, 88, '#f3d5a8', '#d84848', '4B');
+  drawPath(430, 340, 28, 140);
+  drawPath(400, 412, 120, 24);
   drawTree(250, 430);
   drawTree(470, 430);
   drawTree(720, 160);
+  drawLabel('Lake ↓', 480, 400);
   if (nicoHere) {
     const n = neighborOf('nico');
     drawPerson(170, 250, n.hair, n.shirt, 1, 0, 'down', neighborGender());
@@ -3340,6 +3806,71 @@ function drawDaycare() {
   if (state.pet?.atDaycare) drawPet(state.pet, 360, 340);
 }
 
+function drawLake() {
+  ctx.fillStyle = skyColor();
+  ctx.fillRect(0, 0, W, 80);
+  drawClouds();
+  drawGrass();
+  drawPath(0, 400, 160, 24);
+  drawPath(140, 300, 24, 124);
+  drawPath(500, 120, 24, 300);
+  drawPath(500, 250, 220, 22);
+
+  const spark = Math.floor(lastTime / 180);
+  drawRect(40, 86, 420, 210, '#2a6a9a');
+  drawRect(56, 74, 380, 40, '#3a82b4');
+  drawRect(70, 64, 340, 28, '#4a96c8');
+  drawRect(48, 96, 400, 180, '#2478b0');
+  for (let i = 0; i < 18; i++) {
+    const sx = 70 + ((i * 47 + spark * 3) % 360);
+    const sy = 90 + ((i * 29) % 160);
+    drawRect(sx, sy, i % 3 ? 6 : 10, 2, i % 2 ? '#d8f4ff' : '#8ecae6');
+  }
+  drawRect(88, 168, 14, 10, '#3d9e4a');
+  drawRect(92, 164, 8, 6, '#68c44a');
+  drawRect(180, 200, 16, 10, '#3d9e4a');
+  drawRect(186, 196, 8, 6, '#7ed957');
+  drawRect(320, 140, 12, 8, '#3d9e4a');
+
+  drawRect(236, 228, 64, 110, '#8b5a32');
+  drawRect(240, 232, 56, 102, '#c47838');
+  for (let y = 236; y < 330; y += 12) drawRect(244, y, 48, 2, '#6a4428');
+  drawRect(248, 318, 10, 22, '#6a4428');
+  drawRect(278, 318, 10, 22, '#6a4428');
+  drawLabel('Dock', 268, 220);
+
+  drawTree(520, 180);
+  drawTree(700, 200);
+  drawTree(760, 340);
+  drawTree(540, 380);
+  drawRect(560, 268, 96, 58, pal().grass2);
+  drawRect(572, 278, 72, 40, '#d84848');
+  drawRect(580, 284, 16, 12, '#fff8e0');
+  drawRect(604, 284, 16, 12, '#fff8e0');
+  drawRect(588, 300, 28, 10, '#c47838');
+  drawRect(592, 292, 12, 8, '#e07a9a');
+  drawLabel('Picnic', 616, 258);
+
+  drawRect(560, 88, 120, 78, '#6a4428');
+  drawRect(566, 82, 108, 14, '#c04028');
+  drawRect(572, 100, 40, 28, '#8ecae6');
+  drawRect(620, 108, 22, 16, '#e0a050');
+  drawRect(648, 108, 22, 16, '#3a78c8');
+  drawRect(580, 136, 16, 22, '#8b5a32');
+  drawRect(700, 136, 16, 22, '#8b5a32');
+  drawLabel("Bo's Catch", 620, 76);
+  drawPerson(700, 150, '#5c4d3c', '#c47838', -1, 0, 'left');
+
+  drawRect(28, 380, 40, 72, '#6a4428');
+  drawRect(34, 386, 28, 60, '#8b5a32');
+  drawLabel('Town', 48, 372);
+
+  if (partnerId() && spouseAtPicnic()) {
+    const sp = neighborOf(partnerId());
+    drawPerson(580, 280, sp.hair, sp.shirt, 1, 0, 'down', neighborGender());
+  }
+}
+
 function drawPrompt() {
   if (jobGame) {
     promptLabel.textContent = jobGame.kind === 'cafe'
@@ -3352,7 +3883,7 @@ function drawPrompt() {
   }
   const a = nearestAction();
   prompt = a;
-  let text = a ? `${a.verb} · ${a.name}` : (state.scene === 'town' ? 'Street' : 'Walk around');
+  let text = a ? `${a.verb} · ${a.name}` : (state.scene === 'town' ? 'Street' : state.scene === 'lake' ? 'Lake' : 'Walk around');
   if (state.shift === 'lunch') text = 'LUNCH · eat, then clock in by 1:00';
   promptLabel.textContent = text;
   actLabel.textContent = a ? a.verb : 'Do';
@@ -3386,6 +3917,7 @@ function render() {
   else if (state.scene === 'office') drawOffice();
   else if (state.scene === 'market') drawMarket();
   else if (state.scene === 'daycare') drawDaycare();
+  else if (state.scene === 'lake') drawLake();
 
   for (const remote of remotes.values()) {
     if (remote.scene !== state.scene) continue;
@@ -3471,7 +4003,7 @@ window.addEventListener('keydown', (e) => {
   if (typing) return;
   if (jobGame && e.repeat) return;
   if (jobGame && !fade && handleWorkKey(k)) return;
-  if (k === 'p' && menu !== 'new' && menu !== 'event' && menu !== 'end') {
+  if (k === 'p' && menu !== 'new' && menu !== 'event' && menu !== 'end' && menu !== 'spouse' && menu !== 'shop') {
     openMultiplayerMenu();
     return;
   }
