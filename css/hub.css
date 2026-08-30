@@ -4,15 +4,19 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: radial-gradient(ellipse at top, #3d2914 0%, #1a120c 70%);
   font-family: 'Press Start 2P', monospace;
   color: #fff8ef;
-  padding: 32px 16px;
+  padding: 32px 16px 48px;
 }
 
 .hub {
@@ -89,8 +93,9 @@ h1 {
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 20px;
+  width: 100%;
 }
 
 .game-card {
@@ -142,6 +147,18 @@ h1 {
 
 .game-card.coloring {
   background: linear-gradient(180deg, #ffb703 0%, #fb8500 100%);
+}
+
+.game-card.spikeroll {
+  background: linear-gradient(180deg, #ff6ec7 0%, #6ee7ff 100%);
+}
+
+.game-card.coinfinder {
+  background: linear-gradient(180deg, #e9c46a 0%, #2a9d8f 100%);
+}
+
+.game-card.facetime {
+  background: linear-gradient(180deg, #4cc9f0 0%, #7b2cbf 100%);
 }
 
 .game-art {

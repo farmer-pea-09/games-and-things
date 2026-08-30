@@ -1,0 +1,289 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: #07070b;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #0b0b12;
+}
+
+.stage,
+#fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.stage {
+  overflow: hidden;
+  transform: scaleX(-1);
+  background: #111;
+}
+
+#fx {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.top-bar,
+.bottom-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top-bar {
+  top: 0;
+  padding: 18px 16px 36px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), transparent);
+  pointer-events: none;
+}
+
+.bottom-bar {
+  bottom: 0;
+  padding: 28px 16px 26px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent);
+}
+
+.call-name {
+  font-size: 16px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.call-status {
+  font-size: 12px;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.status-chip,
+.scoreboard {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(12, 12, 18, 0.62);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.status-chip {
+  top: 58px;
+}
+
+.scoreboard {
+  top: 96px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.ctrl {
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.ctrl.hangup {
+  background: #ff3b30;
+  width: 70px;
+  height: 70px;
+}
+
+.ctrl.effects {
+  background: #34c759;
+}
+
+.ctrl.active {
+  outline: 3px solid #fff;
+}
+
+.home-link {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 6;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+#gate {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 18%, #5b3ea8 0%, transparent 42%),
+    linear-gradient(180deg, #1a1233 0%, #07070b 100%);
+  text-align: center;
+  padding: 72px 18px 28px;
+  overflow: auto;
+}
+
+#gate h1 {
+  font-size: 32px;
+}
+
+#gate p {
+  max-width: 420px;
+  line-height: 1.45;
+  opacity: 0.88;
+}
+
+.tiny {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.gate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 76px);
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.gate-chip,
+.fx-chip {
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gate-chip {
+  width: 76px;
+  height: 88px;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gate-chip span {
+  font-size: 32px;
+}
+
+.gate-chip small {
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+.fx-tray {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  transform: translateX(-50%);
+  width: min(92vw, 560px);
+  z-index: 5;
+  padding: 4px 12px 10px;
+  border-radius: 24px;
+  background: rgba(18, 18, 24, 0.78);
+  backdrop-filter: blur(22px);
+  user-select: none;
+}
+
+.fx-tray.moved {
+  transform: none;
+  bottom: auto;
+}
+
+.fx-tray.dragging {
+  cursor: grabbing;
+}
+
+.tray-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 2px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.tray-handle span {
+  width: 44px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.tray-handle small {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.tray-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: left;
+  margin: 6px 4px;
+  cursor: grab;
+}
+
+.fx-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.fx-chip {
+  min-width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  font-size: 28px;
+  flex: 0 0 auto;
+}
+
+.fx-chip.on {
+  background: #34c759;
+  box-shadow: 0 0 0 2px #fff inset;
+}

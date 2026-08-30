@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Square Jumps</title>
+  <link rel="stylesheet" href="css/spikeroll.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <a href="index.html" id="home-link">← Games</a>
+    <button type="button" id="fullscreen-btn" title="Fullscreen" aria-label="Enter fullscreen">⛶</button>
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="death-flash"></div>
+    <div id="hud" class="hidden">
+      <div id="progress-wrap"><div id="progress-fill"></div></div>
+      <div id="hud-meta">
+        <span id="attempt-label">ATTEMPT 1</span>
+        <span id="level-label">LV 1</span>
+        <span id="mode-badge"></span>
+      </div>
+      <div id="pct-label">0%</div>
+    </div>
+    <div id="hint-bar" class="hidden">Tap / Space jump · again in air for a double · pads · fly · flip</div>
+
+    <div id="menu-overlay" class="overlay">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <div class="cube-preview" aria-hidden="true"></div>
+        <p class="brand">SQUARE JUMPS</p>
+        <p class="subtitle">RAINBOW RHYTHM RUN</p>
+        <p class="tagline">
+          Auto-run. Tap to jump, tap again in the air for a double jump.
+          One hit restarts. Beat a level to unlock the next.
+        </p>
+        <div class="level-grid" id="level-grid"></div>
+        <p class="controls-line"><span>JUMP / DOUBLE / FLY</span> Space · Up · Click / Tap</p>
+        <div class="cta-row">
+          <button type="button" class="cta" id="btn-play">START LEVEL</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="win-overlay" class="overlay hidden">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <p class="brand win-brand">LEVEL CLEAR!</p>
+        <p class="tagline" id="win-text"></p>
+        <div class="cta-row">
+          <button type="button" class="cta" id="btn-next">NEXT LEVEL</button>
+          <button type="button" class="cta secondary" id="btn-menu">MENU</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls-help">
+    <kbd>Space</kbd> jump / double · <kbd>M</kbd> mute · <kbd>Esc</kbd> menu
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('spikeroll')) {
+      await import('./js/spikeroll.js');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FaceTime Effects</title>
+  <link rel="stylesheet" href="css/facetime.css">
+</head>
+<body>
+  <div id="app">
+    <a class="home-link" href="index.html">← Games</a>
+    <div class="stage">
+      <canvas id="fx"></canvas>
+    </div>
+    <div class="top-bar">
+      <div>
+        <div class="call-name">FaceTime Effects</div>
+        <div id="call-status" class="call-status">Pick a filter</div>
+      </div>
+    </div>
+    <div id="status" class="status-chip hidden">Tap an emoji</div>
+    <div id="scoreboard" class="scoreboard hidden"></div>
+    <div id="fx-tray" class="fx-tray hidden">
+      <div class="tray-handle" title="Drag to move">
+        <span></span>
+        <small>Drag</small>
+      </div>
+      <p class="tray-label">Filters</p>
+      <div id="filters-row" class="fx-row"></div>
+      <p class="tray-label">Reactions</p>
+      <div id="react-row" class="fx-row"></div>
+      <p class="tray-label">Stickers</p>
+      <div id="sticker-row" class="fx-row"></div>
+      <p class="tray-label">Games</p>
+      <div id="games-row" class="fx-row"></div>
+    </div>
+    <div class="bottom-bar">
+      <div class="controls">
+        <button class="ctrl" type="button" title="Mute" aria-label="Mute">🔇</button>
+        <button id="hangup-btn" class="ctrl hangup" type="button" title="Hang up" aria-label="Hang up">📞</button>
+        <button id="effects-btn" class="ctrl effects" type="button" title="Effects" aria-label="Effects">✨</button>
+      </div>
+    </div>
+    <div id="gate">
+      <p class="tiny">Games and Things</p>
+      <h1>FaceTime Effects</h1>
+      <p>Tap an emoji. A fake caller shows up. Filters sit on their head. Reactions explode. Games overlay the call.</p>
+      <div id="gate-grid" class="gate-grid"></div>
+      <p class="tiny">Hold Space or click their face to sing. Drag the emoji tray to move it.</p>
+    </div>
+  </div>
+  <img id="standin" src="assets/fake-caller.png" alt="" class="hidden" width="1" height="1">
+  <script type="module" src="js/facetime.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coin & Cash Finder</title>
+  <link rel="stylesheet" href="css/coin-finder.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a class="home-link" href="index.html">← Games</a>
+
+  <section id="gate" class="screen">
+    <p class="kicker">Games and Things</p>
+    <div class="coin-hero" aria-hidden="true">🪙</div>
+    <h1>Coin &amp; Cash Finder</h1>
+    <p class="lead">Snap a photo, pick the country, and see the sell price in the USA.</p>
+    <button id="open-cam" type="button">Open camera</button>
+    <label class="upload-btn">
+      Pick a photo
+      <input id="file-input" type="file" accept="image/*" capture="environment">
+    </label>
+    <div class="samples">
+      <p>No camera handy? Try a sample</p>
+      <div id="sample-row" class="sample-row"></div>
+    </div>
+    <button id="browse-btn" class="ghost" type="button">Browse the catalog</button>
+  </section>
+
+  <section id="camera" class="screen camera-screen hidden" hidden>
+    <video id="cam" playsinline autoplay muted></video>
+    <canvas id="view"></canvas>
+    <div class="reticle" aria-hidden="true">
+      <span class="reticle-box"></span>
+      <p>Only a coin or bill stays. Everything else is black.</p>
+    </div>
+    <p id="cam-status" class="cam-status">Starting camera…</p>
+    <div class="cam-bar">
+      <button id="cam-cancel" type="button">Back</button>
+      <button id="shutter" type="button" aria-label="Take photo"></button>
+      <button id="cam-flip" type="button">Flip</button>
+    </div>
+  </section>
+
+  <section id="busy" class="screen busy-screen hidden" hidden>
+    <canvas id="preview" width="320" height="320"></canvas>
+    <p class="scan-line">Reading metal and ink…</p>
+  </section>
+
+  <section id="pick" class="screen pick-screen hidden" hidden>
+    <canvas id="pick-shot" width="320" height="320"></canvas>
+    <div id="pick-body"></div>
+  </section>
+
+  <section id="result" class="screen result-screen hidden" hidden>
+    <div class="result-shot">
+      <canvas id="shot" width="320" height="320"></canvas>
+    </div>
+    <article id="result-card" class="result-card"></article>
+    <div class="result-actions">
+      <button id="scan-again" type="button">Scan another</button>
+      <button id="result-browse" class="ghost" type="button">Catalog</button>
+    </div>
+  </section>
+
+  <section id="catalog" class="screen catalog-screen hidden" hidden>
+    <h2>Catalog</h2>
+    <input id="catalog-search" type="search" placeholder="Search coins and bills" aria-label="Search catalog">
+    <div id="catalog-list" class="catalog-list"></div>
+    <button id="catalog-back" class="ghost" type="button">Back</button>
+  </section>
+
+  <script type="module" src="js/coin-finder.js"></script>
+</body>
+</html>
