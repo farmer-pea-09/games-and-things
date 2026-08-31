@@ -1,0 +1,391 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 0%, #7a2d4a 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, #3d2463 0%, transparent 45%),
+    #140814;
+  color: #fff4f8;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
+body {
+  padding: 20px 16px 40px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.home-link {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 30;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #ffd6e5;
+  text-decoration: none;
+  padding: 8px 10px;
+  border: 2px solid #ff8fab;
+  background: rgba(20, 8, 20, 0.85);
+}
+
+.screen {
+  max-width: 440px;
+  margin: 56px auto 0;
+  text-align: center;
+}
+
+.kicker {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #ffb4d0;
+  margin-bottom: 18px;
+}
+
+.hero {
+  font-size: 64px;
+  filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.35));
+  margin-bottom: 18px;
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+h1,
+h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  line-height: 1.6;
+  text-shadow: 3px 3px 0 #000;
+  margin-bottom: 16px;
+}
+
+.lead,
+.hint {
+  font-size: 16px;
+  line-height: 1.55;
+  color: #f3c4d4;
+  margin-bottom: 22px;
+}
+
+.star-bank {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  line-height: 1.7;
+  color: #ffe27a;
+  margin-bottom: 22px;
+}
+
+.hint {
+  color: #ffb4b4;
+}
+
+button,
+.ghost {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 #000;
+}
+
+#open-cam,
+#again,
+#shutter {
+  background: #ff8fab;
+  color: #2a0814;
+}
+
+#open-cam,
+#again,
+#open-standin,
+#save-shot {
+  display: inline-block;
+  padding: 14px 18px;
+  margin: 0 6px 12px;
+}
+
+.ghost {
+  background: transparent;
+  color: #ffd6e5;
+  border-color: #ff8fab;
+  box-shadow: none;
+}
+
+.ghost.thin {
+  width: 100%;
+  padding: 8px;
+  font-size: 7px;
+  margin-top: 8px;
+}
+
+.studio {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  max-width: none;
+  background: #0a0610;
+}
+
+#cam {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #110814;
+}
+
+.studio-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 52px 12px 20px;
+  background: linear-gradient(to bottom, rgba(10, 6, 16, 0.78), transparent);
+  pointer-events: none;
+}
+
+.top-left,
+.studio-dock button,
+.studio-dock input,
+.looks-row {
+  pointer-events: auto;
+}
+
+.top-left {
+  display: flex;
+  gap: 6px;
+}
+
+.chip-btn,
+.mode-btn {
+  font-size: 7px;
+  padding: 8px 10px;
+  background: rgba(20, 8, 20, 0.7);
+  color: #fff;
+  border: 2px solid #ff8fab;
+  box-shadow: none;
+}
+
+.mode-btn.on {
+  background: #ff8fab;
+  color: #2a0814;
+}
+
+.mission {
+  text-align: center;
+  min-width: 140px;
+}
+
+.mission p {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  line-height: 1.6;
+  color: #fff;
+  text-shadow: 0 2px 0 #000;
+}
+
+#mission-time {
+  color: #ffe27a;
+  margin-top: 4px;
+}
+
+.meter-wrap {
+  min-width: 92px;
+  text-align: right;
+}
+
+.meter-wrap span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: #ffd6e5;
+}
+
+.meter {
+  margin-top: 6px;
+  height: 10px;
+  border: 2px solid #ff8fab;
+  background: #1a0a14;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ff8fab, #ffe27a);
+}
+
+.studio-status {
+  position: absolute;
+  top: 118px;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  line-height: 1.6;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 6px #000;
+  pointer-events: none;
+}
+
+.studio-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  padding: 16px 12px 18px;
+  background: linear-gradient(to top, rgba(10, 6, 16, 0.94), rgba(10, 6, 16, 0.55) 70%, transparent);
+}
+
+.looks-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 12px;
+  scrollbar-width: none;
+}
+
+.looks-row::-webkit-scrollbar {
+  display: none;
+}
+
+.look-btn {
+  flex: 0 0 auto;
+  width: 72px;
+  padding: 8px 6px;
+  font-size: 7px;
+  line-height: 1.45;
+  background: #2a1020;
+  color: #fff4f8;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.look-btn.on {
+  background: #ff8fab;
+  color: #2a0814;
+}
+
+.look-btn.locked {
+  opacity: 0.45;
+}
+
+.look-btn small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-row label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  width: 58px;
+  color: #ffd6e5;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: #ff8fab;
+}
+
+.studio-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#shutter {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 5px solid #fff;
+  box-shadow: 0 0 0 3px #ff8fab, 3px 3px 0 #000;
+  margin: 0;
+  padding: 0;
+}
+
+#shutter:active {
+  transform: scale(0.94);
+}
+
+.result-screen {
+  padding-bottom: 24px;
+}
+
+.polaroid {
+  display: inline-block;
+  padding: 10px 10px 28px;
+  background: #fff8f4;
+  box-shadow: 6px 6px 0 #000;
+  margin-bottom: 18px;
+  transform: rotate(-2deg);
+}
+
+#shot {
+  display: block;
+  width: min(72vw, 280px);
+  height: auto;
+  background: #1a0a14;
+}
+
+.score-line {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 28px;
+  color: #ffe27a;
+  text-shadow: 3px 3px 0 #000;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 520px) {
+  .sliders {
+    grid-template-columns: 1fr;
+  }
+
+  .look-btn {
+    width: 64px;
+  }
+}

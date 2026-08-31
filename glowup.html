@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glow Up</title>
+  <link rel="stylesheet" href="css/glowup.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a class="home-link" href="index.html">← Games</a>
+
+  <section id="gate" class="screen">
+    <p class="kicker">Games and Things</p>
+    <div class="hero" aria-hidden="true">💄</div>
+    <h1>Glow Up</h1>
+    <p class="lead">Turn on the camera. Soften, blush, sparkle, and beautify yourself. Match the vibe, snap, and score.</p>
+    <p id="star-bank" class="star-bank">★ 0 stars saved</p>
+    <button id="open-cam" type="button">Enable camera</button>
+    <button id="open-standin" class="ghost" type="button">Practice without a camera</button>
+    <p id="gate-error" class="hint hidden"></p>
+  </section>
+
+  <section id="studio" class="studio hidden" hidden>
+    <video id="cam" playsinline autoplay muted></video>
+    <canvas id="view"></canvas>
+    <div class="studio-top">
+      <div class="top-left">
+        <button id="studio-back" class="chip-btn" type="button">Back</button>
+        <button id="cam-flip" class="chip-btn" type="button">Flip</button>
+      </div>
+      <div id="mission" class="mission hidden">
+        <p id="mission-label">Match Ice Queen</p>
+        <p id="mission-time">0:25</p>
+      </div>
+      <div class="meter-wrap" title="How glowy this look is">
+        <span>GLOW</span>
+        <div class="meter"><i id="glow-meter"></i></div>
+      </div>
+    </div>
+    <p id="studio-status" class="studio-status">Finding your face…</p>
+    <div class="studio-dock">
+      <div id="looks-row" class="looks-row"></div>
+      <div id="sliders" class="sliders"></div>
+      <div class="studio-bar">
+        <button id="mode-studio" class="mode-btn on" type="button">Studio</button>
+        <button id="shutter" type="button" aria-label="Snap glow-up"></button>
+        <button id="mode-challenge" class="mode-btn" type="button">Challenge</button>
+      </div>
+      <button id="compare" class="ghost thin" type="button">Hold for before</button>
+    </div>
+  </section>
+
+  <section id="result" class="screen result-screen hidden" hidden>
+    <p class="kicker" id="result-kicker">Glow up</p>
+    <div class="polaroid">
+      <canvas id="shot" width="360" height="480"></canvas>
+    </div>
+    <h2 id="result-title">Main character</h2>
+    <p id="result-score" class="score-line">98</p>
+    <p id="result-note" class="lead"></p>
+    <p id="result-stars" class="star-bank"></p>
+    <div class="result-actions">
+      <button id="again" type="button">Snap again</button>
+      <button id="save-shot" class="ghost" type="button">Save photo</button>
+    </div>
+  </section>
+
+  <script type="module" src="js/glowup.js"></script>
+</body>
+</html>

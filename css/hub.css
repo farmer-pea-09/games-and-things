@@ -161,6 +161,14 @@ h1 {
   background: linear-gradient(180deg, #4cc9f0 0%, #7b2cbf 100%);
 }
 
+.game-card.orchard {
+  background: linear-gradient(180deg, #e63946 0%, #2d6a4f 100%);
+}
+
+.game-card.glowup {
+  background: linear-gradient(180deg, #ff8fab 0%, #7b2cbf 100%);
+}
+
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;

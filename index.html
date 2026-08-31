@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Games and Things</title>
-  <link rel="stylesheet" href="css/hub.css">
+  <link rel="stylesheet" href="css/hub.css?v=orchard">
   <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,7 @@
   <main class="hub">
     <p class="hub-kicker">Games and Things</p>
     <h1>Pick a game</h1>
-    <p class="hub-sub">Eleven little worlds. Friends log in with a room code.</p>
+    <p class="hub-sub">Thirteen little worlds. Friends log in with a room code.</p>
     <form id="hub-join-form" class="hub-join">
       <p>Joining a friend?</p>
       <div class="hub-join-row">
@@ -23,11 +23,24 @@
           <option value="life.html">Oak Street Life</option>
           <option value="chameleon.html">Chameleon World</option>
           <option value="pet-sim.html">Pet Simulator</option>
+          <option value="orchard.html">Orchard Market</option>
         </select>
         <button type="submit">Log in</button>
       </div>
     </form>
     <div class="game-grid">
+      <a class="game-card orchard" href="orchard.html" data-game="orchard">
+        <span class="game-art" aria-hidden="true">🍎</span>
+        <h2>Orchard Market</h2>
+        <p>Catch falling apples with your basket. After one minute, sell at the market. Most money wins — up to 6 players.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card glowup" href="glowup.html" data-game="glowup">
+        <span class="game-art" aria-hidden="true">💄</span>
+        <h2>Glow Up</h2>
+        <p>Turn on the camera, blush, sparkle, and beautify yourself. Match the look, snap, and score.</p>
+        <span class="play-label">Play</span>
+      </a>
       <a class="game-card facetime" href="facetime.html" data-game="facetime">
         <span class="game-art" aria-hidden="true">✨</span>
         <h2>FaceTime Effects</h2>
