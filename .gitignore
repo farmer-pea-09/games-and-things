@@ -3,3 +3,4 @@ node_modules/
 Thumbs.db
 .tools/
 deploy.zip
+shop-data.json

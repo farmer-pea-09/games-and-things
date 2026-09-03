@@ -169,6 +169,10 @@ h1 {
   background: linear-gradient(180deg, #ff8fab 0%, #7b2cbf 100%);
 }
 
+.game-card.shop {
+  background: linear-gradient(180deg, #e9c46a 0%, #2a9d8f 100%);
+}
+
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiny Trinkets</title>
+  <link rel="stylesheet" href="css/shop.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a href="index.html" class="home-link">← Games and Things</a>
+  <header class="shop-hero">
+    <p class="kicker"><a href="index.html">Games and Things</a></p>
+    <h1>Tiny Trinkets</h1>
+    <p id="shop-sub" class="sub">Look around, then order in the chat. Only the owner’s computer can add listings.</p>
+    <p id="owner-banner" class="owner-banner hidden"></p>
+    <p id="account-chip" class="account-chip hidden"></p>
+  </header>
+
+  <section id="owner-desk" class="owner-desk hidden">
+    <h2>Post a trinket</h2>
+    <form id="list-form">
+      <label>Title <input id="list-title" type="text" maxlength="80" required placeholder="Lucky keychain"></label>
+      <label>Price <input id="list-price" type="number" min="0" step="0.01" required placeholder="6.00"></label>
+      <label class="wide">Description <textarea id="list-desc" maxlength="400" placeholder="What it is, condition, pickup notes"></textarea></label>
+      <div class="photo-row wide">
+        <button type="button" id="photo-btn">Camera</button>
+        <label class="pick-photo" for="list-photo">Pick photo</label>
+        <input id="list-photo" class="sr-only" type="file" accept="image/*" capture="environment">
+        <img id="photo-preview" alt="Listing photo" class="photo-preview hidden">
+        <p id="photo-status" class="photo-status"></p>
+      </div>
+      <button type="submit">Post listing</button>
+    </form>
+    <div id="orders" class="orders hidden">
+      <h2>Orders</h2>
+      <ul id="order-list"></ul>
+    </div>
+  </section>
+
+  <section class="shelf">
+    <h2 id="shelf-title">For sale</h2>
+    <div id="products" class="products"></div>
+    <p id="empty" class="empty">No trinkets listed yet.</p>
+  </section>
+
+  <aside id="chat" class="chat">
+    <button type="button" id="chat-toggle" class="chat-toggle" aria-expanded="true">
+      <span id="chat-title">Order Now! Owner is here</span>
+      <span id="chat-dot" class="dot on" aria-hidden="true"></span>
+    </button>
+    <div id="chat-body" class="chat-body">
+      <div id="thread-bar" class="thread-bar hidden">
+        <label>Chat <select id="thread-select"></select></label>
+        <button type="button" id="ai-btn" class="ai-btn">Turn on AI</button>
+      </div>
+      <div id="messages" class="messages"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" type="text" maxlength="500" placeholder="Ask about an item…" autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </aside>
+
+  <div id="camera-modal" class="camera-modal hidden" role="dialog" aria-label="Take a photo">
+    <video id="camera-video" autoplay playsinline muted webkit-playsinline></video>
+    <div class="camera-ui">
+      <p id="camera-status" class="camera-status">Starting camera…</p>
+      <button type="button" id="camera-snap">Take picture</button>
+      <div class="camera-extra">
+        <button type="button" id="camera-flip">Flip</button>
+        <label class="pick-photo" for="list-photo">Pick photo</label>
+        <button type="button" id="camera-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="account-modal" class="account-modal hidden" role="dialog" aria-label="Trinket Account">
+    <form id="account-form" class="account-card">
+      <p class="account-need">need an account</p>
+      <h2>Trinket Account</h2>
+      <p class="account-copy">Make one to buy. Type your name, email account, and favorite color.</p>
+      <label>Name <input id="account-name" type="text" maxlength="60" required placeholder="Your name" autocomplete="name"></label>
+      <label>Email Account <input id="account-email" type="email" maxlength="80" required placeholder="you@email.com" autocomplete="email"></label>
+      <label>Favorite color <input id="account-color" type="text" maxlength="30" required placeholder="Purple"></label>
+      <div class="account-actions">
+        <button type="submit">Make account</button>
+        <button type="button" id="account-cancel">Not now</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="js/shop.js"></script>
+</body>
+</html>
