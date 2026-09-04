@@ -67,6 +67,8 @@ function loadAccount() {
 
 function saveAccountLocal(account) {
   localStorage.setItem('trinket-account', JSON.stringify(account));
+  localStorage.setItem('trinket-buyer', '1');
+  localStorage.removeItem('trinket-owner');
 }
 
 function hasTrinketAccount() {
@@ -108,9 +110,29 @@ function saveStore(store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
-function isOwnerMachine() {
+function isLocalHost() {
   const host = location.hostname;
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
+function claimShopPc() {
+  localStorage.setItem('trinket-owner', '1');
+}
+
+function isOwnerMachine() {
+  if (hasTrinketAccount() || localStorage.getItem('trinket-buyer') === '1') return false;
+  const params = new URLSearchParams(location.search);
+  if (params.get('owner') === '1') {
+    claimShopPc();
+    params.delete('owner');
+    const query = params.toString();
+    history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+  }
+  if (isLocalHost()) {
+    claimShopPc();
+    return true;
+  }
+  return localStorage.getItem('trinket-owner') === '1';
 }
 
 function shopAI(text, products) {

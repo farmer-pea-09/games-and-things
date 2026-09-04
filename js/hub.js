@@ -2,6 +2,14 @@ import { bindHubCards } from './room-code.js';
 
 bindHubCards();
 
+document.querySelector('a.game-card.shop')?.addEventListener('click', (event) => {
+  if (localStorage.getItem('trinket-account')) return;
+  if (localStorage.getItem('trinket-owner') === '1') {
+    event.preventDefault();
+    window.location.href = 'shop.html?owner=1';
+  }
+});
+
 document.getElementById('hub-join-form')?.addEventListener('submit', (event) => {
   event.preventDefault();
   const code = String(document.getElementById('hub-code')?.value || '')
