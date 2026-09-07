@@ -2,16 +2,6 @@ const SAVE_KEY = 'pet-palace-save';
 const PET_SESSION = new URLSearchParams(location.search).has('quick') ? 8000 : 120000;
 const PALACE_DOOR_X = 338;
 const SONG_NEED = 5.2;
-const KEY_NOTES = [
-  { key: 'a', name: 'C', freq: 261.63 },
-  { key: 's', name: 'D', freq: 293.66 },
-  { key: 'd', name: 'E', freq: 329.63 },
-  { key: 'f', name: 'F', freq: 349.23 },
-  { key: 'g', name: 'G', freq: 392.0 },
-  { key: 'h', name: 'A', freq: 440.0 },
-  { key: 'j', name: 'B', freq: 493.88 },
-  { key: 'k', name: 'C', freq: 523.25 },
-];
 
 const INSTRUMENTS = {
   violin: { id: 'violin', name: 'Violin', emoji: '🎻', hall: 'Velvet Hall' },
@@ -20,32 +10,30 @@ const INSTRUMENTS = {
   trumpet: { id: 'trumpet', name: 'Trumpet', emoji: '🎺', hall: 'Brass Hall' },
 };
 
-const PETS = {
-  violin: [
-    { id: 'velvet-fox', name: 'Velvet Fox', color: '#c45c26', ink: '#5a2410', accent: '#8b2240', kind: 'fox', blurb: 'Heard your bow and padded out of the velvet curtains.' },
-    { id: 'song-owl', name: 'Song Owl', color: '#c9b27c', ink: '#3d2a14', accent: '#6b3a1f', kind: 'owl', blurb: 'Keeps time with every long, singing note.' },
-    { id: 'ribbon-cat', name: 'Ribbon Cat', color: '#d9c4a0', ink: '#4a2c17', accent: '#c41e3a', kind: 'cat', blurb: 'Ties a ribbon whenever you play legato.' },
-    { id: 'melody-moth', name: 'Melody Moth', color: '#f4e4c8', ink: '#5c3a28', accent: '#e07a5f', kind: 'moth', blurb: 'Wings dusted with rosin sparkle.' },
-  ],
-  guitar: [
-    { id: 'campfire-pup', name: 'Campfire Pup', color: '#d4a373', ink: '#4a2c17', accent: '#c47a2a', kind: 'pup', blurb: 'Wags on every strum and campfire chorus.' },
-    { id: 'freckle-raccoon', name: 'Freckle Raccoon', color: '#8d7a66', ink: '#2b1810', accent: '#e9c46a', kind: 'raccoon', blurb: 'Steals picks, returns songs.' },
-    { id: 'amp-bunny', name: 'Amp Bunny', color: '#f0d0b0', ink: '#5c3a28', accent: '#e63946', kind: 'bunny', blurb: 'Thumps the floor like a kick drum.' },
-    { id: 'plectrum-gecko', name: 'Plectrum Gecko', color: '#52b788', ink: '#1b4332', accent: '#ffd166', kind: 'gecko', blurb: 'Climbs the palace walls to hear the riff.' },
-  ],
-  flute: [
-    { id: 'wind-mouse', name: 'Wind Mouse', color: '#cfc7c0', ink: '#3d2a14', accent: '#7ec8e3', kind: 'mouse', blurb: 'Rides the breath between your notes.' },
-    { id: 'humming-sprite', name: 'Humming Sprite', color: '#bde0fe', ink: '#1d3557', accent: '#ff8fab', kind: 'sprite', blurb: 'A pocket of sky that learned your tune.' },
-    { id: 'cloud-kitten', name: 'Cloud Kitten', color: '#edf2f4', ink: '#4a4e69', accent: '#90e0ef', kind: 'cat', blurb: 'Purrs in airy overtones.' },
-    { id: 'reed-finch', name: 'Reed Finch', color: '#f4a261', ink: '#6b3a1f', accent: '#2a9d8f', kind: 'finch', blurb: 'Nests in the palace flutes.' },
-  ],
-  trumpet: [
-    { id: 'brass-lion', name: 'Brass Lion', color: '#e9b44c', ink: '#6b3a1f', accent: '#c41e3a', kind: 'lion', blurb: 'Woke up when the fanfare hit the gates.' },
-    { id: 'parade-pup', name: 'Parade Pup', color: '#f4d35e', ink: '#4a2c17', accent: '#e76f51', kind: 'pup', blurb: 'Marches in time with every bright call.' },
-    { id: 'sun-peacock', name: 'Sun Peacock', color: '#2a9d8f', ink: '#1b4332', accent: '#e9c46a', kind: 'peacock', blurb: 'Opens a gold fan when you hold a note.' },
-    { id: 'fanfare-beetle', name: 'Fanfare Beetle', color: '#e76f51', ink: '#3d1f14', accent: '#ffd166', kind: 'beetle', blurb: 'A tiny marching band in a shell.' },
-  ],
-};
+const STORE_PETS = [
+  { id: 'moss-fox', name: 'Moss Fox', color: '#6b8f3a', ink: '#2d4014', accent: '#c45c26', kind: 'fox', img: 'img/pets/moss-fox.png', blurb: 'A quiet trail-finder who remembers every library path — and every melody.' },
+  { id: 'mossling', name: 'Mossling', color: '#7cb342', ink: '#2e4a16', accent: '#fff8ef', kind: 'mossling', img: 'img/pets/mossling.png', blurb: 'A shy forest buddy who grows tiny flowers when you play.' },
+  { id: 'cloud-fox', name: 'Cloud Fox', color: '#e8eef8', ink: '#3d4a6b', accent: '#7b6cff', kind: 'fox', img: 'img/pets/cloud-fox.png', blurb: 'A silver fox that naps on passing clouds until your song calls it down.' },
+  { id: 'cloud-otter', name: 'Cloud Otter', color: '#c4a574', ink: '#4a2c17', accent: '#edf2f4', kind: 'otter', img: 'img/pets/cloud-otter.png', blurb: 'Keeps a pocketful of smooth stones, each named after a favorite story.' },
+  { id: 'ember-drake', name: 'Ember Drake', color: '#e76f51', ink: '#6b2a14', accent: '#2a9d8f', kind: 'drake', img: 'img/pets/ember-drake.png', blurb: 'A tiny drake whose warm sneeze can toast exactly one marshmallow.' },
+  { id: 'moon-moth', name: 'Moon Moth', color: '#9b7ed9', ink: '#3d2463', accent: '#e9c46a', kind: 'moth', img: 'img/pets/moon-moth.png', blurb: 'Wings shimmer on surprising facts — and on new notes.' },
+  { id: 'inkcap-sprite', name: 'Inkcap Sprite', color: '#cfc7c0', ink: '#3d2a14', accent: '#8b5a2b', kind: 'inkcap', img: 'img/pets/inkcap-sprite.png', blurb: 'A tiny mushroom scholar who collects excellent new words from your songs.' },
+];
+
+const sprites = {};
+function preloadSprites() {
+  for (const pet of STORE_PETS) {
+    if (!pet.img) continue;
+    const image = new Image();
+    image.src = pet.img;
+    sprites[pet.id] = image;
+  }
+}
+
+function spriteReady(pet) {
+  const sprite = sprites[pet.id];
+  return Boolean(sprite && sprite.complete && sprite.naturalWidth);
+}
 
 const listen = document.getElementById('listen');
 const world = document.getElementById('world');
@@ -61,7 +49,6 @@ const songMeter = document.getElementById('song-meter');
 const heardLine = document.getElementById('heard-line');
 const viz = document.getElementById('viz');
 const vizCtx = viz.getContext('2d');
-const keysEl = document.getElementById('keys');
 const instrumentRow = document.getElementById('instrument-row');
 const returnPet = document.getElementById('return-pet');
 const saveLine = document.getElementById('save-line');
@@ -81,6 +68,9 @@ const ageLabel = document.getElementById('age-label');
 const clockLabel = document.getElementById('clock-label');
 const serenadeBtn = document.getElementById('serenade-btn');
 const homeOverlay = document.getElementById('home-overlay');
+const careRow = document.getElementById('care-row');
+const careGhost = document.getElementById('care-ghost');
+const careGhostCtx = careGhost.querySelector('canvas').getContext('2d');
 
 const meters = {
   hunger: document.getElementById('hunger-meter'),
@@ -105,7 +95,6 @@ const listenState = {
   selected: 'violin',
   song: 0,
   scores: { violin: 0, guitar: 0, flute: 0, trumpet: 0 },
-  lastNote: 0,
   lastHeard: '',
 };
 
@@ -116,6 +105,8 @@ let lastFrame = 0;
 let popupTimer = 0;
 let lastPetPersist = 0;
 const walk = { phase: 'idle', t: 0, x: 175 };
+const drag = { kind: null, x: 0, y: 0, overYard: false };
+const careFx = { kind: null, x: 175, y: 150, t: 0 };
 
 function defaultSave() {
   return {
@@ -169,7 +160,7 @@ function hideDayPopup() {
 
 function showDayPopup() {
   const inst = INSTRUMENTS[save.instrument] || INSTRUMENTS.violin;
-  popupLead.textContent = `Your ${inst.name.toLowerCase()} practice opened Day 1. Pick the friend who heard you.`;
+  popupLead.textContent = `Your ${inst.name.toLowerCase()} song opened the store. These friends heard you practice.`;
   fillPetHall();
   popupPick.classList.remove('hidden');
   popupMeet.classList.add('hidden');
@@ -268,11 +259,7 @@ function tickPetTime(dt) {
 }
 
 function findPet(id) {
-  for (const list of Object.values(PETS)) {
-    const found = list.find((pet) => pet.id === id);
-    if (found) return found;
-  }
-  return PETS.violin[0];
+  return STORE_PETS.find((pet) => pet.id === id) || STORE_PETS[0];
 }
 
 function clamp(n, a = 0, b = 100) {
@@ -313,71 +300,11 @@ async function openMic() {
   }
 }
 
-function playTone(freq, instrument, dur = 0.62) {
-  if (!audio.ctx || !audio.synth) return;
-  const t = audio.ctx.currentTime;
-  const osc = audio.ctx.createOscillator();
-  const filter = audio.ctx.createBiquadFilter();
-  const gain = audio.ctx.createGain();
-  filter.type = 'lowpass';
-
-  if (instrument === 'flute') {
-    osc.type = 'sine';
-    filter.frequency.value = freq * 2.6;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.2, t + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const vib = audio.ctx.createOscillator();
-    const vibGain = audio.ctx.createGain();
-    vib.frequency.value = 5.2;
-    vibGain.gain.value = 6;
-    vib.connect(vibGain);
-    vibGain.connect(osc.frequency);
-    vib.start(t);
-    vib.stop(t + dur + 0.05);
-  } else if (instrument === 'violin') {
-    osc.type = 'sawtooth';
-    filter.frequency.value = 2400;
-    filter.Q.value = 1.2;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.11, t + 0.14);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.18);
-    const vib = audio.ctx.createOscillator();
-    const vibGain = audio.ctx.createGain();
-    vib.frequency.value = 5.6;
-    vibGain.gain.value = 8;
-    vib.connect(vibGain);
-    vibGain.connect(osc.frequency);
-    vib.start(t);
-    vib.stop(t + dur + 0.2);
-  } else if (instrument === 'guitar') {
-    osc.type = 'triangle';
-    filter.frequency.value = 1600;
-    gain.gain.setValueAtTime(0.24, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
-  } else {
-    osc.type = 'square';
-    filter.frequency.value = 1500;
-    filter.Q.value = 5.5;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.09, t + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  }
-
-  osc.frequency.value = freq;
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audio.synth);
-  osc.start(t);
-  osc.stop(t + dur + 0.25);
-  listenState.lastNote = performance.now();
-}
-
 function detectPitch(buf, sampleRate) {
   let rms = 0;
   for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / buf.length);
-  if (rms < 0.012) return { f0: 0, rms, clarity: 0 };
+  if (rms < 0.008) return { f0: 0, rms, clarity: 0 };
 
   let bestOff = -1;
   let bestCorr = 0;
@@ -470,23 +397,15 @@ function tickListen(dt) {
   if (listen.classList.contains('hidden')) return;
   audio.analyser.getFloatTimeDomainData(audio.wave);
   const pitch = detectPitch(audio.wave, audio.ctx.sampleRate);
-  const recentKey = performance.now() - listenState.lastNote < 720;
-  const musical = (pitch.clarity > 0.18 && pitch.rms > 0.016 && pitch.f0 > 70) || recentKey;
+  const musical = pitch.clarity > 0.12 && pitch.rms > 0.01 && pitch.f0 > 70;
   if (musical) {
     listenState.song = clamp(listenState.song + dt, 0, SONG_NEED);
-    listenState.lastHeard = recentKey
-      ? INSTRUMENTS[listenState.selected].name
-      : INSTRUMENTS[winningInstrument()].name;
-    heardLine.textContent = `Hearing ${INSTRUMENTS[recentKey ? listenState.selected : winningInstrument()].emoji} ${listenState.lastHeard}`;
-    if (recentKey) {
-      listenState.scores[listenState.selected] += dt * 6;
-    } else {
-      audio.analyser.getByteFrequencyData(audio.freq);
-      const f0 = pitch.f0 || KEY_NOTES[3].freq;
-      const add = classify(f0, audio.freq);
-      for (const id of Object.keys(listenState.scores)) {
-        listenState.scores[id] += add[id] * dt;
-      }
+    listenState.lastHeard = INSTRUMENTS[winningInstrument()].name;
+    heardLine.textContent = `Hearing ${INSTRUMENTS[winningInstrument()].emoji} ${listenState.lastHeard}`;
+    audio.analyser.getByteFrequencyData(audio.freq);
+    const add = classify(pitch.f0, audio.freq);
+    for (const id of Object.keys(listenState.scores)) {
+      listenState.scores[id] += add[id] * dt;
     }
   } else if (listenState.song > 0) {
     listenState.song = Math.max(0, listenState.song - dt * 0.12);
@@ -527,21 +446,30 @@ function finishSong() {
 }
 
 function fillPetHall() {
-  const inst = INSTRUMENTS[save.instrument] || INSTRUMENTS.violin;
   petHall.innerHTML = '';
-  for (const pet of PETS[inst.id] || PETS.violin) {
+  for (const pet of STORE_PETS) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'pet-card';
-    const canvas = document.createElement('canvas');
-    canvas.width = 140;
-    canvas.height = 96;
-    drawPet(canvas.getContext('2d'), pet, { mood: 'happy', t: 0.4, scale: 0.36, x: 70, y: 66 });
+    if (pet.img) {
+      const pic = document.createElement('img');
+      pic.src = pet.img;
+      pic.alt = pet.name;
+      pic.width = 140;
+      pic.height = 120;
+      card.appendChild(pic);
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = 140;
+      canvas.height = 120;
+      drawPet(canvas.getContext('2d'), pet, { mood: 'happy', t: 0.4, scale: 0.42, x: 70, y: 84 });
+      card.appendChild(canvas);
+    }
     const title = document.createElement('h3');
     title.textContent = pet.name;
     const blurb = document.createElement('p');
     blurb.textContent = pet.blurb;
-    card.append(canvas, title, blurb);
+    card.append(title, blurb);
     card.addEventListener('click', () => openMeet(pet));
     petHall.appendChild(card);
   }
@@ -608,13 +536,13 @@ function talk() {
   const lines = {
     sad: [
       `${save.name} looks small in the big hall.`,
-      'A snack or a song would help.',
+      'A food bowl or a song would help.',
       `${pet.name} misses your playing.`,
     ],
     ok: [
       `${save.name} is waiting in the garden.`,
-      'A bath might add some shine.',
-      'Play a little. They always listen.',
+      'A water bowl might help.',
+      'Drag the doll over. They always play.',
     ],
     happy: [
       `${save.name} spun in a circle!`,
@@ -661,7 +589,7 @@ function refreshWorldHud() {
     setMeter(meters.rest, 0);
     setMeter(meters.shine, 0);
     if (!speech.textContent || speech.textContent === '…') {
-      speech.textContent = 'Day 1. A visitor list is about to pop up…';
+      speech.textContent = 'Day 1. The store is about to open…';
     }
     return;
   }
@@ -681,24 +609,28 @@ function care(kind) {
     return;
   }
   if (isHomeToday() || walk.phase !== 'idle') return;
-  if (kind === 'snack') {
+  if (kind === 'food') {
     save.hunger = clamp(save.hunger + 30);
     save.shine = clamp(save.shine - 5);
-    speech.textContent = `${save.name} crunched a palace biscuit.`;
+    speech.textContent = `${save.name} ate from the food bowl.`;
+  } else if (kind === 'water') {
+    save.shine = clamp(save.shine + 34);
+    save.rest = clamp(save.rest - 4);
+    speech.textContent = `${save.name} lapped the water bowl.`;
   } else if (kind === 'play') {
     save.joy = clamp(save.joy + 26);
     save.rest = clamp(save.rest - 10);
     save.hunger = clamp(save.hunger - 8);
-    speech.textContent = `${save.name} chased a gold leaf around the yard.`;
+    speech.textContent = `${save.name} hugged the doll.`;
   } else if (kind === 'nap') {
     save.rest = clamp(save.rest + 36);
     save.hunger = clamp(save.hunger - 6);
-    speech.textContent = `${save.name} curled up under a velvet cushion.`;
-  } else if (kind === 'bath') {
-    save.shine = clamp(save.shine + 34);
-    save.rest = clamp(save.rest - 4);
-    speech.textContent = `${save.name} came out sparkling.`;
+    speech.textContent = `${save.name} tucked under the blanket.`;
   }
+  careFx.kind = kind;
+  careFx.x = 175;
+  careFx.y = 150;
+  careFx.t = 1.2;
   persist();
   refreshWorldHud();
 }
@@ -720,10 +652,10 @@ function enterWorld(opts = {}) {
       worldStatus.textContent = 'Your pet has gone home! play again tomorrow!';
     } else if (opts.waiting || !save.petId) {
       speech.textContent = 'Day 1. The garden woke up after your practice.';
-      worldStatus.textContent = 'Wait for the visitor list — then pick your forever pet.';
+      worldStatus.textContent = 'Wait for the store — then pick your forever pet.';
     } else {
       speech.textContent = `${save.name} found you. This garden is yours now.`;
-      worldStatus.textContent = 'Feed, play, rest, bathe — two minutes until bedtime.';
+      worldStatus.textContent = 'Drag food, water, a doll, or a blanket onto your pet.';
     }
   }
   refreshWorldHud();
@@ -757,6 +689,61 @@ function poly(ctx, pts, fill, stroke) {
   }
 }
 
+function drawCareStamp(ctx, kind) {
+  if (kind === 'food' || kind === 'water') {
+    oval(ctx, 0, 14, 28, 8, 'rgba(20,12,10,0.22)');
+    oval(ctx, 0, 8, 26, 11, '#6b3a1f', 0, '#2b1810');
+    oval(ctx, 0, 4, 22, 8, '#8d5a2b', 0, '#2b1810');
+    if (kind === 'food') {
+      oval(ctx, 0, 2, 18, 6, '#c47a2a');
+      oval(ctx, -7, 1, 4.5, 3.2, '#e9c46a');
+      oval(ctx, 5, 2, 4.5, 3.2, '#e76f51');
+      oval(ctx, -1, -1, 3.5, 2.5, '#fff3b0');
+      oval(ctx, 8, -1, 3, 2.2, '#d4a373');
+    } else {
+      oval(ctx, 0, 2, 18, 6, '#3a86ff');
+      oval(ctx, 0, 1, 14, 4, '#4ea8de');
+      oval(ctx, -6, -1, 5, 2.2, '#caf0f8');
+    }
+    return;
+  }
+  if (kind === 'play') {
+    oval(ctx, 0, 18, 14, 5, 'rgba(20,12,10,0.22)');
+    oval(ctx, -7, -18, 5, 6, '#c41e3a', 0.25, '#4a2c17');
+    oval(ctx, 7, -18, 5, 6, '#c41e3a', -0.25, '#4a2c17');
+    oval(ctx, 0, -10, 11, 11, '#f0d0b0', 0, '#4a2c17');
+    oval(ctx, 0, 8, 13, 14, '#e07a5f', 0, '#4a2c17');
+    oval(ctx, 0, 6, 8, 6, '#fff8ef');
+    oval(ctx, -14, 2, 5, 4, '#f0d0b0', 0, '#4a2c17');
+    oval(ctx, 14, 2, 5, 4, '#f0d0b0', 0, '#4a2c17');
+    oval(ctx, -4, -12, 2, 2.4, '#1a120c');
+    oval(ctx, 4, -12, 2, 2.4, '#1a120c');
+    ctx.strokeStyle = '#4a2c17';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, -8, 3.2, 0.15, Math.PI - 0.15);
+    ctx.stroke();
+    return;
+  }
+  oval(ctx, 0, 16, 20, 5, 'rgba(20,12,10,0.22)');
+  poly(ctx, [[-24, 10], [-18, -12], [24, -16], [22, 12]], '#6a4c93', '#2b1810');
+  poly(ctx, [[-18, -12], [6, -20], [24, -16]], '#9b5de5', '#2b1810');
+  ctx.fillStyle = '#e9c46a';
+  ctx.fillRect(-12, -6, 18, 3);
+  ctx.fillRect(-10, 1, 16, 3);
+  ctx.fillStyle = '#fff8ef';
+  ctx.fillRect(14, -8, 3, 14);
+}
+
+function drawCareIcon(ctx, kind) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.save();
+  ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2 + 2);
+  ctx.scale(ctx.canvas.width / 80, ctx.canvas.height / 64);
+  drawCareStamp(ctx, kind);
+  ctx.restore();
+}
+
 function drawFace(ctx, mood, ink, accent, eyeY = -26) {
   const sad = mood === 'sad';
   oval(ctx, -9, eyeY, 6, sad ? 2.2 : 7, '#fff8ef', 0, ink);
@@ -783,6 +770,20 @@ function drawFace(ctx, mood, ink, accent, eyeY = -26) {
 function drawPet(ctx, pet, opt) {
   const { mood = 'happy', t = 0, scale = 1, x, y, clear = true } = opt;
   if (clear) ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  if (spriteReady(pet)) {
+    const sprite = sprites[pet.id];
+    const bounce = Math.sin(t * 3.1) * (mood === 'sad' ? 1.5 : 5) * scale;
+    const size = 118 * scale;
+    ctx.save();
+    oval(ctx, x, y + 8 * scale, 22 * scale, 7 * scale, 'rgba(20,12,10,0.22)');
+    ctx.translate(x, y + bounce);
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.4, size * 0.5, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(sprite, -size / 2, -size + 6 * scale, size, size);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
@@ -801,7 +802,7 @@ function drawPet(ctx, pet, opt) {
       oval(ctx, i * 12, -28, 2.5, 2.5, '#e9c46a');
     }
   }
-  if (kind === 'moth' || kind === 'sprite') {
+  if (kind === 'moth' || kind === 'sprite' || kind === 'drake') {
     oval(ctx, -36, -6, 26, 20, accent, -0.35, ink);
     oval(ctx, 36, -6, 26, 20, accent, 0.35, ink);
     oval(ctx, -32, -8, 12, 10, '#fff8ef');
@@ -830,6 +831,43 @@ function drawPet(ctx, pet, opt) {
     oval(ctx, -12, -58, 3, 14, accent);
     oval(ctx, 12, -58, 3, 14, accent);
     oval(ctx, 22, 28, 8, 8, '#fff8ef', 0, ink);
+  }
+  if (kind === 'mossling') {
+    ctx.strokeStyle = '#8d6e4a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -40);
+    ctx.lineTo(-18, -64);
+    ctx.lineTo(-26, -56);
+    ctx.moveTo(-18, -64);
+    ctx.lineTo(-12, -72);
+    ctx.moveTo(10, -40);
+    ctx.lineTo(18, -64);
+    ctx.lineTo(26, -56);
+    ctx.moveTo(18, -64);
+    ctx.lineTo(12, -72);
+    ctx.stroke();
+    oval(ctx, 0, -48, 6, 6, '#fff8ef', 0, '#e9c46a');
+    oval(ctx, -8, -44, 5, 5, '#fff8ef', 0, '#e9c46a');
+    oval(ctx, 8, -44, 5, 5, '#fff8ef', 0, '#e9c46a');
+  }
+  if (kind === 'otter') {
+    oval(ctx, 0, 16, 16, 14, accent);
+    oval(ctx, 30, -4, 16, 12, '#edf2f4', 0.25, ink);
+    oval(ctx, 40, 0, 10, 8, '#fff8ef');
+    oval(ctx, -10, 44, 5, 4, '#8d8d8d', 0, ink);
+    oval(ctx, 2, 46, 5, 4, '#a8a8a8', 0, ink);
+    oval(ctx, 14, 44, 5, 4, '#7a7a7a', 0, ink);
+  }
+  if (kind === 'drake') {
+    oval(ctx, 32, 18, 10, 16, '#ffd166', 0.45, ink);
+    poly(ctx, [[-8, -42], [-6, -58], [0, -44]], '#c9a227', ink);
+    poly(ctx, [[8, -42], [6, -58], [0, -44]], '#c9a227', ink);
+  }
+  if (kind === 'inkcap') {
+    oval(ctx, 0, -42, 28, 14, '#6b5344', 0, ink);
+    oval(ctx, 0, -36, 22, 8, '#3d2a14');
+    oval(ctx, 18, 28, 10, 7, '#fff8ef', 0.2, ink);
   }
   if (kind === 'fox' || kind === 'cat' || kind === 'mouse') {
     poly(ctx, [[-18, -38], [-24, -62], [-4, -40]], body, ink);
@@ -1030,6 +1068,14 @@ function drawYard(t) {
       clear: false,
     });
   }
+  if (careFx.kind && careFx.t > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, careFx.t);
+    ctx.translate(careFx.x, careFx.y);
+    ctx.scale(0.72, 0.72);
+    drawCareStamp(ctx, careFx.kind);
+    ctx.restore();
+  }
   ctx.fillStyle = '#e9c46a';
   ctx.beginPath();
   ctx.moveTo(312, 128);
@@ -1056,6 +1102,13 @@ async function startListen(mode) {
     listenError.classList.remove('hidden');
     return;
   }
+  const micOk = await openMic();
+  if (!micOk) {
+    listenError.textContent = 'Allow the microphone. Pet Palace only hears a real instrument in the room.';
+    listenError.classList.remove('hidden');
+    listenStatus.textContent = 'The mic is blocked. Allow it, then play your instrument near the laptop.';
+    return;
+  }
   listenState.on = true;
   recordBtn.classList.add('listening');
   recordBtn.setAttribute('aria-pressed', 'true');
@@ -1063,15 +1116,9 @@ async function startListen(mode) {
   serenadeBtn.classList.toggle('listening', mode === 'serenade');
   if (mode === 'serenade') show(listen);
   listenStatus.textContent = mode === 'serenade'
-    ? `Serenade ${save.name}. Play your instrument or the palace keys.`
-    : 'Listening. Play a real instrument or tap the keys.';
+    ? `Serenade ${save.name}. Play your real instrument near the laptop.`
+    : 'Listening. Play your real instrument near the laptop.';
   heardLine.textContent = 'Listening for an instrument…';
-  const micOk = await openMic();
-  if (!micOk) {
-    listenStatus.textContent = mode === 'serenade'
-      ? `Mic blocked. Play a song on the palace keys for ${save.name}.`
-      : 'Mic blocked. Play a song on the palace keys instead.';
-  }
 }
 
 function stopListen(resetMeter = true) {
@@ -1115,39 +1162,12 @@ function buildChips() {
     chip.type = 'button';
     chip.className = `chip${listenState.selected === inst.id ? ' on' : ''}`;
     chip.textContent = `${inst.emoji} ${inst.name}`;
+    chip.title = `I'm playing ${inst.name}`;
     chip.addEventListener('click', () => {
       listenState.selected = inst.id;
       buildChips();
     });
     instrumentRow.appendChild(chip);
-  }
-}
-
-function buildKeys() {
-  keysEl.innerHTML = '';
-  for (const note of KEY_NOTES) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'key';
-    btn.dataset.key = note.key;
-    btn.textContent = note.name;
-    const press = async () => {
-      if (listen.classList.contains('hidden')) return;
-      try {
-        await ensureAudio();
-      } catch {
-        return;
-      }
-      playTone(note.freq, listenState.selected);
-      if (!listenState.on) startListen(listenState.mode);
-      btn.classList.add('down');
-      setTimeout(() => btn.classList.remove('down'), 140);
-    };
-    btn.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      press();
-    });
-    keysEl.appendChild(btn);
   }
 }
 
@@ -1158,6 +1178,7 @@ function loop(now) {
   drawViz();
   if (listenState.on) tickListen(dt);
   if (!world.classList.contains('hidden')) {
+    if (careFx.t > 0) careFx.t = Math.max(0, careFx.t - dt);
     tickPetTime(dt);
     applyDecay();
     if (Math.floor(worldTime * 4) % 20 === 0) refreshWorldHud();
@@ -1210,28 +1231,90 @@ document.getElementById('reset-palace').addEventListener('click', () => {
   resetWalk();
   clearTimeout(popupTimer);
   renderSaveLine();
-  listenStatus.textContent = 'Press Record, then play. The mic listens. Palace keys work too.';
+  listenStatus.textContent = 'Press Record, allow the mic, then play your real instrument.';
   heardLine.textContent = 'Listening for an instrument…';
   show(listen);
 });
 petNameInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') adoptPet();
 });
-document.querySelectorAll('[data-care]').forEach((btn) => {
-  btn.addEventListener('click', () => care(btn.dataset.care));
-});
-window.addEventListener('pagehide', persist);
-window.addEventListener('keydown', (event) => {
-  if (event.repeat || event.target === petNameInput) return;
-  if (listen.classList.contains('hidden')) return;
-  const note = KEY_NOTES.find((item) => item.key === event.key.toLowerCase());
-  if (!note) return;
-  const btn = keysEl.querySelector(`[data-key="${note.key}"]`);
-  btn?.dispatchEvent(new Event('pointerdown'));
-});
+function yardFromClient(clientX, clientY) {
+  const rect = yard.getBoundingClientRect();
+  return {
+    inside: clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom,
+    x: (clientX - rect.left) * (yard.width / Math.max(1, rect.width)),
+    y: (clientY - rect.top) * (yard.height / Math.max(1, rect.height)),
+  };
+}
 
+function showCareGhost(kind, clientX, clientY) {
+  drawCareIcon(careGhostCtx, kind);
+  careGhost.style.left = `${clientX}px`;
+  careGhost.style.top = `${clientY}px`;
+  careGhost.classList.remove('hidden');
+  careGhost.removeAttribute('hidden');
+}
+
+function hideCareGhost() {
+  careGhost.classList.add('hidden');
+  careGhost.setAttribute('hidden', '');
+  yard.classList.remove('drop-ready');
+}
+
+function paintCareIcons() {
+  careRow.querySelectorAll('[data-care]').forEach((item) => {
+    drawCareIcon(item.querySelector('canvas').getContext('2d'), item.dataset.care);
+  });
+}
+
+function bindCareDrag() {
+  careRow.querySelectorAll('[data-care]').forEach((item) => {
+    item.addEventListener('pointerdown', (event) => {
+      if (world.classList.contains('waiting') || world.classList.contains('home')) return;
+      if (!save.petId || isHomeToday() || walk.phase !== 'idle') return;
+      event.preventDefault();
+      item.setPointerCapture(event.pointerId);
+      drag.kind = item.dataset.care;
+      drag.overYard = false;
+      item.classList.add('dragging');
+      showCareGhost(drag.kind, event.clientX, event.clientY);
+    });
+    item.addEventListener('pointermove', (event) => {
+      if (!drag.kind) return;
+      showCareGhost(drag.kind, event.clientX, event.clientY);
+      const at = yardFromClient(event.clientX, event.clientY);
+      drag.overYard = at.inside;
+      drag.x = at.x;
+      drag.y = at.y;
+      yard.classList.toggle('drop-ready', at.inside);
+    });
+    const endDrag = (event) => {
+      if (!drag.kind) return;
+      const kind = drag.kind;
+      const at = yardFromClient(event.clientX, event.clientY);
+      item.classList.remove('dragging');
+      hideCareGhost();
+      drag.kind = null;
+      drag.overYard = false;
+      if (at.inside) {
+        careFx.x = 175;
+        careFx.y = 150;
+        care(kind);
+        worldStatus.textContent = 'Drag food, water, a doll, or a blanket onto your pet.';
+      } else {
+        worldStatus.textContent = 'Drop it on your pet in the garden.';
+      }
+    };
+    item.addEventListener('pointerup', endDrag);
+    item.addEventListener('pointercancel', endDrag);
+  });
+}
+window.addEventListener('pagehide', persist);
+
+preloadSprites();
+paintCareIcons();
+bindCareDrag();
 buildChips();
-buildKeys();
 refreshDayLock();
 renderSaveLine();
 if (save.petId && save.name) {

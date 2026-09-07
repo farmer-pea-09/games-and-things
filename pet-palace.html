@@ -15,14 +15,14 @@
   <section id="listen" class="screen">
     <p class="kicker">Games And Things</p>
     <h1>Pet Palace</h1>
-    <p class="lead">Practice violin, guitar, flute, or trumpet. Your song unlocks the palace garden. On the first day, a visitor list pops up — pick your forever pet.</p>
+    <p class="lead">Press Record, then play a real violin, guitar, flute, or trumpet near the laptop. When the mic hears your song, the store opens — pick a forever pet.</p>
     <p id="save-line" class="save-line hidden"></p>
-    <div class="instrument-row" id="instrument-row" role="group" aria-label="Practice instrument"></div>
+    <div class="instrument-row" id="instrument-row" role="group" aria-label="Instrument you are playing"></div>
     <button id="record-btn" type="button" aria-pressed="false">
       <span class="rec-dot" aria-hidden="true"></span>
       <span id="record-label">Record</span>
     </button>
-    <p id="listen-status" class="hint">Press Record, then play. The mic listens. Palace keys work too.</p>
+    <p id="listen-status" class="hint">Press Record, allow the mic, then play your real instrument. The laptop only listens — it does not play the notes for you.</p>
     <p id="listen-error" class="hint warn hidden"></p>
     <div class="viz-wrap">
       <canvas id="viz" width="520" height="110" aria-hidden="true"></canvas>
@@ -32,8 +32,7 @@
       </div>
       <p id="heard-line" class="heard">Listening for an instrument…</p>
     </div>
-    <div id="keys" class="keys" aria-label="Palace keys"></div>
-    <p class="tiny">Keys: A S D F G H J K · any short song counts</p>
+    <p class="tiny">Play in the room. A few clear notes is enough.</p>
     <button id="return-pet" class="ghost hidden" type="button">Return to your pet</button>
   </section>
 
@@ -53,21 +52,34 @@
           <div class="stat"><span>Hunger</span><div class="meter"><i id="hunger-meter"></i></div></div>
           <div class="stat"><span>Joy</span><div class="meter"><i id="joy-meter"></i></div></div>
           <div class="stat"><span>Rest</span><div class="meter"><i id="rest-meter"></i></div></div>
-          <div class="stat"><span>Shine</span><div class="meter"><i id="shine-meter"></i></div></div>
+          <div class="stat"><span>Water</span><div class="meter"><i id="shine-meter"></i></div></div>
         </div>
       </div>
-      <div class="care-row">
-        <button type="button" data-care="snack">Snack</button>
-        <button type="button" data-care="play">Play</button>
-        <button type="button" data-care="nap">Nap</button>
-        <button type="button" data-care="bath">Bath</button>
+      <p class="tiny care-hint">Click and drag onto your pet</p>
+      <div class="care-row" id="care-row">
+        <button type="button" class="care-item" data-care="food" aria-label="Food bowl">
+          <canvas width="80" height="64" aria-hidden="true"></canvas>
+          <span>Food</span>
+        </button>
+        <button type="button" class="care-item" data-care="water" aria-label="Water bowl">
+          <canvas width="80" height="64" aria-hidden="true"></canvas>
+          <span>Water</span>
+        </button>
+        <button type="button" class="care-item" data-care="play" aria-label="Doll">
+          <canvas width="80" height="64" aria-hidden="true"></canvas>
+          <span>Doll</span>
+        </button>
+        <button type="button" class="care-item" data-care="nap" aria-label="Blanket">
+          <canvas width="80" height="64" aria-hidden="true"></canvas>
+          <span>Blanket</span>
+        </button>
       </div>
     </div>
     <button id="serenade-btn" type="button">
       <span class="rec-dot small" aria-hidden="true"></span>
       Serenade
     </button>
-    <p id="world-status" class="hint">Play your instrument again to cheer them up.</p>
+    <p id="world-status" class="hint">Play your real instrument again to cheer them up.</p>
     <div class="row-actions">
       <button id="replay-song" class="ghost" type="button">Play a new song</button>
       <button id="reset-palace" class="ghost thin" type="button">Start over</button>
@@ -85,14 +97,14 @@
     <div class="day-popup-card">
       <p class="day-badge">Day 1</p>
       <div id="popup-pick">
-        <h2 id="popup-title">A visitor list popped up</h2>
-        <p id="popup-lead" class="lead">Someone heard you practice. Tap a friend to take home.</p>
+        <h2 id="popup-title">The store opened</h2>
+        <p id="popup-lead" class="lead">Friends from the store heard you practice. Tap one to take home.</p>
         <div id="pet-hall" class="pet-hall"></div>
       </div>
       <div id="popup-meet" class="hidden">
         <p class="kicker" id="meet-kicker">They stepped forward</p>
         <canvas id="meet-art" width="280" height="180" aria-hidden="true"></canvas>
-        <h2 id="meet-name">Velvet Fox</h2>
+        <h2 id="meet-name">Mossling</h2>
         <p id="meet-blurb" class="lead"></p>
         <label class="name-label" for="pet-name">What is my name?</label>
         <input id="pet-name" type="text" maxlength="14" placeholder="Type a name" autocomplete="off" spellcheck="false">
@@ -102,6 +114,10 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="care-ghost" class="care-ghost hidden" hidden>
+    <canvas width="80" height="64" aria-hidden="true"></canvas>
   </div>
 
   <script type="module" src="js/pet-palace.js"></script>
