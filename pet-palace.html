@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pet Palace · Games And Things</title>
+  <link rel="stylesheet" href="css/pet-palace.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a class="home-link" href="https://farmer-pea-09.github.io/games-and-things/index.html">← Games And Things</a>
+
+  <section id="listen" class="screen">
+    <p class="kicker">Games And Things</p>
+    <h1>Pet Palace</h1>
+    <p class="lead">Practice violin, guitar, flute, or trumpet. Your song unlocks the palace garden. On the first day, a visitor list pops up — pick your forever pet.</p>
+    <p id="save-line" class="save-line hidden"></p>
+    <div class="instrument-row" id="instrument-row" role="group" aria-label="Practice instrument"></div>
+    <button id="record-btn" type="button" aria-pressed="false">
+      <span class="rec-dot" aria-hidden="true"></span>
+      <span id="record-label">Record</span>
+    </button>
+    <p id="listen-status" class="hint">Press Record, then play. The mic listens. Palace keys work too.</p>
+    <p id="listen-error" class="hint warn hidden"></p>
+    <div class="viz-wrap">
+      <canvas id="viz" width="520" height="110" aria-hidden="true"></canvas>
+      <div class="meter-row">
+        <span>SONG</span>
+        <div class="meter"><i id="song-meter"></i></div>
+      </div>
+      <p id="heard-line" class="heard">Listening for an instrument…</p>
+    </div>
+    <div id="keys" class="keys" aria-label="Palace keys"></div>
+    <p class="tiny">Keys: A S D F G H J K · any short song counts</p>
+    <button id="return-pet" class="ghost hidden" type="button">Return to your pet</button>
+  </section>
+
+  <section id="world" class="screen world-screen hidden" hidden>
+    <p class="kicker" id="world-kicker">Forever home</p>
+    <div class="device">
+      <div class="device-ear left"></div>
+      <div class="device-ear right"></div>
+      <div class="lcd">
+        <div class="lcd-top">
+          <span id="age-label">Hatchling</span>
+          <span id="clock-label">Day</span>
+        </div>
+        <canvas id="yard" width="420" height="250" aria-label="Your pet in the palace garden"></canvas>
+        <p id="speech" class="speech">…</p>
+        <div class="stats">
+          <div class="stat"><span>Hunger</span><div class="meter"><i id="hunger-meter"></i></div></div>
+          <div class="stat"><span>Joy</span><div class="meter"><i id="joy-meter"></i></div></div>
+          <div class="stat"><span>Rest</span><div class="meter"><i id="rest-meter"></i></div></div>
+          <div class="stat"><span>Shine</span><div class="meter"><i id="shine-meter"></i></div></div>
+        </div>
+      </div>
+      <div class="care-row">
+        <button type="button" data-care="snack">Snack</button>
+        <button type="button" data-care="play">Play</button>
+        <button type="button" data-care="nap">Nap</button>
+        <button type="button" data-care="bath">Bath</button>
+      </div>
+    </div>
+    <button id="serenade-btn" type="button">
+      <span class="rec-dot small" aria-hidden="true"></span>
+      Serenade
+    </button>
+    <p id="world-status" class="hint">Play your instrument again to cheer them up.</p>
+    <div class="row-actions">
+      <button id="replay-song" class="ghost" type="button">Play a new song</button>
+      <button id="reset-palace" class="ghost thin" type="button">Start over</button>
+    </div>
+  </section>
+
+  <div id="home-overlay" class="home-overlay hidden" hidden>
+    <div class="home-card">
+      <p class="home-title">Your pet has gone home!</p>
+      <p class="home-sub">play again tomorrow!</p>
+    </div>
+  </div>
+
+  <div id="day-popup" class="day-popup hidden" hidden role="dialog" aria-modal="true" aria-labelledby="popup-title">
+    <div class="day-popup-card">
+      <p class="day-badge">Day 1</p>
+      <div id="popup-pick">
+        <h2 id="popup-title">A visitor list popped up</h2>
+        <p id="popup-lead" class="lead">Someone heard you practice. Tap a friend to take home.</p>
+        <div id="pet-hall" class="pet-hall"></div>
+      </div>
+      <div id="popup-meet" class="hidden">
+        <p class="kicker" id="meet-kicker">They stepped forward</p>
+        <canvas id="meet-art" width="280" height="180" aria-hidden="true"></canvas>
+        <h2 id="meet-name">Velvet Fox</h2>
+        <p id="meet-blurb" class="lead"></p>
+        <label class="name-label" for="pet-name">What is my name?</label>
+        <input id="pet-name" type="text" maxlength="14" placeholder="Type a name" autocomplete="off" spellcheck="false">
+        <div class="row-actions">
+          <button id="adopt-btn" type="button">Adopt forever</button>
+          <button id="back-hall" class="ghost" type="button">See the others</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/pet-palace.js"></script>
+</body>
+</html>
