@@ -456,6 +456,11 @@ function interactables() {
     if (state.spouseId && state.spouseId !== 'riley' && isSpouseHome()) {
       list.push({ id: state.spouseId, name: personName(state.spouseId), x: 420, y: 300, verb: talkVerb(state.spouseId) });
     }
+    if (state.spouseId && state.babies.length < 3) {
+      const sx = state.spouseId === 'riley' ? riley.x : 420;
+      const sy = state.spouseId === 'riley' ? riley.y : 300;
+      list.push({ id: 'trybaby', name: personName(state.spouseId), x: sx + 28, y: sy, verb: 'Try for a baby' });
+    }
     state.babies.filter((baby) => !baby.atDaycare).forEach((baby, i) => {
       list.push({ id: `baby:${state.babies.indexOf(baby)}`, name: baby.name, x: 160 + i * 40, y: 320, verb: 'Hold' });
     });
@@ -535,7 +540,7 @@ function nearestAction() {
   let best = null;
   let bestD = 70;
   for (const item of interactables()) {
-    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'rest' || item.id === 'fishshop' ? 24 : 0;
+    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'rest' || item.id === 'fishshop' || item.id === 'trybaby' ? 24 : 0;
     const d = dist(state.x, state.y, item.x, item.y);
     if (d < bestD + extra) {
       best = item;
@@ -726,6 +731,7 @@ function doAction(id) {
   }
   if (id === 'bowl') return feedPet();
   if (id === 'pet') return petPet();
+  if (id === 'trybaby') return tryForBaby();
   if (id === 'riley') return talkNeighbor('riley');
   if (id === 'nico') return talkNeighbor('nico');
   if (id === 'hale') return talkHale();
@@ -1918,13 +1924,15 @@ function openSpouseTalk(id) {
     const who = line.who === 'you' ? state.name : n.name;
     return `<div class="spouse-line ${line.who}"><b>${esc(who)}</b> ${esc(line.text)}</div>`;
   }).join('');
-  const babyBtn = (state.spouseId === id && !state.pregnant && state.babies.length < 3 && state.day - (state.marriedDay || 0) >= 2)
-    ? '<button type="button" data-act="spouse-baby">Try for a baby</button>'
-    : '';
-  const picnicBtn = '<button type="button" data-act="spouse-picnic">Come to the picnic grounds</button>';
+  const babyBtn = state.pregnant
+    ? '<p class="muted">A baby is already on the way.</p>'
+    : state.babies.length >= 3
+      ? '<p class="muted">Three kids is a full house.</p>'
+      : '<button type="button" data-act="spouse-baby">Try for a baby</button>';
   openMenu('spouse', `
     <h2>${esc(n.name)} · your ${role}</h2>
     <p class="muted">Hearts ${Math.round(state.people[id] || 0)}. Type in the search box, then Say.</p>
+    <div class="choice-list">${babyBtn}</div>
     <div class="spouse-log" id="spouse-log">${logHtml}</div>
     <div class="spouse-search">
       <input id="spouse-input" type="text" maxlength="160" placeholder="Search, ask, say anything..." autocomplete="off" spellcheck="true">
@@ -1932,8 +1940,7 @@ function openSpouseTalk(id) {
     </div>
     <div class="choice-list">
       <button type="button" data-act="spouse-kiss">Kiss</button>
-      ${picnicBtn}
-      ${babyBtn}
+      <button type="button" data-act="spouse-picnic">Come to the picnic grounds</button>
       <button type="button" class="ghost" data-act="close">Later</button>
     </div>
   `);
@@ -2166,9 +2173,21 @@ function proposeTo(id) {
   bump('mood', 24);
   openEvent({
     title: 'Married',
-    body: `${n.name} says yes. Oak Street claps from behind a curtain. Talk to your ${neighborGender() === 'girl' ? 'wife' : 'husband'} and type anything. There is a lake path by daycare, picnic grounds, and Bo buys fish.`,
-    choices: [{ label: 'We live here now', run: () => showToast(`${n.name} is family.`) }],
+    body: `${n.name} says yes. Oak Street claps from behind a curtain. Talk to your ${neighborGender() === 'girl' ? 'wife' : 'husband'} and type anything. You can try for a baby now.`,
+    choices: [
+      { label: 'Try for a baby', run: () => tryForBaby() },
+      { label: 'We live here now', run: () => showToast(`${n.name} is family.`) },
+    ],
   });
+}
+
+function tryForBaby() {
+  if (!state.spouseId) return showToast('Get married first.');
+  if (state.babies.length >= 3) return showToast('Three kids is a full house.');
+  bump('energy', -10);
+  bump('mood', 10);
+  spendTime(20);
+  birthBaby();
 }
 
 function holdBaby(index) {
@@ -2645,9 +2664,13 @@ function openLife() {
        <div class="row"><span>${esc(personName(state.datingId))} · your ${dateWord()}</span><span>${Math.round(state.people[state.datingId] || 0)}</span></div>
        <div class="choice-list"><button type="button" data-act="propose" data-arg="${esc(state.datingId)}">Propose $50</button></div>`
     : '';
+  const babyLifeBtn = state.spouseId && !state.pregnant && state.babies.length < 3
+    ? '<div class="choice-list"><button type="button" data-act="spouse-baby">Try for a baby</button></div>'
+    : '';
   const family = state.spouseId || state.babies.length
     ? `<h3>Family</h3>
        ${state.spouseId ? `<div class="row"><span>Married to</span><span>${esc(personName(state.spouseId))}</span></div>` : ''}
+       ${babyLifeBtn}
        ${state.pregnant ? '<div class="row"><span>Baby on the way</span><span>yes</span></div>' : ''}
        ${state.babies.map((b) => `<div class="row"><span>${esc(b.name)}${b.atDaycare ? ' · daycare' : ''}</span><span>${b.ageDays + 1}d · eat ${Math.round(b.hunger)}</span></div>`).join('')}`
     : '';
@@ -2662,6 +2685,7 @@ function openLife() {
   openMenu('life', `
     <h2>${esc(state.name)} · Life</h2>
     <p class="muted">${DAYS[weekday(state.day)]} day ${state.day} · ${esc(j.title)} at ${esc(j.place)}</p>
+    ${state.spouseId && state.babies.length < 3 ? '<div class="choice-list"><button type="button" data-act="spouse-baby">Try for a baby</button></div>' : ''}
     <div class="row"><span>Money</span><span>$${state.money}</span></div>
     <div class="row"><span>Rent</span><span class="${state.rentPaid ? 'good' : 'warn'}">${state.rentPaid ? 'paid' : '$' + rentOwed() + ' due Sun'}</span></div>
     <div class="row"><span>Utilities</span><span class="${state.utilPaid ? 'good' : 'warn'}">${state.utilPaid ? 'paid' : '$' + utilOwed()}</span></div>
@@ -3171,14 +3195,8 @@ overlayContent.addEventListener('click', (e) => {
     openSpouseTalk(id);
     showToast(`${personName(id)} kisses you.`);
   } else if (act === 'spouse-baby') {
-    if (!state.spouseId || state.pregnant || state.babies.length >= 3) return;
-    if (state.day - (state.marriedDay || 0) < 2) return showToast('Give marriage a couple of days.');
-    state.pregnant = 1;
-    bump('energy', -10);
-    bump('mood', 10);
-    spendTime(40);
     closeMenu();
-    showToast(`${personName(state.spouseId)} holds your hand. Something new is coming.`);
+    tryForBaby();
   } else if (act === 'spouse-picnic') {
     const id = partnerId();
     if (!id) return;
@@ -3986,6 +4004,11 @@ function drawHudBars() {
     petLabel.classList.add('hidden');
   }
   toastLabel.textContent = toast;
+  const babyBar = document.getElementById('baby-btn');
+  if (babyBar) {
+    if (state.spouseId && state.babies.length < 3 && !state.dead) babyBar.classList.remove('hidden');
+    else babyBar.classList.add('hidden');
+  }
 }
 
 function render() {
@@ -4090,6 +4113,10 @@ window.addEventListener('keydown', (e) => {
   }
   if (menu) return;
   if (k === 'e') openLife();
+  if (k === 'b' && state.spouseId && !jobGame) {
+    tryForBaby();
+    return;
+  }
   if (k === 'z' || k === ' ') {
     const a = nearestAction();
     if (a) doAction(a.id);
@@ -4106,6 +4133,10 @@ window.addEventListener('blur', () => keys.clear());
 document.getElementById('act-btn').addEventListener('click', () => {
   const a = nearestAction();
   if (a) doAction(a.id);
+});
+document.getElementById('baby-btn')?.addEventListener('click', () => {
+  if (menu === 'boot' || menu === 'new' || menu === 'end') return;
+  tryForBaby();
 });
 document.getElementById('life-btn').addEventListener('click', () => {
   if (!menu) openLife();

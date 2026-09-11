@@ -221,6 +221,11 @@ body {
   border-radius: 2px;
 }
 
+#baby-btn {
+  background: #e07a9a;
+  border-color: #8a3050;
+}
+
 #action-bar button:hover {
   background: #e09048;
 }
