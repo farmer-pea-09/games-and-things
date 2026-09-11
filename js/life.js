@@ -288,7 +288,33 @@ function isSpouseHome() {
 
 function spouseWord() {
   if (state.spouseId) return neighborGender() === 'girl' ? 'wife' : 'husband';
+  return dateWord();
+}
+
+function dateWord() {
   return neighborGender() === 'girl' ? 'girlfriend' : 'boyfriend';
+}
+
+function crushId() {
+  if (state.spouseId) return '';
+  if (state.datingId) return state.datingId;
+  const ids = ['riley', 'nico', 'alex'];
+  let best = '';
+  let bestH = 44;
+  for (const id of ids) {
+    const hearts = state.people[id] || 0;
+    if (hearts > bestH) {
+      bestH = hearts;
+      best = id;
+    }
+  }
+  return best;
+}
+
+function talkVerb(id) {
+  if (state.spouseId === id) return 'Talk spouse';
+  if (crushId() === id) return `Talk ${dateWord()}`;
+  return 'Talk';
 }
 
 function partnerId() {
@@ -441,10 +467,10 @@ function interactables() {
       { id: 'couch', name: 'Couch', x: 230, y: 250, verb: 'Relax' },
       { id: 'sink', name: 'Sink', x: 430, y: 80, verb: 'Clean' },
       { id: 'door', name: 'Front door', x: 740, y: 400, verb: 'Go outside' },
-      { id: 'riley', name: personName('riley'), x: riley.x, y: riley.y, verb: state.spouseId === 'riley' ? 'Talk spouse' : 'Talk' },
+      { id: 'riley', name: personName('riley'), x: riley.x, y: riley.y, verb: talkVerb('riley') },
     ];
     if (state.spouseId && state.spouseId !== 'riley' && isSpouseHome()) {
-      list.push({ id: state.spouseId, name: personName(state.spouseId), x: 420, y: 300, verb: 'Talk spouse' });
+      list.push({ id: state.spouseId, name: personName(state.spouseId), x: 420, y: 300, verb: talkVerb(state.spouseId) });
     }
     state.babies.filter((baby) => !baby.atDaycare).forEach((baby, i) => {
       list.push({ id: `baby:${state.babies.indexOf(baby)}`, name: baby.name, x: 160 + i * 40, y: 320, verb: 'Hold' });
@@ -465,7 +491,7 @@ function interactables() {
       { id: 'park', name: 'Oak Park', x: 150, y: 270, verb: 'Park' },
       { id: 'lakepath', name: 'Lake path', x: 480, y: 430, verb: 'Walk to the lake' },
     ];
-    if (nicoHere) list.push({ id: 'nico', name: personName('nico'), x: 170, y: 250, verb: state.spouseId === 'nico' ? 'Talk spouse' : 'Talk' });
+    if (nicoHere) list.push({ id: 'nico', name: personName('nico'), x: 170, y: 250, verb: talkVerb('nico') });
     if (haleHere) list.push({ id: 'hale', name: 'Ms. Hale', x: 120, y: 360, verb: 'Talk' });
     return addRemotes(list);
   }
@@ -473,7 +499,7 @@ function interactables() {
     const list = [
       { id: 'counter', name: 'Counter', x: 300, y: 200, verb: 'Clock in' },
       { id: 'priya', name: 'Priya', x: 520, y: 160, verb: 'Talk' },
-      { id: 'alex', name: personName('alex'), x: 640, y: 300, verb: state.spouseId === 'alex' ? 'Talk spouse' : 'Talk' },
+      { id: 'alex', name: personName('alex'), x: 640, y: 300, verb: talkVerb('alex') },
       { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
     ];
     return addRemotes(list);
@@ -513,7 +539,7 @@ function interactables() {
         name: personName(id),
         x: 580,
         y: 280,
-        verb: 'Talk spouse',
+        verb: talkVerb(id),
       });
     }
     return addRemotes(list);
@@ -1826,16 +1852,19 @@ function sellFish(arg) {
 }
 
 function talkNeighbor(id) {
-  if (state.spouseId === id || state.datingId === id) return openSpouseTalk(id);
+  if (state.spouseId === id) return openSpouseTalk(id);
+  if (!state.spouseId && (state.datingId === id || crushId() === id)) return openDatingTalk(id);
   const n = neighborOf(id);
   const rel = Math.round(state.people[id] || 0);
-  const dating = state.datingId === id;
   let body = `${n.name}: “`;
-  if (dating) body += pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']);
-  else if (rel >= 70) body += pick(['I keep looking at you. It is a problem.', 'Want to be more than hallway friends?', 'If you asked me out I would say yes.']);
+  if (rel >= 70) body += pick(['I keep looking at you. It is a problem.', 'Want to be more than hallway friends?', 'If you asked me out I would say yes.']);
   else body += pick(['The hallway light is a character now.', 'Want to be a person with me for twenty minutes?', 'You live here. I live here. Hi.']);
   body += `” Hearts ${rel}.`;
   const choices = [
+    {
+      label: 'Propose $50',
+      run: () => proposeTo(id),
+    },
     {
       label: 'Chat',
       run: () => {
@@ -1847,31 +1876,47 @@ function talkNeighbor(id) {
   ];
   if (rel >= 45) {
     choices.push({
-      label: dating ? 'Go on a date $18' : 'Ask out $18',
-      run: () => {
-        if (!trySpend(18, 'date')) return;
-        bump('mood', 16);
-        bump('energy', -6);
-        addRel(id, 12);
-        state.datingId = id;
-        spendTime(50);
-        showToast(`${n.name} laughs like rent is optional.`);
-      },
-    });
-  }
-  if (dating || rel >= 80) {
-    choices.push({
-      label: 'Propose $50',
-      run: () => proposeTo(id),
+      label: 'Ask out $18',
+      run: () => goOnDate(id),
     });
   }
   choices.push({ label: 'Later', run: () => {} });
   openEvent({ title: n.name, body, choices });
 }
 
-function openSpouseTalk(id) {
+function goOnDate(id) {
   const n = neighborOf(id);
-  const role = state.spouseId === id ? spouseWord() : (neighborGender() === 'girl' ? 'girlfriend' : 'boyfriend');
+  if (!trySpend(18, 'date')) return;
+  bump('mood', 16);
+  bump('energy', -6);
+  addRel(id, 12);
+  state.datingId = id;
+  spendTime(50);
+  save();
+  showToast(`${n.name} is your ${dateWord()} now.`);
+  openDatingTalk(id);
+}
+
+function openDatingTalk(id) {
+  const n = neighborOf(id);
+  const rel = Math.round(state.people[id] || 0);
+  openMenu('date', `
+    <h2>${esc(n.name)} · your ${dateWord()}</h2>
+    <p>${esc(n.name)}: “${esc(pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']))}”</p>
+    <p class="muted">Hearts ${rel}. Propose is the green button.</p>
+    <div class="choice-list">
+      <button type="button" data-act="propose" data-arg="${id}">Propose $50</button>
+      <button type="button" data-act="date-chat" data-arg="${id}">Chat</button>
+      <button type="button" data-act="date-out" data-arg="${id}">Go on a date $18</button>
+      <button type="button" class="ghost" data-act="close">Later</button>
+    </div>
+  `);
+}
+
+function openSpouseTalk(id) {
+  if (state.spouseId !== id) return talkNeighbor(id);
+  const n = neighborOf(id);
+  const role = spouseWord();
   if (!spouseLog.length) {
     spouseLog.push({
       who: 'them',
@@ -1923,7 +1968,7 @@ function sendSpouseSay() {
   const input = document.getElementById('spouse-input');
   const text = (input?.value || '').trim();
   if (!text) return;
-  const id = partnerId();
+  const id = state.spouseId;
   if (!id) return;
   spouseLog.push({ who: 'you', text: text.slice(0, 160) });
   const reply = spouseReply(text);
@@ -2124,7 +2169,7 @@ function spouseReply(raw) {
 function proposeTo(id) {
   const n = neighborOf(id);
   if (state.spouseId) return showToast(`You already married ${personName(state.spouseId)}.`);
-  if ((state.people[id] || 0) < 80) return showToast(`${n.name} likes you. Not that much yet. Talk more.`);
+  if ((state.people[id] || 0) < 60) return showToast(`${n.name} likes you. Not that much yet. Talk or go on a date.`);
   if (!trySpend(50, 'a ring')) return;
   state.spouseId = id;
   state.datingId = id;
@@ -2599,15 +2644,20 @@ function openLife() {
   const j = job();
   const roommate = neighborOf('riley');
   const ppl = [
-    [roommate.name, 'riley', state.spouseId === 'riley' ? 'Spouse' : roommate.role],
-    [personName('nico'), 'nico', state.spouseId === 'nico' ? 'Spouse' : 'Neighbor'],
-    [personName('alex'), 'alex', state.spouseId === 'alex' ? 'Spouse' : 'Neighbor'],
+    [roommate.name, 'riley', state.spouseId === 'riley' ? 'Spouse' : crushId() === 'riley' ? dateWord() : roommate.role],
+    [personName('nico'), 'nico', state.spouseId === 'nico' ? 'Spouse' : crushId() === 'nico' ? dateWord() : 'Neighbor'],
+    [personName('alex'), 'alex', state.spouseId === 'alex' ? 'Spouse' : crushId() === 'alex' ? dateWord() : 'Neighbor'],
     ['Ms. Hale', 'hale', 'Landlord'],
     ['Priya', 'priya', 'Cafe boss'],
     ['Dr. Moss', 'moss', 'Clinic'],
   ].map(([name, id, role]) => `
     <div class="row"><span>${name} · ${role}</span><span>${Math.round(state.people[id])}</span></div>
   `).join('');
+  const datingBlock = crushId()
+    ? `<h3>Dating</h3>
+       <div class="row"><span>${esc(personName(crushId()))} · your ${dateWord()}</span><span>${Math.round(state.people[crushId()] || 0)}</span></div>
+       <button type="button" data-act="propose" data-arg="${crushId()}">Propose $50</button>`
+    : '';
   const family = state.spouseId || state.babies.length
     ? `<h3>Family</h3>
        ${state.spouseId ? `<div class="row"><span>Married to</span><span>${esc(personName(state.spouseId))}</span></div>` : ''}
@@ -2633,6 +2683,7 @@ function openLife() {
     <div class="row"><span>Apartment mess</span><span>${Math.round(state.mess)}</span></div>
     <div class="row"><span>Job misses</span><span>${state.misses}</span></div>
     ${pet}
+    ${datingBlock}
     ${family}
     <h3>People</h3>
     <div class="people-list">${ppl}</div>
@@ -3098,14 +3149,25 @@ overlayContent.addEventListener('click', (e) => {
   } else if (act === 'pay-rent') payRent();
   else if (act === 'pay-util') payUtil();
   else if (act === 'sick') callSick();
-  else if (act === 'go-lake') {
+  else if (act === 'date-chat') {
+    bump('mood', 8);
+    addRel(arg, 6);
+    spendTime(20);
+    closeMenu();
+    showToast(`${personName(arg)} smiles like rent can wait.`);
+  }   else if (act === 'date-out') {
+    goOnDate(arg);
+  } else if (act === 'propose') {
+    closeMenu();
+    proposeTo(arg);
+  } else if (act === 'go-lake') {
     closeMenu();
     if (state.pet && !state.pet.atDaycare) state.petOut = true;
     fadeTo('The path down to the lake...', () => goScene('lake', 60, 420));
   } else if (act === 'sell-fish') sellFish(arg);
   else if (act === 'spouse-say') sendSpouseSay();
   else if (act === 'spouse-kiss') {
-    const id = partnerId();
+    const id = state.spouseId;
     if (!id) return;
     bump('mood', 14);
     addRel(id, 4);
@@ -4034,7 +4096,7 @@ window.addEventListener('keydown', (e) => {
   if (typing) return;
   if (jobGame && e.repeat) return;
   if (jobGame && !fade && handleWorkKey(k)) return;
-  if (k === 'p' && menu !== 'new' && menu !== 'event' && menu !== 'end' && menu !== 'spouse' && menu !== 'shop') {
+  if (k === 'p' && menu !== 'new' && menu !== 'event' && menu !== 'end' && menu !== 'spouse' && menu !== 'shop' && menu !== 'date') {
     openMultiplayerMenu();
     return;
   }
