@@ -295,25 +295,9 @@ function dateWord() {
   return neighborGender() === 'girl' ? 'girlfriend' : 'boyfriend';
 }
 
-function crushId() {
-  if (state.spouseId) return '';
-  if (state.datingId) return state.datingId;
-  const ids = ['riley', 'nico', 'alex'];
-  let best = '';
-  let bestH = 44;
-  for (const id of ids) {
-    const hearts = state.people[id] || 0;
-    if (hearts > bestH) {
-      bestH = hearts;
-      best = id;
-    }
-  }
-  return best;
-}
-
 function talkVerb(id) {
   if (state.spouseId === id) return 'Talk spouse';
-  if (crushId() === id) return `Talk ${dateWord()}`;
+  if (state.datingId === id) return `Talk ${dateWord()}`;
   return 'Talk';
 }
 
@@ -1851,9 +1835,13 @@ function sellFish(arg) {
   openFishShop();
 }
 
+function isCrush(id) {
+  return id === 'riley' || id === 'nico' || id === 'alex';
+}
+
 function talkNeighbor(id) {
   if (state.spouseId === id) return openSpouseTalk(id);
-  if (!state.spouseId && (state.datingId === id || crushId() === id)) return openDatingTalk(id);
+  if (state.datingId === id && !state.spouseId) return openDatingTalk(id);
   const n = neighborOf(id);
   const rel = Math.round(state.people[id] || 0);
   let body = `${n.name}: “`;
@@ -1861,10 +1849,6 @@ function talkNeighbor(id) {
   else body += pick(['The hallway light is a character now.', 'Want to be a person with me for twenty minutes?', 'You live here. I live here. Hi.']);
   body += `” Hearts ${rel}.`;
   const choices = [
-    {
-      label: 'Propose $50',
-      run: () => proposeTo(id),
-    },
     {
       label: 'Chat',
       run: () => {
@@ -1874,10 +1858,14 @@ function talkNeighbor(id) {
       },
     },
   ];
-  if (rel >= 45) {
+  if (isCrush(id) && !state.spouseId) {
     choices.push({
       label: 'Ask out $18',
       run: () => goOnDate(id),
+    });
+    choices.push({
+      label: 'Propose $50',
+      run: () => proposeTo(id),
     });
   }
   choices.push({ label: 'Later', run: () => {} });
@@ -1892,7 +1880,6 @@ function goOnDate(id) {
   addRel(id, 12);
   state.datingId = id;
   spendTime(50);
-  save();
   showToast(`${n.name} is your ${dateWord()} now.`);
   openDatingTalk(id);
 }
@@ -1903,11 +1890,11 @@ function openDatingTalk(id) {
   openMenu('date', `
     <h2>${esc(n.name)} · your ${dateWord()}</h2>
     <p>${esc(n.name)}: “${esc(pick(['I saved you a seat in my brain.', 'Walk me around the block later?', 'You make Oak Street less loud.']))}”</p>
-    <p class="muted">Hearts ${rel}. Propose is the green button.</p>
+    <p class="muted">Hearts ${rel}. You are dating. Propose is the green button.</p>
     <div class="choice-list">
-      <button type="button" data-act="propose" data-arg="${id}">Propose $50</button>
-      <button type="button" data-act="date-chat" data-arg="${id}">Chat</button>
-      <button type="button" data-act="date-out" data-arg="${id}">Go on a date $18</button>
+      <button type="button" data-act="propose" data-arg="${esc(id)}">Propose $50</button>
+      <button type="button" data-act="date-chat" data-arg="${esc(id)}">Chat</button>
+      <button type="button" data-act="date-out" data-arg="${esc(id)}">Go on a date $18</button>
       <button type="button" class="ghost" data-act="close">Later</button>
     </div>
   `);
@@ -2169,7 +2156,7 @@ function spouseReply(raw) {
 function proposeTo(id) {
   const n = neighborOf(id);
   if (state.spouseId) return showToast(`You already married ${personName(state.spouseId)}.`);
-  if ((state.people[id] || 0) < 60) return showToast(`${n.name} likes you. Not that much yet. Talk or go on a date.`);
+  if ((state.people[id] || 0) < 60) return showToast(`${n.name} likes you. Not that much yet. Chat or go on a date, then propose.`);
   if (!trySpend(50, 'a ring')) return;
   state.spouseId = id;
   state.datingId = id;
@@ -2644,19 +2631,19 @@ function openLife() {
   const j = job();
   const roommate = neighborOf('riley');
   const ppl = [
-    [roommate.name, 'riley', state.spouseId === 'riley' ? 'Spouse' : crushId() === 'riley' ? dateWord() : roommate.role],
-    [personName('nico'), 'nico', state.spouseId === 'nico' ? 'Spouse' : crushId() === 'nico' ? dateWord() : 'Neighbor'],
-    [personName('alex'), 'alex', state.spouseId === 'alex' ? 'Spouse' : crushId() === 'alex' ? dateWord() : 'Neighbor'],
+    [roommate.name, 'riley', state.spouseId === 'riley' ? 'Spouse' : state.datingId === 'riley' ? dateWord() : roommate.role],
+    [personName('nico'), 'nico', state.spouseId === 'nico' ? 'Spouse' : state.datingId === 'nico' ? dateWord() : 'Neighbor'],
+    [personName('alex'), 'alex', state.spouseId === 'alex' ? 'Spouse' : state.datingId === 'alex' ? dateWord() : 'Neighbor'],
     ['Ms. Hale', 'hale', 'Landlord'],
     ['Priya', 'priya', 'Cafe boss'],
     ['Dr. Moss', 'moss', 'Clinic'],
   ].map(([name, id, role]) => `
     <div class="row"><span>${name} · ${role}</span><span>${Math.round(state.people[id])}</span></div>
   `).join('');
-  const datingBlock = crushId()
+  const datingBlock = state.datingId && !state.spouseId
     ? `<h3>Dating</h3>
-       <div class="row"><span>${esc(personName(crushId()))} · your ${dateWord()}</span><span>${Math.round(state.people[crushId()] || 0)}</span></div>
-       <button type="button" data-act="propose" data-arg="${crushId()}">Propose $50</button>`
+       <div class="row"><span>${esc(personName(state.datingId))} · your ${dateWord()}</span><span>${Math.round(state.people[state.datingId] || 0)}</span></div>
+       <div class="choice-list"><button type="button" data-act="propose" data-arg="${esc(state.datingId)}">Propose $50</button></div>`
     : '';
   const family = state.spouseId || state.babies.length
     ? `<h3>Family</h3>
@@ -2682,8 +2669,8 @@ function openLife() {
     <div class="row"><span>Fish</span><span>${fishTotal()} · $${fishValue()}</span></div>
     <div class="row"><span>Apartment mess</span><span>${Math.round(state.mess)}</span></div>
     <div class="row"><span>Job misses</span><span>${state.misses}</span></div>
-    ${pet}
     ${datingBlock}
+    ${pet}
     ${family}
     <h3>People</h3>
     <div class="people-list">${ppl}</div>
@@ -3155,7 +3142,8 @@ overlayContent.addEventListener('click', (e) => {
     spendTime(20);
     closeMenu();
     showToast(`${personName(arg)} smiles like rent can wait.`);
-  }   else if (act === 'date-out') {
+  } else if (act === 'date-out') {
+    closeMenu();
     goOnDate(arg);
   } else if (act === 'propose') {
     closeMenu();
