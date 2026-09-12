@@ -262,6 +262,10 @@ body {
   color: #402010;
 }
 
+#overlay-content:has(.cal-grid) {
+  max-width: 540px;
+}
+
 #overlay-content h2 {
   color: #c04028;
   margin-bottom: 12px;
@@ -468,4 +472,55 @@ body {
   border-radius: 2px;
   border: 1px solid #c47838;
   color: #fff8e0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin: 10px 0 12px;
+  min-width: 300px;
+}
+
+.cal-head {
+  color: #7a5a38;
+  font-size: 6px;
+  padding: 4px 0 2px;
+}
+
+.cal-cell {
+  min-height: 34px;
+  background: #fffdf4;
+  border: 1px solid #e0c890;
+  padding: 3px 2px;
+  font-size: 6px;
+  line-height: 1.35;
+  color: #402010;
+  text-align: left;
+}
+
+.cal-cell.today {
+  border: 2px solid #c04028;
+  background: #ffe8b0;
+}
+
+.cal-cell.special {
+  background: #ffe0ea;
+  border-color: #e07a9a;
+}
+
+.cal-cell.today.special {
+  background: #ffd0c0;
+}
+
+.cal-num {
+  display: block;
+  color: #c04028;
+  margin-bottom: 2px;
+}
+
+.cal-ev {
+  display: block;
+  color: #8a3050;
+  font-size: 5px;
 }

@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>Oak Street Life</title>
-  <link rel="stylesheet" href="css/life.css?v=trybaby2">
+  <link rel="stylesheet" href="css/life.css?v=calspecial">
   <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,6 +37,7 @@
     <div id="action-bar">
       <button type="button" id="act-btn"><kbd>Z</kbd> <span id="act-label">Do</span></button>
       <button type="button" id="baby-btn" class="hidden"><kbd>B</kbd> Baby</button>
+      <button type="button" id="cal-btn"><kbd>C</kbd> Calendar</button>
       <button type="button" id="life-btn"><kbd>E</kbd> Life</button>
       <button type="button" id="play-btn"><kbd>P</kbd> Play</button>
       <button type="button" id="pause-btn"><kbd>Esc</kbd> Pause</button>
@@ -48,13 +50,13 @@
       </div>
     </div>
     <div id="controls-help">
-      <kbd>WASD</kbd> walk · hold <kbd>Q</kbd> + walk to run · <kbd>Z</kbd> do
+      <kbd>WASD</kbd> walk · <kbd>Z</kbd> do · <kbd>C</kbd> calendar · clinic is $1
     </div>
   </div>
   <script type="module">
-    import { gateGame } from './js/room-code.js?v=trybaby2';
+    import { gateGame } from './js/room-code.js?v=calspecial';
     if (gateGame('life')) {
-      await import('./js/life.js?v=trybaby2');
+      await import('./js/life.js?v=calspecial');
     }
   </script>
 </body>
