@@ -1350,22 +1350,6 @@ function evict() {
   localStorage.removeItem(SAVE_KEY);
 }
 
-function collapse() {
-  state.dead = false;
-  state.health = 35;
-  state.energy = 30;
-  state.scene = 'town';
-  state.x = 580;
-  state.y = 150;
-  state.working = false;
-  bump('mood', -18);
-  showToast('You faint. Dr. Moss does not charge you.');
-  openEvent({
-    title: 'Clinic',
-    body: 'Dr. Moss catches you before the sidewalk does. Rest, eat, and stop treating sleep like a rumor. No doctor fee.',
-    choices: [{ label: 'I will try', run: () => { addRel('moss', 6); } }],
-  });
-}
 
 function openWallCalendar() {
   const todayMd = monthDayOf(state.day);
@@ -2215,7 +2199,7 @@ function openClinic() {
   if (hourOf(state.minutes) < 8 || hourOf(state.minutes) >= 19) return showToast('Clinic is closed.');
   openMenu('shop', `
     <h2>Oak Clinic</h2>
-    <p class="muted">Dr. Moss has stickers and strong opinions about sleep.</p>
+    <p class="muted">Checkups and stickers. Sleep is still your job.</p>
     <div class="choice-list">
       <button type="button" data-act="heal">Checkup — restore health</button>
       ${state.pregnant ? '<button type="button" data-act="baby-check">Baby checkup</button>' : ''}
@@ -2716,7 +2700,7 @@ function spouseReply(raw) {
   if (said(t, 'food', 'eat', 'dinner', 'hungry', 'cook', 'breakfast', 'lunch', 'snack')) {
     if (state.food <= 0 && state.snacks <= 0) return pick([`Fridge is performing modern art: empty. Market, or we picnic on vibes.`, `I would cook if ingredients existed. They do not. This is a tragedy in 4B.`]);
     if (h >= 17) return pick([`Dinner can be real food or picnic leftovers. I vote sitting close.`, `I will heat something. You tell me about your day like it matters, because it does.`]);
-    return pick([`There are ${state.food} meals and ${state.snacks} snacks. We are not fancy. We are fed-ish.`, `Eat. I cannot kiss a person who is about to faint in a cute way.`]);
+    return pick([`There are ${state.food} meals and ${state.snacks} snacks. We are not fancy. We are fed-ish.`, `Eat. I cannot kiss a person who skipped breakfast on purpose.`]);
   }
 
   if (said(t, 'tired', 'sleep', 'bed', 'nap', 'exhaust')) {
@@ -3949,16 +3933,7 @@ function updateStats(dt) {
     hip.happy = clamp(hip.happy + 3.2 * hours, 0, 100);
     hip.hunger = clamp(hip.hunger - 1.4 * hours, 0, 100);
   }
-  if (state.health <= 0) {
-    state.health = 1;
-    collapse();
-  }
-  const h = hourOf(state.minutes);
-  if (h >= 2 && h < 6 && !state.working) {
-    showToast('You pass out wherever you are.');
-    if (state.scene !== 'home') goScene('home', 70, 90);
-    sleep();
-  }
+  if (state.health < 1) state.health = 1;
 }
 
 function updateWorld(dt) {
