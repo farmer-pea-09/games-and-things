@@ -14,6 +14,8 @@ const W = 800;
 const H = 480;
 const SAVE_KEY = 'oakstreet-life-save';
 const CLINIC_FEE = 1;
+const KID_AGE = 7;
+const GROWN_AGE = 14;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HAIR = ['#3b2a1a', '#111111', '#d4a017', '#8b2e1a', '#3d5a80', '#5c4d3c'];
 const SEC_PER_HOUR = 16;
@@ -129,6 +131,7 @@ let pendingInvite = (new URLSearchParams(location.search).get('play') || '')
   .slice(0, 6);
 let spouseLog = [];
 let spouseLastAsk = '';
+let schoolSentHome = false;
 
 fetch('/__lan.json', { cache: 'no-store' })
   .then((res) => (res.ok ? res.json() : null))
@@ -289,12 +292,13 @@ function newState() {
     pet: null,
     petOut: false,
     petSick: false,
-    people: { riley: 58, hale: 42, priya: 50, nico: 40, moss: 28, alex: 35, dot: 48 },
+    people: { riley: 58, hale: 42, priya: 50, nico: 40, moss: 28, alex: 35, dot: 48, finch: 50 },
     datingId: '',
     spouseId: '',
     marriedDay: 0,
     pregnant: 0,
     babies: [],
+    grownKids: [],
     carrying: -1,
     fish: emptyFish(),
     invitedSpouse: false,
@@ -321,7 +325,20 @@ function personName(id) {
   if (id === 'moss') return 'Dr. Moss';
   if (id === 'boss') return 'Mr. Stack';
   if (id === 'dot') return 'Ms. Dot';
+  if (id === 'finch') return 'Ms. Finch';
   return neighborOf(id).name;
+}
+
+function isSchoolKid(baby) {
+  return !!baby && (baby.ageDays || 0) >= KID_AGE;
+}
+
+function kidStageLabel(baby) {
+  return isSchoolKid(baby) ? 'kid' : 'baby';
+}
+
+function grownPos(index) {
+  return { x: 220 + (index % 3) * 100, y: 280 + Math.floor(index / 3) * 50 };
 }
 
 function carriedBaby() {
@@ -340,7 +357,7 @@ function babyFloorPos(index) {
 
 function pickUpBaby(index) {
   const baby = state.babies[index];
-  if (!baby || baby.atDaycare) return;
+  if (!baby || baby.atDaycare || baby.atSchool) return;
   if (state.carrying === index) return;
   if (carriedBaby()) putDownBaby(true);
   state.carrying = index;
@@ -373,12 +390,16 @@ function putDownBaby(quiet = false) {
 
 function dropSpotLabel(watcher) {
   if (!watcher) return 'here';
-  if (watcher === 'riley' || watcher === 'nico' || watcher === 'alex' || watcher === 'hale' || watcher === 'priya' || watcher === 'moss' || watcher === 'dot' || watcher === 'boss' || watcher === state.spouseId) {
+  if (watcher === 'riley' || watcher === 'nico' || watcher === 'alex' || watcher === 'hale' || watcher === 'priya' || watcher === 'moss' || watcher === 'dot' || watcher === 'boss' || watcher === 'finch' || watcher === state.spouseId) {
     return personName(watcher);
   }
   if (String(watcher).startsWith('player:')) {
     const remote = remotes.get(watcher.slice(7));
     return remote?.name || 'a friend';
+  }
+  if (String(watcher).startsWith('grown:')) {
+    const g = state.grownKids[Number(watcher.slice(6))];
+    return g?.name || 'your kid';
   }
   const labels = {
     home: '4B',
@@ -387,6 +408,8 @@ function dropSpotLabel(watcher) {
     office: 'the office',
     market: 'the market',
     daycare: 'daycare',
+    school: 'Oak School',
+    apt5b: '5B',
     lake: 'the lake',
     park: 'Oak Park',
     couch: 'the couch',
@@ -401,12 +424,13 @@ function dropSpotLabel(watcher) {
     deskjob: 'your desk',
     register: 'the register',
     daydesk: 'Ms. Dot\'s desk',
+    schooldesk: 'Ms. Finch\'s desk',
   };
   return labels[watcher] || watcher;
 }
 
 function isPersonWatcher(watcher) {
-  return watcher === 'riley' || watcher === 'nico' || watcher === 'alex' || watcher === 'hale' || watcher === 'priya' || watcher === 'moss' || watcher === 'dot' || watcher === 'boss' || watcher === state.spouseId || String(watcher || '').startsWith('player:');
+  return watcher === 'riley' || watcher === 'nico' || watcher === 'alex' || watcher === 'hale' || watcher === 'priya' || watcher === 'moss' || watcher === 'dot' || watcher === 'boss' || watcher === 'finch' || watcher === state.spouseId || String(watcher || '').startsWith('player:') || String(watcher || '').startsWith('grown:');
 }
 
 function sceneDropSpots(includeDoors = false) {
@@ -422,6 +446,8 @@ function sceneDropSpots(includeDoors = false) {
     if (includeDoors) {
       spots.push(
         { watcher: 'daycare', name: 'Daycare yard', x: 700, y: 360 },
+        { watcher: 'school', name: 'Oak School steps', x: 360, y: 390 },
+        { watcher: 'apt5b', name: '5B stoop', x: 220, y: 400 },
         { watcher: 'cafe', name: 'Bean & Oak', x: 140, y: 120 },
         { watcher: 'clinic', name: 'Clinic porch', x: 580, y: 110 },
         { watcher: 'grocery', name: 'Market stoop', x: 380, y: 270 },
@@ -448,6 +474,16 @@ function sceneDropSpots(includeDoors = false) {
       { watcher: 'dot', name: 'Ms. Dot', x: 520, y: 180 },
       { watcher: 'daydesk', name: 'the desk', x: 280, y: 200 },
     );
+  } else if (state.scene === 'school') {
+    spots.push(
+      { watcher: 'finch', name: 'Ms. Finch', x: 520, y: 180 },
+      { watcher: 'schooldesk', name: 'the desk', x: 280, y: 200 },
+    );
+  } else if (state.scene === 'apt5b') {
+    state.grownKids.forEach((kid, i) => {
+      const pos = grownPos(i);
+      spots.push({ watcher: `grown:${i}`, name: kid.name, x: pos.x, y: pos.y });
+    });
   } else if (state.scene === 'lake') {
     spots.push(
       { watcher: 'picnic', name: 'Picnic grounds', x: 620, y: 300 },
@@ -509,11 +545,12 @@ function dropBabyOff(watcher, quiet = false) {
   baby.scene = state.scene;
   baby.watchedBy = watcher || state.scene;
   baby.atDaycare = false;
+  baby.atSchool = false;
   state.carrying = -1;
   if (quiet) return;
   if (isPersonWatcher(watcher)) {
     const who = dropSpotLabel(watcher);
-    if (!String(watcher).startsWith('player:')) addRel(watcher, 3);
+    if (!String(watcher).startsWith('player:') && !String(watcher).startsWith('grown:')) addRel(watcher, 3);
     baby.happy = clamp(baby.happy + 6, 0, 100);
     showToast(`${who} takes ${baby.name}. Come back whenever.`);
   } else {
@@ -523,7 +560,7 @@ function dropBabyOff(watcher, quiet = false) {
 
 function addFloorBabies(list) {
   state.babies.forEach((baby, i) => {
-    if (baby.atDaycare || state.carrying === i) return;
+    if (baby.atDaycare || baby.atSchool || state.carrying === i) return;
     if ((baby.scene || 'home') !== state.scene) return;
     const pos = babyFloorPos(i);
     list.push({ id: `baby:${i}`, name: baby.name, x: pos.x, y: pos.y, verb: 'Carry' });
@@ -652,6 +689,18 @@ const WALLS = {
     { x: 0, y: 0, w: 18, h: 480 },
     { x: 782, y: 0, w: 18, h: 480 },
   ],
+  school: [
+    { x: 0, y: 0, w: 800, h: 18 },
+    { x: 0, y: 462, w: 800, h: 18 },
+    { x: 0, y: 0, w: 18, h: 480 },
+    { x: 782, y: 0, w: 18, h: 480 },
+  ],
+  apt5b: [
+    { x: 0, y: 0, w: 800, h: 18 },
+    { x: 0, y: 462, w: 800, h: 18 },
+    { x: 0, y: 0, w: 18, h: 480 },
+    { x: 782, y: 0, w: 18, h: 480 },
+  ],
   lake: [
     { x: 0, y: 0, w: 800, h: 12 },
     { x: 0, y: 468, w: 800, h: 12 },
@@ -726,6 +775,8 @@ function interactables() {
   if (state.scene === 'town') {
     const list = [
       { id: 'home', name: 'Apt 4B', x: 90, y: 400, verb: 'Go home' },
+      { id: 'apt5b', name: 'Apt 5B', x: 220, y: 400, verb: state.grownKids.length ? 'Visit the kids' : 'Peek in 5B' },
+      { id: 'school', name: 'Oak School', x: 360, y: 390, verb: 'School' },
       { id: 'cafe', name: 'Bean & Oak', x: 140, y: 120, verb: (job().game === 'cafe' && inClockWindow()) ? 'Clock in' : (state.openings?.cafe ? 'Apply' : 'Enter cafe') },
       { id: 'office', name: 'Stack & File', x: 360, y: 110, verb: (job().game === 'office' && inClockWindow()) ? 'Clock in' : (state.openings?.office ? 'Apply' : 'Enter office') },
       { id: 'clinic', name: 'Clinic', x: 580, y: 110, verb: 'See doctor' },
@@ -768,6 +819,23 @@ function interactables() {
       { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
     ]);
   }
+  if (state.scene === 'school') {
+    return addRemotes([
+      { id: 'schooldesk', name: 'Front desk', x: 280, y: 200, verb: 'Drop off / pick up' },
+      { id: 'finch', name: 'Ms. Finch', x: 520, y: 180, verb: 'Talk' },
+      { id: 'exit', name: 'Door', x: 60, y: 400, verb: 'Leave' },
+    ]);
+  }
+  if (state.scene === 'apt5b') {
+    const list = [
+      { id: 'exit', name: 'Door', x: 720, y: 400, verb: 'Go outside' },
+    ];
+    state.grownKids.forEach((kid, i) => {
+      const pos = grownPos(i);
+      list.push({ id: `grown:${i}`, name: kid.name, x: pos.x, y: pos.y, verb: 'Talk' });
+    });
+    return addRemotes(list);
+  }
   if (state.scene === 'lake') {
     const list = [
       { id: 'lakexit', name: 'Oak Street', x: 50, y: 420, verb: 'Back to town' },
@@ -795,7 +863,7 @@ function nearestAction() {
   let best = null;
   let bestD = 70;
   for (const item of interactables()) {
-    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'rest' || item.id === 'fishshop' || item.id === 'trybaby' || String(item.id).startsWith('baby:') || String(item.id).startsWith('leave:') ? 24 : item.id === 'calendar' ? 46 : 0;
+    const extra = item.id === 'lakepath' || item.id === 'dock' || item.id === 'picnic' || item.id === 'rest' || item.id === 'fishshop' || item.id === 'trybaby' || item.id === 'school' || item.id === 'apt5b' || String(item.id).startsWith('baby:') || String(item.id).startsWith('leave:') || String(item.id).startsWith('grown:') ? 24 : item.id === 'calendar' ? 46 : 0;
     const d = dist(state.x, state.y, item.x, item.y);
     if (d < bestD + extra) {
       best = item;
@@ -1020,6 +1088,11 @@ function doAction(id) {
   if (id === 'daycare') return enterDaycare();
   if (id === 'daydesk') return openDaycareDesk();
   if (id === 'dot') return talkDot();
+  if (id === 'school') return enterSchool();
+  if (id === 'schooldesk') return openSchoolDesk();
+  if (id === 'finch') return talkFinch();
+  if (id === 'apt5b') return enterApt5b();
+  if (String(id).startsWith('grown:')) return talkGrownKid(Number(id.slice(6)));
   if (id === 'park') return parkTime();
   if (id === 'lakepath') {
     if (state.pet && !state.pet.atDaycare) state.petOut = true;
@@ -1039,7 +1112,9 @@ function doAction(id) {
   if (String(id).startsWith('baby:')) return pickUpBaby(Number(id.slice(5)));
   if (id === 'exit') {
     if (state.working) return leaveWork(true);
-    return goScene('town', state.scene === 'office' ? 360 : state.scene === 'daycare' ? 700 : state.scene === 'market' ? 380 : 140, state.scene === 'daycare' ? 360 : 150);
+    const exits = { office: [360, 150], daycare: [700, 360], market: [380, 150], school: [360, 400], apt5b: [220, 400] };
+    const [ex, ey] = exits[state.scene] || [140, 150];
+    return goScene('town', ex, ey);
   }
 }
 
@@ -1127,6 +1202,7 @@ function newDay(fromSleep) {
   workTips = 0;
   customers = [];
   if (fromSleep || state.day > 1) rollOpenings();
+  schoolSentHome = false;
   state.invitedSpouse = false;
   state.mess = clamp(state.mess + 6, 0, 100);
   if (state.pet && !state.pet.atDaycare) {
@@ -1155,6 +1231,13 @@ function newDay(fromSleep) {
       baby.hunger = clamp(baby.hunger + 28, 0, 100);
       baby.happy = clamp(baby.happy + 16, 0, 100);
       nightBill += 22;
+    } else if (baby.atSchool) {
+      baby.hunger = clamp(baby.hunger + 20, 0, 100);
+      baby.happy = clamp(baby.happy + 14, 0, 100);
+      baby.atSchool = false;
+      baby.scene = 'home';
+      baby.watchedBy = '';
+      showToast(`Ms. Finch walked ${baby.name} home after school.`);
     } else {
       baby.hunger = clamp(baby.hunger - 18, 0, 100);
       baby.happy = clamp(baby.happy - 8, 0, 100);
@@ -1173,6 +1256,11 @@ function newDay(fromSleep) {
         }
       }
     }
+  }
+  growFamily();
+  for (const grown of state.grownKids) {
+    grown.ageDays = (grown.ageDays || GROWN_AGE) + 1;
+    grown.happy = clamp((grown.happy || 70) + 2, 0, 100);
   }
   if (state.pet?.atDaycare) nightBill += 18;
   if (nightBill) {
@@ -1270,13 +1358,11 @@ function collapse() {
   state.x = 580;
   state.y = 150;
   state.working = false;
-  const bill = 1;
-  state.money = Math.max(0, state.money - bill);
   bump('mood', -18);
-  showToast('You faint. Clinic bill $1.');
+  showToast('You faint. Dr. Moss does not charge you.');
   openEvent({
     title: 'Clinic',
-    body: 'Dr. Moss catches you before the sidewalk does. Rest, eat, and stop treating sleep like a rumor. You were charged $1.',
+    body: 'Dr. Moss catches you before the sidewalk does. Rest, eat, and stop treating sleep like a rumor. No doctor fee.',
     choices: [{ label: 'I will try', run: () => { addRel('moss', 6); } }],
   });
 }
@@ -1877,11 +1963,14 @@ function talkDot() {
   const kids = state.babies.filter((b) => b.atDaycare).map((b) => b.name);
   const pet = state.pet?.atDaycare ? state.pet.name : '';
   const who = [...kids, pet].filter(Boolean);
+  const schoolers = state.babies.filter(isSchoolKid).map((b) => b.name);
   openEvent({
     title: 'Ms. Dot',
     body: who.length
       ? `Ms. Dot: “${who.join(' and ')} had snack, nap, and a tiny crisis. All standard.”`
-      : 'Ms. Dot: “Kids $12. Pets $8. I have juice boxes and a surprising amount of glitter.”',
+      : schoolers.length
+        ? `Ms. Dot: “${schoolers.join(' and ')} aged out of glitter. Oak School is next to 5B.”`
+        : 'Ms. Dot: “Babies $12. Pets $8. Big kids go to Oak School. I have juice boxes and glitter.”',
     choices: [
       { label: 'Thanks', run: () => addRel('dot', 3) },
       { label: 'Front desk', run: () => openDaycareDesk() },
@@ -1893,6 +1982,7 @@ function openDaycareDesk() {
   if (!daycareOpen() && state.scene !== 'daycare') return showToast('Daycare is closed.');
   const drops = [];
   state.babies.forEach((baby, i) => {
+    if (isSchoolKid(baby)) return;
     if (baby.atDaycare) {
       drops.push(`<button type="button" data-act="pick-kid" data-arg="${i}">Pick up ${esc(baby.name)}</button>`);
     } else {
@@ -1903,10 +1993,14 @@ function openDaycareDesk() {
     if (state.pet.atDaycare) drops.push(`<button type="button" data-act="pick-pet">Pick up ${esc(state.pet.name)}</button>`);
     else drops.push(`<button type="button" data-act="drop-pet">Drop off ${esc(state.pet.name)} $8</button>`);
   }
-  if (!drops.length) drops.push('<p class="muted">No kids or pets to drop off yet. Have a baby or adopt first.</p>');
+  if (!drops.length) {
+    drops.push(state.babies.some(isSchoolKid)
+      ? '<p class="muted">These kids are too big. Oak School is next to 5B.</p>'
+      : '<p class="muted">No kids or pets to drop off yet. Have a baby or adopt first.</p>');
+  }
   openMenu('shop', `
     <h2>Little Oak Daycare</h2>
-    <p class="muted">Ms. Dot watches tiny humans and tiny animals until 6:00. Overnight is extra.</p>
+    <p class="muted">Ms. Dot watches babies and pets until 6:00. Big kids go to Oak School. Overnight is extra.</p>
     <div class="choice-list">
       ${drops.join('')}
       <button type="button" class="ghost" data-act="close">Leave desk</button>
@@ -1917,8 +2011,10 @@ function openDaycareDesk() {
 function dropKid(index) {
   const baby = state.babies[index];
   if (!baby || baby.atDaycare) return;
+  if (isSchoolKid(baby)) return showToast(`${baby.name} is too big for daycare. Oak School is next to 5B.`);
   if (!trySpend(12, 'daycare')) return;
   baby.atDaycare = true;
+  baby.atSchool = false;
   baby.watchedBy = 'dot';
   if (state.carrying === index) state.carrying = -1;
   addRel('dot', 4);
@@ -1932,6 +2028,7 @@ function pickKid(index) {
   const baby = state.babies[index];
   if (!baby || !baby.atDaycare) return;
   baby.atDaycare = false;
+  baby.atSchool = false;
   baby.hunger = clamp(baby.hunger + 12, 0, 100);
   baby.happy = clamp(baby.happy + 10, 0, 100);
   baby.scene = 'daycare';
@@ -1967,15 +2064,162 @@ function pickPet() {
   openDaycareDesk();
 }
 
+function schoolOpen() {
+  const h = hourOf(state.minutes);
+  return !isWeekend(state.day) && h >= 8 && h < 15;
+}
+
+function enterSchool() {
+  if (!schoolOpen() && state.scene !== 'school') return showToast('Oak School is closed. Weekdays 8:00 to 3:00.');
+  fadeTo('Walking into Oak School...', () => goScene('school', 80, 390));
+}
+
+function enterApt5b() {
+  fadeTo(state.grownKids.length ? 'Next door to 5B...' : 'The empty apartment next door...', () => goScene('apt5b', 700, 400));
+}
+
+function talkFinch() {
+  const here = state.babies.filter((b) => b.atSchool).map((b) => b.name);
+  openEvent({
+    title: 'Ms. Finch',
+    body: here.length
+      ? `Ms. Finch: “${here.join(' and ')} did reading, recess, and one very serious glue stick. Pickup is 3:00.”`
+      : 'Ms. Finch: “Oak School. Weekdays 8 to 3. Drop the big kids. Babies stay at daycare. No fee. I have chalk.”',
+    choices: [
+      { label: 'Thanks', run: () => addRel('finch', 3) },
+      { label: 'Front desk', run: () => openSchoolDesk() },
+    ],
+  });
+}
+
+function openSchoolDesk() {
+  if (!schoolOpen() && state.scene !== 'school') return showToast('School is closed.');
+  const drops = [];
+  state.babies.forEach((baby, i) => {
+    if (!isSchoolKid(baby)) return;
+    if (baby.atSchool) {
+      drops.push(`<button type="button" data-act="pick-school" data-arg="${i}">Pick up ${esc(baby.name)}</button>`);
+    } else {
+      drops.push(`<button type="button" data-act="drop-school" data-arg="${i}">Drop off ${esc(baby.name)}</button>`);
+    }
+  });
+  if (!drops.length) {
+    const babies = state.babies.filter((b) => !isSchoolKid(b));
+    drops.push(babies.length
+      ? '<p class="muted">These kids are still little. Daycare is down the street. They grow after a week.</p>'
+      : '<p class="muted">No school kids yet. Babies grow up, then you drop them here.</p>');
+  }
+  openMenu('shop', `
+    <h2>Oak School</h2>
+    <p class="muted">Ms. Finch takes the big kids weekdays until 3:00. Then they walk home to 4B.</p>
+    <div class="choice-list">
+      ${drops.join('')}
+      <button type="button" class="ghost" data-act="close">Leave desk</button>
+    </div>
+  `);
+}
+
+function dropSchoolKid(index) {
+  const baby = state.babies[index];
+  if (!baby || baby.atSchool) return;
+  if (!isSchoolKid(baby)) return showToast(`${baby.name} is too little. Daycare first.`);
+  baby.atSchool = true;
+  baby.atDaycare = false;
+  baby.watchedBy = 'finch';
+  baby.scene = 'school';
+  if (state.carrying === index) state.carrying = -1;
+  addRel('finch', 4);
+  baby.happy = clamp(baby.happy + 8, 0, 100);
+  spendTime(10);
+  closeMenu();
+  showToast(`${baby.name} got a cubby and a library card.`);
+  openSchoolDesk();
+}
+
+function pickSchoolKid(index) {
+  const baby = state.babies[index];
+  if (!baby || !baby.atSchool) return;
+  baby.atSchool = false;
+  baby.hunger = clamp(baby.hunger + 10, 0, 100);
+  baby.happy = clamp(baby.happy + 8, 0, 100);
+  baby.scene = 'school';
+  state.carrying = index;
+  addRel('finch', 2);
+  spendTime(8);
+  closeMenu();
+  showToast(`${baby.name} still has a sticker on their forehead.`);
+  openSchoolDesk();
+}
+
+function talkGrownKid(index) {
+  const kid = state.grownKids[index];
+  if (!kid) return;
+  kid.happy = clamp((kid.happy || 70) + 8, 0, 100);
+  bump('mood', 8);
+  spendTime(12);
+  openEvent({
+    title: kid.name,
+    body: pick([
+      `${kid.name}: “5B is mine now. Still your kid. The sink in here actually works. Do not tell Ms. Hale.”`,
+      `${kid.name}: “I walk to Oak School in my head sometimes. Then I remember I have my own key.”`,
+      `${kid.name}: “Come over whenever. 4B is home. 5B is also home. Oak Street is a habit.”`,
+    ]),
+    choices: [
+      { label: 'Hug', run: () => { bump('mood', 6); showToast(`${kid.name} hugs you like they still fit on your hip.`); } },
+      { label: 'Proud of you', run: () => showToast(`${kid.name} pretends that is not a big deal. It is.`) },
+    ],
+  });
+}
+
+function growFamily(opts = {}) {
+  if (!Array.isArray(state.grownKids)) state.grownKids = [];
+  const grew = [];
+  const moved = [];
+  for (let i = state.babies.length - 1; i >= 0; i--) {
+    const baby = state.babies[i];
+    if (!baby) continue;
+    if ((baby.ageDays || 0) >= GROWN_AGE) {
+      if (state.carrying === i) state.carrying = -1;
+      else if (state.carrying > i) state.carrying -= 1;
+      state.grownKids.push({
+        name: baby.name,
+        gender: baby.gender || (Math.random() < 0.5 ? 'boy' : 'girl'),
+        hair: baby.hair || pick(HAIR),
+        shirt: (baby.gender === 'girl') ? pick(['#e07a9a', '#c47838', '#9b5de5']) : pick(['#3a78c8', '#2a9d8f', '#3d6b4f']),
+        ageDays: baby.ageDays,
+        happy: baby.happy || 70,
+      });
+      moved.push(baby.name);
+      state.babies.splice(i, 1);
+    } else if (isSchoolKid(baby)) {
+      if (baby.atDaycare) {
+        baby.atDaycare = false;
+        if ((baby.scene || '') === 'daycare') baby.scene = 'home';
+      }
+      if (baby.ageDays === KID_AGE) grew.push(baby.name);
+    } else {
+      baby.atSchool = false;
+    }
+  }
+  if (state.carrying >= state.babies.length) state.carrying = -1;
+  if (!opts.quiet && grew.length) {
+    showToast(`${grew.join(' and ')} grew. Big kid now. Drop them at Oak School, next to 5B.`);
+  }
+  if (moved.length) {
+    bump('mood', 12);
+    showToast(`${moved.join(' and ')} moved next door into 5B.`);
+  }
+}
+
 function openClinic() {
   if (hourOf(state.minutes) < 8 || hourOf(state.minutes) >= 19) return showToast('Clinic is closed.');
   openMenu('shop', `
     <h2>Oak Clinic</h2>
     <p class="muted">Dr. Moss has stickers and strong opinions about sleep.</p>
     <div class="choice-list">
-      <button type="button" data-act="heal">Checkup $1 — restore health</button>
-      ${state.pregnant ? '<button type="button" data-act="baby-check">Baby checkup $1</button>' : ''}
-      <button type="button" data-act="vet"${state.pet ? '' : ' disabled'}>Vet $1 — help ${state.pet ? esc(state.pet.name) : 'a pet'}</button>
+      <button type="button" data-act="heal">Checkup — restore health</button>
+      ${state.pregnant ? '<button type="button" data-act="baby-check">Baby checkup</button>' : ''}
+      <button type="button" data-act="vet"${state.pet ? '' : ' disabled'}>Vet — help ${state.pet ? esc(state.pet.name) : 'a pet'}</button>
       <button type="button" class="ghost" data-act="close">Leave</button>
     </div>
   `);
@@ -2431,9 +2675,21 @@ function spouseReply(raw) {
     ]);
   }
 
-  if (said(t, 'baby', 'babies', 'kid', 'kids', 'child', 'pregnant', 'family')) {
+  if (said(t, 'baby', 'babies', 'kid', 'kids', 'child', 'pregnant', 'family', 'school', '5b', 'grow')) {
     if (state.pregnant) return pick([`The baby is coming. I am scared in a hopeful way. Hold my hand when it gets loud.`, `I keep talking to your belly like a weirdo. They can deal.`]);
-    if (baby) return pick([`${baby.name} is ${baby.ageDays + 1} day(s) in. Tiny. Loud. Ours. Daycare is Little Oak if we need a minute.`, `I checked ${baby.name}. Still small. Still the point.`]);
+    if (state.grownKids.length) {
+      return pick([
+        `${state.grownKids.map((g) => g.name).join(' and ')} live in 5B now. Next door. Still ours. Visit them.`,
+        `They grew. School, then a key to 5B. I am proud in a quiet leaking way.`,
+      ]);
+    }
+    if (baby && isSchoolKid(baby)) {
+      return pick([
+        `${baby.name} is a real kid now. Oak School is next to 5B. Drop them weekdays. I will pack a snack.`,
+        `${baby.name} outgrew the hip. School is 8 to 3. Then they come home talking about glue.`,
+      ]);
+    }
+    if (baby) return pick([`${baby.name} is ${baby.ageDays + 1} day(s) in. Tiny. Loud. Ours. Daycare first. They grow. Then school. Then 5B.`, `I checked ${baby.name}. Still small. Still the point.`]);
     return pick([`We can try when we are ready. No rush from me. A little rush from my heart, maybe.`, `A baby would make the apartment even smaller. I still want one with you, someday.`]);
   }
 
@@ -2609,6 +2865,7 @@ function nameBaby() {
     gender: Math.random() < 0.5 ? 'boy' : 'girl',
     hair: pick(HAIR),
     atDaycare: false,
+    atSchool: false,
     scene: 'home',
     watchedBy: '',
     x: 160 + state.babies.length * 40,
@@ -2845,15 +3102,11 @@ function runEvent(id) {
     },
     pet_sock: {
       title: `${state.pet ? state.pet.name : 'Pet'} vs sock`,
-      body: 'The sock lost. The pet looks proud. Dr. Moss would like $1 to confirm the sock is not a new organ.',
+      body: 'The sock lost. The pet looks proud. Dr. Moss will check if the sock is a new organ. No fee.',
       choices: [
         {
-          label: 'Vet $1',
+          label: 'See Dr. Moss',
           run: () => {
-            if (!trySpend(1, 'vet')) {
-              state.petSick = true;
-              return;
-            }
             state.petSick = false;
             if (state.pet) state.pet.happy = clamp(state.pet.happy + 10, 0, 100);
             addRel('moss', 6);
@@ -2892,12 +3145,8 @@ function runEvent(id) {
       body: 'Not dramatic. Just wrong. Clinic or a worried night.',
       choices: [
         {
-          label: 'Clinic $1',
+          label: 'See Dr. Moss',
           run: () => {
-            if (!trySpend(1, 'vet')) {
-              state.petSick = true;
-              return;
-            }
             state.petSick = false;
             if (state.pet) {
               state.pet.hunger = 80;
@@ -3002,6 +3251,7 @@ function openLife() {
     ['Ms. Hale', 'hale', 'Landlord'],
     ['Priya', 'priya', 'Cafe boss'],
     ['Dr. Moss', 'moss', 'Clinic'],
+    ['Ms. Finch', 'finch', 'School'],
   ].map(([name, id, role]) => `
     <div class="row"><span>${name} · ${role}</span><span>${Math.round(state.people[id])}</span></div>
   `).join('');
@@ -3013,12 +3263,13 @@ function openLife() {
   const babyLifeBtn = state.spouseId && !state.pregnant && state.babies.length < 3
     ? '<div class="choice-list"><button type="button" data-act="spouse-baby">Try for a baby</button></div>'
     : '';
-  const family = state.spouseId || state.babies.length
+  const family = state.spouseId || state.babies.length || state.grownKids.length
     ? `<h3>Family</h3>
        ${state.spouseId ? `<div class="row"><span>Married to</span><span>${esc(personName(state.spouseId))}</span></div>` : ''}
        ${babyLifeBtn}
        ${state.pregnant ? '<div class="row"><span>Baby on the way</span><span>yes</span></div>' : ''}
-       ${state.babies.map((b, i) => `<div class="row"><span>${esc(b.name)}${state.carrying === i ? ' · on your hip' : b.atDaycare ? ' · daycare' : b.watchedBy ? ` · at ${esc(dropSpotLabel(b.watchedBy))}` : ((b.scene || 'home') !== 'home' ? ` · at ${b.scene}` : '')}</span><span>${b.ageDays + 1}d · eat ${Math.round(b.hunger)}</span></div>`).join('')}
+       ${state.babies.map((b, i) => `<div class="row"><span>${esc(b.name)} · ${kidStageLabel(b)}${state.carrying === i ? ' · on your hip' : b.atSchool ? ' · school' : b.atDaycare ? ' · daycare' : b.watchedBy ? ` · at ${esc(dropSpotLabel(b.watchedBy))}` : ((b.scene || 'home') !== 'home' ? ` · at ${b.scene}` : '')}</span><span>${b.ageDays + 1}d · eat ${Math.round(b.hunger)}</span></div>`).join('')}
+       ${state.grownKids.map((g) => `<div class="row"><span>${esc(g.name)} · 5B</span><span>grown</span></div>`).join('')}
        ${carriedBaby() ? `<div class="choice-list"><button type="button" data-act="feed-carry">Feed ${esc(carriedBaby().name)}</button><button type="button" data-act="set-down">Drop ${esc(carriedBaby().name)} off here</button></div>` : ''}`
     : '';
   const pet = state.pet
@@ -3047,6 +3298,8 @@ function openLife() {
     <div class="people-list">${ppl}</div>
     <div class="menu-actions">
       <button type="button" data-act="open-cal">4B calendar</button>
+      <button type="button" data-act="go-school">Go to Oak School</button>
+      <button type="button" data-act="go-5b">Go to 5B</button>
       <button type="button" data-act="go-lake">Go to the lake</button>
       <button type="button" class="ghost" data-act="close">Close</button>
     </div>
@@ -3141,7 +3394,7 @@ function startGame() {
   const other = state.gender === 'girl' ? 'boys' : 'girls';
   openEvent({
     title: `Welcome to 4B, ${state.name}`,
-    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. After you marry, talk to your husband or wife and type anything — they answer like a person. Path by daycare goes to the lake. Picnic there. The wall calendar in 4B lists picnic Saturday at 2 PM, movie night, date night, and other starred days. Z picks up a kid. Carry them anywhere, then Z to leave them with someone or at a place. B drops them right here. Sell fish at Bo's Catch. Rent is due Sunday. Work at 9:00.`,
+    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. After you marry, talk to your husband or wife and type anything — they answer like a person. Kids grow: daycare first, then Oak School next to 5B, then they move into 5B next door. Path by daycare goes to the lake. Picnic there. The wall calendar in 4B lists picnic Saturday at 2 PM, movie night, date night, and other starred days. Z picks up a kid. Carry them anywhere, then Z to leave them with someone or at a place. B drops them right here. Sell fish at Bo's Catch. Rent is due Sunday. Work at 9:00.`,
     choices: [{ label: 'I live here now', run: () => showToast('Talk to neighbors. Hearts up. Then propose.') }],
   });
   afterEnterLife();
@@ -3162,13 +3415,18 @@ function load() {
     const data = JSON.parse(raw);
     state = { ...newState(), ...data };
     if (!Array.isArray(state.babies)) state.babies = [];
+    if (!Array.isArray(state.grownKids)) state.grownKids = [];
     if (!Number.isInteger(state.carrying)) state.carrying = -1;
+    if (!state.people) state.people = {};
+    if (state.people.finch == null) state.people.finch = 50;
     state.babies.forEach((baby, i) => {
       if (!baby.scene) baby.scene = 'home';
       if (!baby.watchedBy) baby.watchedBy = '';
+      if (!baby.atSchool) baby.atSchool = false;
       if (!Number.isFinite(baby.x)) baby.x = 160 + i * 40;
       if (!Number.isFinite(baby.y)) baby.y = 320;
     });
+    growFamily({ quiet: true });
     if (state.carrying >= state.babies.length) state.carrying = -1;
     state.fish = { ...emptyFish(), ...(data.fish || {}) };
     if (state.gender !== 'girl') state.gender = 'boy';
@@ -3504,6 +3762,8 @@ overlayContent.addEventListener('click', (e) => {
   } else if (act === 'feed-carry') feedCarriedBaby();
   else if (act === 'drop-kid') dropKid(Number(arg));
   else if (act === 'pick-kid') pickKid(Number(arg));
+  else if (act === 'drop-school') dropSchoolKid(Number(arg));
+  else if (act === 'pick-school') pickSchoolKid(Number(arg));
   else if (act === 'drop-pet') dropPet();
   else if (act === 'pick-pet') pickPet();
   else if (act === 'restart') {
@@ -3544,10 +3804,17 @@ overlayContent.addEventListener('click', (e) => {
   } else if (act === 'propose') {
     closeMenu();
     proposeTo(arg);
-  } else if (act === 'go-lake') {
+  }   else if (act === 'go-lake') {
     closeMenu();
     if (state.pet && !state.pet.atDaycare) state.petOut = true;
     fadeTo('The path down to the lake...', () => goScene('lake', 60, 420));
+  } else if (act === 'go-school') {
+    closeMenu();
+    if (!schoolOpen()) return showToast('Oak School is closed. Weekdays 8:00 to 3:00.');
+    fadeTo('Walking into Oak School...', () => goScene('school', 80, 390));
+  } else if (act === 'go-5b') {
+    closeMenu();
+    fadeTo(state.grownKids.length ? 'Next door to 5B...' : 'The empty apartment next door...', () => goScene('apt5b', 700, 400));
   } else if (act === 'sell-fish') sellFish(arg);
   else if (act === 'spouse-say') sendSpouseSay();
   else if (act === 'spouse-kiss') {
@@ -3594,25 +3861,22 @@ overlayContent.addEventListener('click', (e) => {
     closeMenu();
   } else if (act === 'adopt') adoptPet(arg);
   else if (act === 'heal') {
-    if (!trySpend(1, 'checkup')) return;
     bump('health', 40);
     bump('energy', 10);
     addRel('moss', 8);
     spendTime(40);
     closeMenu();
-    showToast('Dr. Moss charged $1. “Eat. Sleep. Stickers are free.”');
+    showToast('Dr. Moss: “Eat. Sleep. No bill. Stickers are free.”');
   } else if (act === 'baby-check') {
     if (!state.pregnant) return;
-    if (!trySpend(1, 'baby checkup')) return;
     bump('health', 8);
     bump('mood', 8);
     addRel('moss', 6);
     spendTime(30);
     closeMenu();
-    showToast('Dr. Moss: “Tiny person is on schedule. You still have to eat.”');
+    showToast('Dr. Moss: “Tiny person is on schedule. You still have to eat. No fee.”');
   } else if (act === 'vet') {
     if (!state.pet) return;
-    if (!trySpend(1, 'vet')) return;
     state.petSick = false;
     state.pet.hunger = clamp(state.pet.hunger + 20, 0, 100);
     state.pet.happy = clamp(state.pet.happy + 12, 0, 100);
@@ -3724,6 +3988,27 @@ function updateWorld(dt) {
   customers = customers.filter((c) => !c.done || c.y < 520);
 
   if (state.petOut && state.scene === 'home') state.petOut = false;
+
+  if ((h >= 15 || isWeekend(state.day)) && state.scene !== 'school') {
+    if (!schoolSentHome) {
+      const left = state.babies.filter((b) => b.atSchool);
+      if (left.length) {
+        left.forEach((b, i) => {
+          b.atSchool = false;
+          b.scene = 'home';
+          b.watchedBy = '';
+          b.x = 160 + i * 40;
+          b.y = 320;
+        });
+        showToast(left.length === 1
+          ? `Ms. Finch sent ${left[0].name} home. School is out.`
+          : 'Ms. Finch sent the kids home. School is out.');
+      }
+      schoolSentHome = true;
+    }
+  } else if (h < 15 && !isWeekend(state.day)) {
+    schoolSentHome = false;
+  }
 }
 
 function updatePlayer(dt) {
@@ -3864,7 +4149,7 @@ function drawPerson(x, y, hair, shirt, face, walk, look, gender) {
 
 function drawFloorBabies() {
   state.babies.forEach((baby, i) => {
-    if (baby.atDaycare || state.carrying === i) return;
+    if (baby.atDaycare || baby.atSchool || state.carrying === i) return;
     if ((baby.scene || 'home') !== state.scene) return;
     const pos = babyFloorPos(i);
     drawBaby(baby, pos.x, pos.y);
@@ -3883,6 +4168,11 @@ function drawCarriedBaby() {
 }
 
 function drawBaby(baby, x, y) {
+  if (isSchoolKid(baby)) {
+    const shirt = baby.gender === 'girl' ? '#e07a9a' : '#3a78c8';
+    drawPerson(x, y, baby.hair || '#3b2a1a', shirt, 1, 0, 'down', baby.gender);
+    return;
+  }
   const ox = Math.round(x);
   const oy = Math.round(y);
   ctx.fillStyle = 'rgba(32,24,16,0.2)';
@@ -4226,6 +4516,8 @@ function drawTown() {
   drawHouse(512, 200, 140, 72, '#e8d0a8', '#c070b0', 'Pets');
   drawHouse(668, 318, 112, 80, '#f4ead4', '#e9c46a', 'Daycare');
   drawHouse(28, 328, 128, 88, '#f3d5a8', '#d84848', '4B');
+  drawHouse(168, 328, 108, 80, '#e8dcc8', '#5a6e8a', '5B');
+  drawHouse(300, 318, 120, 80, '#dce8f4', '#3a78c8', 'School');
   drawPath(430, 340, 28, 140);
   drawPath(400, 412, 120, 24);
   drawTree(250, 430);
@@ -4332,6 +4624,64 @@ function drawDaycare() {
   if (state.pet?.atDaycare) drawPet(state.pet, 360, 340);
 }
 
+function drawSchool() {
+  drawRect(0, 0, W, 100, '#dce8f4');
+  drawRect(0, 92, W, 8, '#3a78c8');
+  drawWoodFloor();
+  drawRect(70, 120, 200, 90, '#3d6b4f');
+  drawRect(80, 128, 180, 74, '#2d5540');
+  drawRect(96, 140, 40, 28, '#fff8e0');
+  drawRect(148, 140, 40, 28, '#fff8e0');
+  drawRect(200, 140, 40, 28, '#fff8e0');
+  drawRect(300, 150, 160, 56, '#6a4428');
+  drawRect(306, 142, 148, 14, '#f0d060');
+  drawRect(500, 140, 90, 70, '#3a78c8');
+  drawRect(510, 148, 28, 22, '#fff6d8');
+  drawRect(548, 148, 28, 22, '#fff6d8');
+  drawRect(80, 260, 70, 40, '#8b5a32');
+  drawRect(180, 260, 70, 40, '#8b5a32');
+  drawRect(280, 260, 70, 40, '#8b5a32');
+  drawRect(36, 348, 48, 96, '#6a4428');
+  drawRect(42, 354, 36, 84, '#8b5a32');
+  drawLabel('Oak School', 400, 36);
+  drawPerson(520, 180, '#3b2a1a', '#3a78c8', -1, 0, 'down', 'girl');
+  state.babies.filter((b) => b.atSchool).forEach((kid, i) => {
+    drawBaby(kid, 120 + (i % 4) * 80, 300 + Math.floor(i / 4) * 40);
+  });
+}
+
+function drawApt5b() {
+  drawRect(0, 0, W, 108, '#e8dcc8');
+  for (let x = 0; x < W; x += 24) drawRect(x, 20, 12, 70, '#ddd0bc');
+  drawRect(0, 96, W, 8, '#5a6e8a');
+  drawRect(0, 104, W, 8, '#3a4a62');
+  drawWoodFloor();
+  drawWindowPane(80, 28);
+  drawWindowPane(220, 28);
+  drawWindowPane(620, 28);
+  drawRect(48, 48, 96, 64, '#6a4428');
+  drawRect(54, 42, 84, 18, '#f8f0e0');
+  drawRect(54, 60, 84, 44, '#5a6e8a');
+  drawRect(176, 226, 118, 36, '#3d6b4f');
+  drawRect(182, 220, 106, 12, '#2d5540');
+  drawRect(186, 232, 28, 14, '#f3c89a');
+  drawRect(400, 200, 70, 90, '#c47838');
+  drawRect(408, 208, 24, 28, '#8ecae6');
+  drawRect(444, 208, 18, 22, '#fff8e0');
+  drawRect(720, 348, 48, 96, '#6a4428');
+  drawRect(726, 354, 36, 84, '#8b5a32');
+  drawRect(748, 396, 4, 8, '#f0d060');
+  drawLabel('5B', 400, 36);
+  if (!state.grownKids.length) {
+    drawLabel('empty', 400, 160);
+  }
+  state.grownKids.forEach((kid, i) => {
+    const pos = grownPos(i);
+    drawPerson(pos.x, pos.y, kid.hair, kid.shirt, -1, lastTime / 1000, 'down', kid.gender);
+    drawLabel(kid.name, pos.x, pos.y - 46);
+  });
+}
+
 function drawLake() {
   ctx.fillStyle = skyColor();
   ctx.fillRect(0, 0, W, 80);
@@ -4416,7 +4766,7 @@ function drawPrompt() {
   }
   const a = nearestAction();
   prompt = a;
-  let text = a ? `${a.verb} · ${a.name}` : (state.scene === 'town' ? 'Street' : state.scene === 'lake' ? 'Lake' : 'Walk around');
+  let text = a ? `${a.verb} · ${a.name}` : (state.scene === 'town' ? 'Street' : state.scene === 'lake' ? 'Lake' : state.scene === 'school' ? 'School' : state.scene === 'apt5b' ? '5B' : 'Walk around');
   if (state.shift === 'lunch') text = 'LUNCH · eat, then clock in by 1:00';
   if ((keys.has('q') || keys.has('keyq')) && !jobGame) text = `RUN · ${text}`;
   promptLabel.textContent = text;
@@ -4464,6 +4814,8 @@ function render() {
   else if (state.scene === 'office') drawOffice();
   else if (state.scene === 'market') drawMarket();
   else if (state.scene === 'daycare') drawDaycare();
+  else if (state.scene === 'school') drawSchool();
+  else if (state.scene === 'apt5b') drawApt5b();
   else if (state.scene === 'lake') drawLake();
 
   for (const remote of remotes.values()) {
