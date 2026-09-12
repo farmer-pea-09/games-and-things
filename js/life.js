@@ -14,8 +14,8 @@ const W = 800;
 const H = 480;
 const SAVE_KEY = 'oakstreet-life-save';
 const CLINIC_FEE = 1;
-const KID_AGE = 7;
-const GROWN_AGE = 14;
+const KID_AGE = 28;
+const GROWN_AGE = 56;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HAIR = ['#3b2a1a', '#111111', '#d4a017', '#8b2e1a', '#3d5a80', '#5c4d3c'];
 const SEC_PER_HOUR = 16;
@@ -2090,7 +2090,7 @@ function openSchoolDesk() {
   if (!drops.length) {
     const babies = state.babies.filter((b) => !isSchoolKid(b));
     drops.push(babies.length
-      ? '<p class="muted">These kids are still little. Daycare is down the street. They grow after a week.</p>'
+      ? '<p class="muted">These kids are still little. Daycare is down the street. School starts after about a month.</p>'
       : '<p class="muted">No school kids yet. Babies grow up, then you drop them here.</p>');
   }
   openMenu('shop', `
@@ -3378,7 +3378,7 @@ function startGame() {
   const other = state.gender === 'girl' ? 'boys' : 'girls';
   openEvent({
     title: `Welcome to 4B, ${state.name}`,
-    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. After you marry, talk to your husband or wife and type anything — they answer like a person. Kids grow: daycare first, then Oak School next to 5B, then they move into 5B next door. Path by daycare goes to the lake. Picnic there. The wall calendar in 4B lists picnic Saturday at 2 PM, movie night, date night, and other starred days. Z picks up a kid. Carry them anywhere, then Z to leave them with someone or at a place. B drops them right here. Sell fish at Bo's Catch. Rent is due Sunday. Work at 9:00.`,
+    body: `${roommate} has the other room. The neighbors are ${other}. Date them, get married, have babies. After you marry, talk to your husband or wife and type anything — they answer like a person. Kids grow slow: about a month of daycare, a month at Oak School next to 5B, then they move into 5B. Friends online can see your kids. Path by daycare goes to the lake. Picnic there. The wall calendar in 4B lists picnic Saturday at 2 PM, movie night, date night, and other starred days. Z picks up a kid. Carry them anywhere, then Z to leave them with someone or at a place. B drops them right here. Sell fish at Bo's Catch. Rent is due Sunday. Work at 9:00.`,
     choices: [{ label: 'I live here now', run: () => showToast('Talk to neighbors. Hearts up. Then propose.') }],
   });
   afterEnterLife();
@@ -3463,6 +3463,33 @@ function playerNetState() {
     face: state.face,
     moving: state.moving,
     job: job().title,
+    kids: state.babies.map((baby, i) => {
+      const carried = state.carrying === i;
+      const pos = babyFloorPos(i);
+      return {
+        name: baby.name,
+        gender: baby.gender,
+        hair: baby.hair,
+        ageDays: baby.ageDays || 0,
+        scene: carried ? state.scene : (baby.atDaycare ? 'daycare' : baby.atSchool ? 'school' : (baby.scene || 'home')),
+        x: Math.round(pos.x),
+        y: Math.round(pos.y),
+        carried,
+        atDaycare: !!baby.atDaycare,
+        atSchool: !!baby.atSchool,
+      };
+    }),
+    grownKids: (state.grownKids || []).map((kid, i) => {
+      const pos = grownPos(i);
+      return {
+        name: kid.name,
+        gender: kid.gender,
+        hair: kid.hair,
+        shirt: kid.shirt,
+        x: pos.x,
+        y: pos.y,
+      };
+    }),
   };
 }
 
@@ -4132,6 +4159,33 @@ function drawFloorBabies() {
   });
 }
 
+function drawRemoteKids() {
+  for (const remote of remotes.values()) {
+    const kids = Array.isArray(remote.kids) ? remote.kids : [];
+    for (const kid of kids) {
+      if (kid.carried) {
+        if (remote.scene !== state.scene) continue;
+        const left = remote.look === 'left' || remote.face < 0;
+        const side = left ? -16 : 16;
+        const bob = remote.moving ? Math.sin(lastTime / 90) * 2 : 0;
+        drawBaby(kid, remote.x + side, remote.y - 20 + bob);
+        drawLabel(kid.name, remote.x + side, remote.y - 48);
+        continue;
+      }
+      const scene = kid.atDaycare ? 'daycare' : kid.atSchool ? 'school' : (kid.scene || 'home');
+      if (scene !== state.scene) continue;
+      drawBaby(kid, kid.x, kid.y);
+      drawLabel(kid.name, kid.x, kid.y - 22);
+    }
+    if (state.scene === 'apt5b' && Array.isArray(remote.grownKids)) {
+      for (const grown of remote.grownKids) {
+        drawPerson(grown.x, grown.y, grown.hair, grown.shirt || '#3a78c8', -1, 0, 'down', grown.gender);
+        drawLabel(grown.name, grown.x, grown.y - 46);
+      }
+    }
+  }
+}
+
 function drawCarriedBaby() {
   const baby = carriedBaby();
   if (!baby) return;
@@ -4647,7 +4701,8 @@ function drawApt5b() {
   drawRect(726, 354, 36, 84, '#8b5a32');
   drawRect(748, 396, 4, 8, '#f0d060');
   drawLabel('5B', 400, 36);
-  if (!state.grownKids.length) {
+  const friendsHome = [...remotes.values()].some((r) => r.grownKids?.length);
+  if (!state.grownKids.length && !friendsHome) {
     drawLabel('empty', 400, 160);
   }
   state.grownKids.forEach((kid, i) => {
@@ -4809,6 +4864,7 @@ function render() {
   drawPerson(state.x, state.y, state.hair, state.shirt, state.face, state.moving, state.look, state.gender);
   drawFloorBabies();
   drawCarriedBaby();
+  drawRemoteKids();
   if (state.pet && state.petOut && !state.pet.atDaycare && state.scene !== 'home') {
     drawPet(state.pet, state.x - 20 * state.face, state.y + 6);
   }
