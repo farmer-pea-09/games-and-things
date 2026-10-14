@@ -173,10 +173,6 @@ h1 {
   background: linear-gradient(180deg, #e9c46a 0%, #2a9d8f 100%);
 }
 
-.game-card.palace {
-  background: linear-gradient(180deg, #8b2240 0%, #e9b44c 100%);
-}
-
 .game-art {
   font-size: 42px;
   margin-bottom: 16px;
