@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animation</title>
+  <link rel="stylesheet" href="css/animate.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <button id="fullscreen-btn" type="button" aria-label="Toggle full screen">⛶ Full Screen</button>
+  <div id="app">
+    <a href="index.html" id="home-link">← Games</a>
+    <header class="page-header">
+      <p class="kicker">Games and Things</p>
+      <h1>Animation</h1>
+      <p class="lede">Draw a pose, copy the frame, change it a little, then press play.</p>
+    </header>
+
+    <div class="studio">
+      <aside class="tools" aria-label="Animation tools">
+        <p class="box-label">Tools</p>
+        <div class="row">
+          <button type="button" class="tool active" data-tool="draw">Draw</button>
+          <button type="button" class="tool" data-tool="erase">Erase</button>
+          <button type="button" class="tool" data-tool="fill">Fill</button>
+        </div>
+        <p class="box-label">Size</p>
+        <div class="row">
+          <button type="button" class="size" data-size="4">S</button>
+          <button type="button" class="size active" data-size="10">M</button>
+          <button type="button" class="size" data-size="22">L</button>
+        </div>
+        <p class="box-label">Colors</p>
+        <div id="colors" class="colors"></div>
+        <p class="box-label">Frames</p>
+        <div class="row">
+          <button type="button" id="add">Add</button>
+          <button type="button" id="copy">Copy</button>
+          <button type="button" id="del">Delete</button>
+        </div>
+        <div class="row">
+          <button type="button" id="undo">Undo</button>
+          <button type="button" id="clear">Clear</button>
+          <button type="button" id="fresh">New</button>
+        </div>
+        <p class="box-label">Guide</p>
+        <div class="row">
+          <button type="button" id="guide" aria-pressed="false">Guide</button>
+          <button type="button" id="stamp">Stamp</button>
+        </div>
+        <a class="link-btn" href="characters.html">Get character</a>
+        <p class="box-label">Keep</p>
+        <div class="row">
+          <button type="button" id="png">PNG</button>
+          <button type="button" id="video">Video</button>
+        </div>
+      </aside>
+
+      <div class="stage">
+        <div class="paper" id="paper">
+          <canvas id="view" width="640" height="360" aria-label="Drawing canvas"></canvas>
+        </div>
+        <div class="transport">
+          <button type="button" id="prev">Prev</button>
+          <button type="button" id="play" aria-pressed="false">Play</button>
+          <button type="button" id="next">Next</button>
+          <span id="counter">1 / 1</span>
+          <button type="button" id="onion" aria-pressed="true">Onion</button>
+          <label>Speed
+            <select id="fps" aria-label="Frames per second">
+              <option value="4">4</option>
+              <option value="8" selected>8</option>
+              <option value="12">12</option>
+              <option value="24">24</option>
+            </select>
+          </label>
+        </div>
+        <div id="strip" class="strip" aria-label="Frames"></div>
+        <p class="hint">Space plays. Arrow keys change frames. Onion ghosts the other pose so you can trace it.</p>
+        <p id="status" class="status" role="status"></p>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('animate')) {
+      await import('./js/animate.js');
+    }
+  </script>
+</body>
+</html>

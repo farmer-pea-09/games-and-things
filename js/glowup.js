@@ -20,6 +20,40 @@ const SLIDERS = [
   ['sparkle', 'Sparkle'],
 ];
 
+const LIPSTICKS = [
+  { id: 'nude', name: 'Nude', color: '#c9897a' },
+  { id: 'peach', name: 'Peach', color: '#e08a6c' },
+  { id: 'rose', name: 'Rose', color: '#d45d6e' },
+  { id: 'pink', name: 'Pink', color: '#ff6b9d' },
+  { id: 'coral', name: 'Coral', color: '#ff7a59' },
+  { id: 'red', name: 'Red', color: '#c41e3a' },
+  { id: 'berry', name: 'Berry', color: '#8b1e4a' },
+  { id: 'plum', name: 'Plum', color: '#6b2d5b' },
+  { id: 'cocoa', name: 'Cocoa', color: '#7a3e32' },
+  { id: 'wipe', name: 'Wipe', color: null },
+];
+
+const LIP_W = 320;
+const LIP_H = 180;
+const lipCanvas = document.createElement('canvas');
+lipCanvas.width = LIP_W;
+lipCanvas.height = LIP_H;
+const lipCtx = lipCanvas.getContext('2d');
+
+function makeLipPath(w, h) {
+  const path = new Path2D();
+  const cx = w * 0.5;
+  const cy = h * 0.46;
+  path.moveTo(w * 0.1, cy);
+  path.bezierCurveTo(w * 0.16, h * 0.16, w * 0.36, h * 0.08, cx, h * 0.4);
+  path.bezierCurveTo(w * 0.64, h * 0.08, w * 0.84, h * 0.16, w * 0.9, cy);
+  path.bezierCurveTo(w * 0.8, h * 0.94, w * 0.2, h * 0.94, w * 0.1, cy);
+  path.closePath();
+  return path;
+}
+
+const LIP_PATH = makeLipPath(LIP_W, LIP_H);
+
 const CHALLENGES = [
   { look: 'soft', line: 'Soft Sunday. Keep it gentle.' },
   { look: 'peach', line: 'Brunch glow. Think peaches.' },
@@ -38,6 +72,7 @@ const video = document.getElementById('cam');
 const view = document.getElementById('view');
 const shot = document.getElementById('shot');
 const looksRow = document.getElementById('looks-row');
+const lipPalette = document.getElementById('lip-palette');
 const slidersEl = document.getElementById('sliders');
 const glowMeter = document.getElementById('glow-meter');
 const studioStatus = document.getElementById('studio-status');
@@ -69,6 +104,30 @@ let mode = 'studio';
 let challenge = null;
 let challengeEnds = 0;
 let sourceReady = false;
+let hoverId = null;
+let drag = null;
+let lastLayout = null;
+let sparkleHome = { x: 0, y: 0 };
+let activeLipstick = LIPSTICKS[2];
+let lipPainted = false;
+let coloring = null;
+let stickDrag = null;
+const lipGhost = document.getElementById('lip-ghost');
+
+const PIECES = [
+  { id: 'blushL', kind: 'blush', label: 'Blush' },
+  { id: 'blushR', kind: 'blush', label: 'Blush' },
+  { id: 'glow', kind: 'glow', label: 'Glow' },
+  { id: 'sparkle', kind: 'sparkle', label: 'Sparkle' },
+];
+
+const pins = {
+  blushL: null,
+  blushR: null,
+  lips: null,
+  glow: null,
+  sparkle: null,
+};
 
 function loadSave() {
   try {
@@ -96,13 +155,20 @@ function unlocked(row) {
   return save.stars >= row.unlock;
 }
 
+function resetPins() {
+  for (const id of Object.keys(pins)) pins[id] = null;
+}
+
 function applyLook(row) {
   for (const key of ['smooth', 'glow', 'warmth', 'sat', 'blush', 'blushHue', 'lips', 'lipHue', 'sparkle']) {
     look[key] = row[key];
   }
   activeLook = row.id;
+  resetPins();
   syncSliders();
   paintLooks();
+  if (row.id === 'plain' || (row.lips ?? 0) < 0.12) clearLips();
+  else fillLips(lipColorFromHue(row.lipHue));
 }
 
 function currentGlow() {
@@ -128,6 +194,79 @@ function buildSliders() {
   slidersEl.innerHTML = SLIDERS.map(([key, label]) => (
     `<label class="slider-row">${label}<input type="range" min="0" max="1" step="0.01" data-key="${key}" value="${look[key]}"></label>`
   )).join('');
+}
+
+function buildLipPalette() {
+  if (!lipPalette) return;
+  lipPalette.innerHTML = LIPSTICKS.map((pot) => (
+    `<button class="lip-stick${pot.id === 'wipe' ? ' wipe' : ''}${activeLipstick.id === pot.id ? ' on' : ''}" type="button" data-lip="${pot.id}" title="${pot.name}. Drag onto your lips.">
+      <span class="bullet" style="${pot.color ? `background:${pot.color}` : ''}"></span>
+      <span class="tube"></span>
+      ${pot.name}
+    </button>`
+  )).join('');
+}
+
+function lipColorFromHue(hue) {
+  return `hsl(${hue} 72% 48%)`;
+}
+
+function clearLips() {
+  lipCtx.clearRect(0, 0, LIP_W, LIP_H);
+  lipPainted = false;
+}
+
+function fillLips(color) {
+  lipCtx.save();
+  lipCtx.clearRect(0, 0, LIP_W, LIP_H);
+  lipCtx.clip(LIP_PATH);
+  lipCtx.fillStyle = color;
+  lipCtx.fillRect(0, 0, LIP_W, LIP_H);
+  lipCtx.globalCompositeOperation = 'screen';
+  lipCtx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  lipCtx.beginPath();
+  lipCtx.ellipse(LIP_W * 0.5, LIP_H * 0.36, LIP_W * 0.2, LIP_H * 0.1, 0, 0, Math.PI * 2);
+  lipCtx.fill();
+  lipCtx.restore();
+  lipPainted = true;
+}
+
+function paintLipStroke(from, to, color) {
+  const wipe = !color;
+  lipCtx.save();
+  lipCtx.clip(LIP_PATH);
+  lipCtx.globalCompositeOperation = wipe ? 'destination-out' : 'source-over';
+  lipCtx.strokeStyle = wipe ? 'rgba(0,0,0,1)' : color;
+  lipCtx.lineWidth = wipe ? 34 : 30;
+  lipCtx.lineCap = 'round';
+  lipCtx.lineJoin = 'round';
+  lipCtx.globalAlpha = wipe ? 1 : 0.92;
+  lipCtx.beginPath();
+  lipCtx.moveTo(from.x, from.y);
+  lipCtx.lineTo(to.x, to.y);
+  lipCtx.stroke();
+  lipCtx.restore();
+  if (!wipe) lipPainted = true;
+}
+
+function lipRect(box, dw, dh) {
+  const pos = piecePos('lips', box, dw, dh);
+  const rw = box.w * 0.44;
+  const rh = box.h * 0.17;
+  return { x: pos.x - rw / 2, y: pos.y - rh / 2, w: rw, h: rh };
+}
+
+function screenToLip(sx, sy, rect) {
+  return {
+    x: ((sx - rect.x) / Math.max(1, rect.w)) * LIP_W,
+    y: ((sy - rect.y) / Math.max(1, rect.h)) * LIP_H,
+  };
+}
+
+function inLips(sx, sy, rect) {
+  if (!rect) return false;
+  const point = screenToLip(sx, sy, rect);
+  return lipCtx.isPointInPath(LIP_PATH, point.x, point.y);
 }
 
 function hueDist(a, b) {
@@ -196,58 +335,149 @@ function hsl(h, s, l, a) {
   return `hsla(${h}, ${s}%, ${l}%, ${a})`;
 }
 
-function drawMakeup(g, box, w, h) {
+function pieceAmount(kind) {
+  if (kind === 'blush') return look.blush;
+  if (kind === 'lips') return look.lips;
+  if (kind === 'glow') return look.glow;
+  return look.sparkle;
+}
+
+function pieceShown(kind) {
+  return pieceAmount(kind) > 0.04;
+}
+
+function defaultPiecePos(id, box) {
   const { cx, cy, w: fw, h: fh } = box;
-  if (look.blush > 0.04) {
-    g.save();
-    g.globalCompositeOperation = 'soft-light';
-    for (const side of [-1, 1]) {
-      const x = cx + side * fw * 0.28;
-      const y = cy + fh * 0.08;
-      const rad = fw * (0.16 + look.blush * 0.08);
-      const grad = g.createRadialGradient(x, y, 4, x, y, rad);
-      grad.addColorStop(0, hsl(look.blushHue, 78, 62, 0.18 + look.blush * 0.55));
-      grad.addColorStop(1, hsl(look.blushHue, 70, 60, 0));
-      g.fillStyle = grad;
-      g.beginPath();
-      g.ellipse(x, y, rad, rad * 0.72, 0, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.restore();
-  }
+  if (id === 'blushL') return { x: cx - fw * 0.28, y: cy + fh * 0.08 };
+  if (id === 'blushR') return { x: cx + fw * 0.28, y: cy + fh * 0.08 };
+  if (id === 'lips') return { x: cx, y: cy + fh * 0.28 };
+  if (id === 'glow') return { x: cx, y: cy - fh * 0.12 };
+  return { x: cx + fw * 0.16, y: cy - fh * 0.2 };
+}
 
-  if (look.lips > 0.04) {
-    const lx = cx;
-    const ly = cy + fh * 0.28;
-    const lw = fw * (0.16 + look.lips * 0.04);
-    const lh = fh * (0.055 + look.lips * 0.02);
+function piecePos(id, box, dw, dh) {
+  const pin = pins[id];
+  if (pin) return { x: pin.nx * dw, y: pin.ny * dh };
+  return defaultPiecePos(id, box);
+}
+
+function pieceRadii(kind, box) {
+  const fw = box.w;
+  const fh = box.h;
+  if (kind === 'blush') {
+    const rad = fw * (0.16 + look.blush * 0.08);
+    return { rx: rad, ry: rad * 0.72 };
+  }
+  if (kind === 'lips') {
+    return { rx: fw * (0.16 + look.lips * 0.04), ry: fh * (0.055 + look.lips * 0.02) };
+  }
+  if (kind === 'glow') return { rx: fw * 0.18, ry: fh * 0.1 };
+  return { rx: fw * 0.2, ry: fw * 0.2 };
+}
+
+function layoutPieces(box, dw, dh) {
+  return PIECES.filter((piece) => pieceShown(piece.kind)).map((piece) => {
+    const pos = piecePos(piece.id, box, dw, dh);
+    const rad = pieceRadii(piece.kind, box);
+    return { ...piece, x: pos.x, y: pos.y, rx: rad.rx, ry: rad.ry };
+  });
+}
+
+function drawBlushAt(g, x, y, rad) {
+  g.save();
+  g.globalCompositeOperation = 'soft-light';
+  const grad = g.createRadialGradient(x, y, 4, x, y, rad);
+  grad.addColorStop(0, hsl(look.blushHue, 78, 62, 0.18 + look.blush * 0.55));
+  grad.addColorStop(1, hsl(look.blushHue, 70, 60, 0));
+  g.fillStyle = grad;
+  g.beginPath();
+  g.ellipse(x, y, rad, rad * 0.72, 0, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+}
+
+function drawLipColoring(g, box, dw, dh, opts = {}) {
+  const rect = lipRect(box, dw, dh);
+  g.save();
+  g.translate(rect.x, rect.y);
+  g.scale(rect.w / LIP_W, rect.h / LIP_H);
+  if (lipPainted) {
     g.save();
+    g.globalAlpha = 0.55 + look.lips * 0.45;
     g.globalCompositeOperation = 'multiply';
-    g.fillStyle = hsl(look.lipHue, 72, 48, 0.18 + look.lips * 0.45);
-    g.beginPath();
-    g.ellipse(lx, ly, lw, lh, 0, 0, Math.PI * 2);
-    g.fill();
-    g.globalCompositeOperation = 'screen';
-    g.fillStyle = hsl(look.lipHue, 70, 70, 0.08 + look.lips * 0.18);
-    g.beginPath();
-    g.ellipse(lx, ly - lh * 0.15, lw * 0.7, lh * 0.35, 0, 0, Math.PI * 2);
-    g.fill();
+    g.drawImage(lipCanvas, 0, 0);
+    g.restore();
+    g.save();
+    g.globalAlpha = 0.18 + look.lips * 0.2;
+    g.globalCompositeOperation = 'soft-light';
+    g.drawImage(lipCanvas, 0, 0);
     g.restore();
   }
+  g.strokeStyle = '#1a0810';
+  g.lineWidth = 8;
+  g.stroke(LIP_PATH);
+  g.strokeStyle = opts.handles ? '#fff' : 'rgba(255, 255, 255, 0.35)';
+  g.lineWidth = 3.5;
+  g.stroke(LIP_PATH);
+  if (opts.handles && !lipPainted) {
+    g.fillStyle = 'rgba(255, 182, 193, 0.22)';
+    g.fill(LIP_PATH);
+    g.font = '700 22px "IBM Plex Sans", sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#fff';
+    g.fillText('Drag on', LIP_W / 2, LIP_H * 0.55);
+  }
+  g.restore();
+  return rect;
+}
 
-  if (look.glow > 0.2) {
-    g.save();
-    g.globalCompositeOperation = 'soft-light';
-    const hx = cx;
-    const hy = cy - fh * 0.12;
-    const grad = g.createRadialGradient(hx, hy, 2, hx, hy, fw * 0.22);
-    grad.addColorStop(0, `rgba(255, 236, 210, ${0.08 + look.glow * 0.22})`);
-    grad.addColorStop(1, 'rgba(255, 236, 210, 0)');
-    g.fillStyle = grad;
-    g.beginPath();
-    g.ellipse(hx, hy, fw * 0.18, fh * 0.1, 0, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
+function drawGlowAt(g, hx, hy, fw, fh) {
+  g.save();
+  g.globalCompositeOperation = 'soft-light';
+  const grad = g.createRadialGradient(hx, hy, 2, hx, hy, fw * 0.22);
+  grad.addColorStop(0, `rgba(255, 236, 210, ${0.08 + look.glow * 0.22})`);
+  grad.addColorStop(1, 'rgba(255, 236, 210, 0)');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.ellipse(hx, hy, fw * 0.18, fh * 0.1, 0, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+}
+
+function drawHandle(g, piece, active) {
+  g.save();
+  g.strokeStyle = active ? 'rgba(255, 226, 122, 0.95)' : 'rgba(255, 255, 255, 0.55)';
+  g.lineWidth = active ? 3 : 2;
+  g.setLineDash(active ? [] : [5, 4]);
+  g.beginPath();
+  g.ellipse(piece.x, piece.y, piece.rx * 1.08, piece.ry * 1.08, 0, 0, Math.PI * 2);
+  g.stroke();
+  g.setLineDash([]);
+  g.font = '700 13px "IBM Plex Sans", sans-serif';
+  g.textAlign = 'center';
+  g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  g.fillText(piece.label, piece.x + 1, piece.y - piece.ry - 8);
+  g.fillStyle = active ? '#ffe27a' : '#fff';
+  g.fillText(piece.label, piece.x, piece.y - piece.ry - 9);
+  g.restore();
+}
+
+function drawMakeup(g, box, w, h, opts = {}) {
+  const laid = layoutPieces(box, w, h);
+  for (const piece of laid) {
+    if (piece.kind === 'blush') drawBlushAt(g, piece.x, piece.y, piece.rx);
+    if (piece.kind === 'glow') drawGlowAt(g, piece.x, piece.y, box.w, box.h);
+  }
+  const lip = drawLipColoring(g, box, w, h, opts);
+
+  const sparkle = laid.find((piece) => piece.kind === 'sparkle');
+  if (sparkle) {
+    if (sparkles.length < 8 || frame % 40 === 0) {
+      seedSparkles(sparkle, 10 + Math.round(look.sparkle * 18));
+    }
+    sparkleHome = { x: sparkle.x, y: sparkle.y };
+    drawSparkles(g, frame);
   }
 
   const vig = g.createRadialGradient(w / 2, h * 0.42, w * 0.18, w / 2, h * 0.45, w * 0.72);
@@ -255,14 +485,29 @@ function drawMakeup(g, box, w, h) {
   vig.addColorStop(1, `rgba(20, 6, 16, ${0.18 + look.glow * 0.12})`);
   g.fillStyle = vig;
   g.fillRect(0, 0, w, h);
+
+  if (opts.handles) {
+    for (const piece of laid) {
+      const active = piece.id === hoverId || piece.id === drag?.id;
+      drawHandle(g, piece, active);
+    }
+  }
+
+  if (opts.track) {
+    lastLayout = { dw: w, dh: h, pieces: laid, lip };
+    view._glowPieces = laid;
+    view._lip = lip;
+  }
 }
 
-function seedSparkles(box, count) {
+function seedSparkles(piece, count) {
+  const spreadX = piece.rx * 1.6;
+  const spreadY = piece.ry * 1.6;
   sparkles = [];
   for (let i = 0; i < count; i += 1) {
     sparkles.push({
-      x: box.x + Math.random() * box.w,
-      y: box.y + Math.random() * box.h * 0.85,
+      dx: (Math.random() - 0.5) * spreadX * 2,
+      dy: (Math.random() - 0.5) * spreadY * 2,
       r: 1.2 + Math.random() * 2.4,
       phase: Math.random() * Math.PI * 2,
       speed: 0.04 + Math.random() * 0.08,
@@ -275,18 +520,20 @@ function drawSparkles(g, t) {
   g.save();
   g.globalCompositeOperation = 'lighter';
   for (const spec of sparkles) {
+    const x = sparkleHome.x + spec.dx;
+    const y = sparkleHome.y + spec.dy;
     const twinkle = 0.25 + 0.75 * Math.abs(Math.sin(t * spec.speed + spec.phase));
     g.fillStyle = `rgba(255, 246, 210, ${twinkle * (0.35 + look.sparkle * 0.65)})`;
     g.beginPath();
-    g.arc(spec.x, spec.y, spec.r, 0, Math.PI * 2);
+    g.arc(x, y, spec.r, 0, Math.PI * 2);
     g.fill();
     g.strokeStyle = `rgba(255, 255, 255, ${twinkle * 0.8})`;
     g.lineWidth = 1;
     g.beginPath();
-    g.moveTo(spec.x - spec.r * 2.2, spec.y);
-    g.lineTo(spec.x + spec.r * 2.2, spec.y);
-    g.moveTo(spec.x, spec.y - spec.r * 2.2);
-    g.lineTo(spec.x, spec.y + spec.r * 2.2);
+    g.moveTo(x - spec.r * 2.2, y);
+    g.lineTo(x + spec.r * 2.2, y);
+    g.moveTo(x, y - spec.r * 2.2);
+    g.lineTo(x, y + spec.r * 2.2);
     g.stroke();
   }
   g.restore();
@@ -296,64 +543,87 @@ function drawStandinFace(t) {
   const w = standin.width;
   const h = standin.height;
   const g = standinCtx;
-  const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, '#5b3a7a');
-  grad.addColorStop(1, '#2a1638');
-  g.fillStyle = grad;
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#4a2a62');
+  sky.addColorStop(0.55, '#2c1840');
+  sky.addColorStop(1, '#1a1024');
+  g.fillStyle = sky;
   g.fillRect(0, 0, w, h);
-  g.fillStyle = '#6d8f4e';
-  g.fillRect(0, h * 0.72, w, h * 0.28);
-  g.fillStyle = '#8fb86a';
+  g.fillStyle = '#3d5c32';
+  g.fillRect(0, h * 0.7, w, h * 0.3);
+  g.fillStyle = '#5a8344';
   g.beginPath();
-  g.ellipse(w * 0.2, h * 0.78, 90, 40, 0, 0, Math.PI * 2);
-  g.ellipse(w * 0.8, h * 0.8, 110, 50, 0, 0, Math.PI * 2);
+  g.ellipse(w * 0.18, h * 0.76, 120, 46, 0, 0, Math.PI * 2);
+  g.ellipse(w * 0.82, h * 0.78, 140, 56, 0, 0, Math.PI * 2);
   g.fill();
 
-  const cx = w * 0.5 + Math.sin(t / 900) * 6;
-  const cy = h * 0.46 + Math.cos(t / 1100) * 4;
-  g.fillStyle = '#2b1a14';
+  const cx = w * 0.5 + Math.sin(t / 900) * 5;
+  const cy = h * 0.44 + Math.cos(t / 1100) * 3;
+
+  g.fillStyle = '#3a2418';
   g.beginPath();
-  g.ellipse(cx, cy - 70, 118, 130, 0, 0, Math.PI * 2);
+  g.ellipse(cx, cy + 88, 70, 28, 0, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = '#f0c3a3';
+  g.fillStyle = '#f3c4a6';
   g.beginPath();
-  g.ellipse(cx, cy, 92, 112, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#2b1a14';
-  g.beginPath();
-  g.ellipse(cx, cy - 78, 100, 54, 0, Math.PI, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#3d261c';
-  g.beginPath();
-  g.moveTo(cx - 70, cy - 20);
-  g.quadraticCurveTo(cx, cy - 88, cx + 70, cy - 20);
-  g.lineTo(cx + 62, cy - 8);
-  g.quadraticCurveTo(cx, cy - 62, cx - 62, cy - 8);
+  g.ellipse(cx, cy + 70, 38, 46, 0, 0, Math.PI * 2);
   g.fill();
 
-  const blink = Math.sin(t / 180) > 0.96 ? 2 : 8;
+  g.fillStyle = '#2a1810';
+  g.beginPath();
+  g.ellipse(cx - 2, cy - 18, 108, 128, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#f3c4a6';
+  g.beginPath();
+  g.ellipse(cx, cy + 6, 86, 104, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#2a1810';
+  g.beginPath();
+  g.moveTo(cx - 86, cy - 8);
+  g.quadraticCurveTo(cx - 70, cy - 118, cx, cy - 132);
+  g.quadraticCurveTo(cx + 70, cy - 118, cx + 86, cy - 8);
+  g.quadraticCurveTo(cx + 40, cy - 70, cx, cy - 78);
+  g.quadraticCurveTo(cx - 40, cy - 70, cx - 86, cy - 8);
+  g.fill();
+  g.beginPath();
+  g.ellipse(cx - 78, cy + 8, 18, 36, -0.4, 0, Math.PI * 2);
+  g.ellipse(cx + 78, cy + 8, 18, 36, 0.4, 0, Math.PI * 2);
+  g.fill();
+
+  g.strokeStyle = '#3d261c';
+  g.lineWidth = 5;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 44, cy - 22);
+  g.quadraticCurveTo(cx - 30, cy - 32, cx - 16, cy - 20);
+  g.moveTo(cx + 16, cy - 20);
+  g.quadraticCurveTo(cx + 30, cy - 32, cx + 44, cy - 22);
+  g.stroke();
+
+  const blink = Math.sin(t / 200) > 0.97 ? 2 : 7;
   g.fillStyle = '#2a1812';
   g.beginPath();
-  g.ellipse(cx - 32, cy - 8, 10, blink, 0, 0, Math.PI * 2);
-  g.ellipse(cx + 32, cy - 8, 10, blink, 0, 0, Math.PI * 2);
+  g.ellipse(cx - 28, cy - 4, 9, blink, 0, 0, Math.PI * 2);
+  g.ellipse(cx + 28, cy - 4, 9, blink, 0, 0, Math.PI * 2);
   g.fill();
   if (blink > 4) {
     g.fillStyle = '#fff';
     g.beginPath();
-    g.arc(cx - 29, cy - 11, 3, 0, Math.PI * 2);
-    g.arc(cx + 35, cy - 11, 3, 0, Math.PI * 2);
+    g.arc(cx - 26, cy - 7, 2.4, 0, Math.PI * 2);
+    g.arc(cx + 30, cy - 7, 2.4, 0, Math.PI * 2);
     g.fill();
   }
-  g.strokeStyle = '#c98474';
-  g.lineWidth = 3;
+
+  g.fillStyle = '#e0a888';
   g.beginPath();
-  g.moveTo(cx - 18, cy + 38);
-  g.quadraticCurveTo(cx, cy + 50, cx + 18, cy + 38);
-  g.stroke();
-  g.fillStyle = '#d9a07c';
-  g.beginPath();
-  g.ellipse(cx, cy + 16, 14, 10, 0, 0, Math.PI * 2);
+  g.ellipse(cx, cy + 22, 12, 9, 0, 0, Math.PI * 2);
   g.fill();
+  g.strokeStyle = '#c57b7b';
+  g.lineWidth = 4;
+  g.beginPath();
+  g.moveTo(cx - 16, cy + 44);
+  g.quadraticCurveTo(cx, cy + 56, cx + 16, cy + 44);
+  g.stroke();
 }
 
 function sourceFrame() {
@@ -392,6 +662,17 @@ function fitCover(sw, sh, dw, dh) {
   return { x: (dw - w) / 2, y: (dh - h) / 2, w, h };
 }
 
+function displayFace(mapped, dw) {
+  return {
+    x: dw - mapped.x - mapped.w,
+    y: mapped.y,
+    w: mapped.w,
+    h: mapped.h,
+    cx: dw - mapped.cx,
+    cy: mapped.cy,
+  };
+}
+
 function paintBeautified(g, dw, dh, opts = {}) {
   const src = sourceFrame();
   const { w: sw, h: sh } = sourceSize();
@@ -418,6 +699,7 @@ function paintBeautified(g, dw, dh, opts = {}) {
   }
   g.filter = 'none';
   drawWarmth(g, dw, dh);
+  g.restore();
 
   const mapped = face
     ? {
@@ -429,12 +711,8 @@ function paintBeautified(g, dw, dh, opts = {}) {
       cy: dest.y + face.cy * (dest.h / sh),
     }
     : defaultFace(dw, dh);
-  drawMakeup(g, mapped, dw, dh);
-  if (sparkles.length < 8 || frame % 40 === 0) {
-    seedSparkles(mapped, 10 + Math.round(look.sparkle * 18));
-  }
-  drawSparkles(g, frame);
-  g.restore();
+  const box = opts.unmirrored ? mapped : displayFace(mapped, dw);
+  drawMakeup(g, box, dw, dh, { handles: opts.handles, track: opts.track });
   return true;
 }
 
@@ -455,18 +733,32 @@ function tick() {
   }
   ctx.fillStyle = '#110814';
   ctx.fillRect(0, 0, view.width, view.height);
-  paintBeautified(ctx, view.width, view.height, { plain: compare });
+  paintBeautified(ctx, view.width, view.height, { plain: compare, handles: !compare, track: true });
   glowMeter.style.width = `${Math.round(currentGlow() * 100)}%`;
-  if (sourceReady) {
-    studioStatus.textContent = compare
-      ? 'Before — release to glow again'
-      : face
-        ? 'Face found. Stack a look, then snap.'
-        : usingStandin
-          ? 'Practice face ready. Pick a look.'
-          : 'Center your face in the light.';
+  if (sourceReady && result.hidden) {
+    const dragging = drag && PIECES.find((piece) => piece.id === drag.id);
+    if (compare) {
+      studioStatus.textContent = 'Before — release to glow again';
+    } else if (dragging) {
+      studioStatus.textContent = `Placing ${dragging.label}. Drop it on your face.`;
+    } else if (stickDrag) {
+      studioStatus.textContent = stickDrag.pot.id === 'wipe'
+        ? 'Drag the wipe across your lips.'
+        : `Drag ${stickDrag.pot.name} onto your lips.`;
+    } else if (coloring) {
+      studioStatus.textContent = activeLipstick.id === 'wipe'
+        ? 'Wiping lipstick…'
+        : `Swiping ${activeLipstick.name} on your lips.`;
+    } else if (mode === 'challenge' && challenge) {
+      const target = LOOKS.find((row) => row.id === challenge.look);
+      studioStatus.textContent = `Match ${target.name}. Drag lipstick onto your face.`;
+    } else if (face || usingStandin) {
+      studioStatus.textContent = 'Drag a lipstick onto your lips.';
+    } else {
+      studioStatus.textContent = 'Center your face in the light.';
+    }
   }
-  if (mode === 'challenge' && challenge) {
+  if (mode === 'challenge' && challenge && result.hidden && !studio.hidden) {
     const left = Math.max(0, challengeEnds - Date.now());
     missionTime.textContent = `0:${String(Math.ceil(left / 1000)).padStart(2, '0')}`;
     if (left <= 0) finishSnap();
@@ -560,6 +852,7 @@ function titleFor(score, challengeHit) {
 }
 
 function finishSnap() {
+  if (!result.hidden) return;
   if (!sourceReady) {
     studioStatus.textContent = 'Camera is not ready yet.';
     return;
@@ -591,6 +884,8 @@ function finishSnap() {
   }
   save.stars += earned;
   persist();
+  challenge = null;
+  challengeEnds = 0;
   document.getElementById('result-kicker').textContent = mode === 'challenge' ? 'Challenge' : 'Studio snap';
   document.getElementById('result-title').textContent = titleFor(score, mode === 'challenge');
   document.getElementById('result-score').textContent = String(score);
@@ -618,6 +913,7 @@ function returnToStudio() {
 }
 
 buildSliders();
+buildLipPalette();
 paintLooks();
 persist();
 
@@ -656,12 +952,205 @@ looksRow.addEventListener('click', (event) => {
   applyLook(row);
 });
 
+lipPalette?.addEventListener('pointerdown', (event) => {
+  const btn = event.target.closest('[data-lip]');
+  if (!btn || compare || !result.hidden) return;
+  const pot = LIPSTICKS.find((item) => item.id === btn.dataset.lip);
+  if (!pot) return;
+  event.preventDefault();
+  activeLipstick = pot;
+  lipPalette.querySelectorAll('.lip-stick').forEach((node) => {
+    node.classList.toggle('on', node.dataset.lip === pot.id);
+  });
+  const point = canvasPoint(event);
+  const rect = lastLayout?.lip;
+  const over = rect && inLips(point.x, point.y, rect);
+  stickDrag = {
+    pot,
+    pointerId: event.pointerId,
+    last: over ? screenToLip(point.x, point.y, rect) : null,
+    painted: false,
+    moved: false,
+  };
+  btn.classList.add('dragging');
+  showLipGhost(pot, event.clientX, event.clientY);
+  btn.setPointerCapture(event.pointerId);
+});
+
+lipPalette?.addEventListener('pointermove', (event) => {
+  if (!stickDrag || event.pointerId !== stickDrag.pointerId) return;
+  showLipGhost(stickDrag.pot, event.clientX, event.clientY);
+  const point = canvasPoint(event);
+  const rect = lastLayout?.lip;
+  if (!rect) return;
+  const dx = event.movementX;
+  const dy = event.movementY;
+  if (dx * dx + dy * dy > 4) stickDrag.moved = true;
+  if (!inLips(point.x, point.y, rect)) {
+    stickDrag.last = null;
+    return;
+  }
+  if (look.lips < 0.35) {
+    look.lips = 0.7;
+    syncSliders();
+  }
+  const local = screenToLip(point.x, point.y, rect);
+  if (stickDrag.last) paintLipStroke(stickDrag.last, local, stickDrag.pot.color);
+  else paintLipStroke(local, local, stickDrag.pot.color);
+  stickDrag.last = local;
+  stickDrag.painted = true;
+});
+
+function endStickDrag(event) {
+  if (!stickDrag) return;
+  const point = canvasPoint(event);
+  const rect = lastLayout?.lip;
+  const over = rect && inLips(point.x, point.y, rect);
+  if (over && !stickDrag.painted) {
+    if (!stickDrag.pot.color) clearLips();
+    else fillLips(stickDrag.pot.color);
+  }
+  hideLipGhost();
+  stickDrag = null;
+  document.querySelectorAll('.lip-stick.dragging').forEach((node) => node.classList.remove('dragging'));
+}
+
+lipPalette?.addEventListener('pointerup', endStickDrag);
+lipPalette?.addEventListener('pointercancel', endStickDrag);
+
+function showLipGhost(pot, x, y) {
+  if (!lipGhost) return;
+  lipGhost.classList.remove('hidden');
+  const bullet = lipGhost.querySelector('.ghost-bullet');
+  if (bullet) {
+    bullet.style.background = pot.color || '';
+    bullet.style.backgroundImage = pot.color ? 'none' : '';
+  }
+  lipGhost.style.left = `${x}px`;
+  lipGhost.style.top = `${y}px`;
+}
+
+function hideLipGhost() {
+  lipGhost?.classList.add('hidden');
+}
+
 slidersEl.addEventListener('input', (event) => {
   const key = event.target.dataset.key;
   if (!key) return;
   look[key] = Number(event.target.value);
   activeLook = 'custom';
   paintLooks();
+});
+
+function canvasPoint(event) {
+  const rect = view.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * (view.width / Math.max(1, rect.width)),
+    y: (event.clientY - rect.top) * (view.height / Math.max(1, rect.height)),
+  };
+}
+
+function hitPiece(x, y) {
+  if (!lastLayout) return null;
+  const hits = lastLayout.pieces.filter((piece) => {
+    const nx = (x - piece.x) / (piece.rx * 1.35);
+    const ny = (y - piece.y) / (piece.ry * 1.35);
+    return nx * nx + ny * ny <= 1;
+  });
+  hits.sort((a, b) => a.rx * a.ry - b.rx * b.ry);
+  return hits[0] || null;
+}
+
+function clamp(n, a, b) {
+  return Math.min(b, Math.max(a, n));
+}
+
+function setCursor() {
+  if (coloring) view.style.cursor = 'crosshair';
+  else if (drag) view.style.cursor = 'grabbing';
+  else if (hoverId) view.style.cursor = 'grab';
+  else if (lastLayout?.lip) view.style.cursor = 'crosshair';
+  else view.style.cursor = 'default';
+}
+
+view.addEventListener('pointerdown', (event) => {
+  if (compare || !result.hidden) return;
+  const point = canvasPoint(event);
+  const hit = hitPiece(point.x, point.y);
+  if (hit) {
+    event.preventDefault();
+    drag = { id: hit.id, ox: point.x - hit.x, oy: point.y - hit.y };
+    hoverId = hit.id;
+    view.setPointerCapture(event.pointerId);
+    setCursor();
+    return;
+  }
+  const rect = lastLayout?.lip;
+  if (rect && inLips(point.x, point.y, rect)) {
+    event.preventDefault();
+    const local = screenToLip(point.x, point.y, rect);
+    coloring = { pointerId: event.pointerId, moved: false, last: local };
+    if (look.lips < 0.35) {
+      look.lips = 0.7;
+      syncSliders();
+    }
+    paintLipStroke(local, local, activeLipstick.color);
+    view.setPointerCapture(event.pointerId);
+    setCursor();
+  }
+});
+
+view.addEventListener('pointermove', (event) => {
+  const point = canvasPoint(event);
+  if (coloring) {
+    const rect = lastLayout?.lip;
+    if (!rect) return;
+    const local = screenToLip(point.x, point.y, rect);
+    const dx = local.x - coloring.last.x;
+    const dy = local.y - coloring.last.y;
+    if (dx * dx + dy * dy > 4) coloring.moved = true;
+    paintLipStroke(coloring.last, local, activeLipstick.color);
+    coloring.last = local;
+    setCursor();
+    return;
+  }
+  if (drag) {
+    pins[drag.id] = {
+      nx: clamp((point.x - drag.ox) / Math.max(1, view.width), 0.03, 0.97),
+      ny: clamp((point.y - drag.oy) / Math.max(1, view.height), 0.06, 0.9),
+    };
+    setCursor();
+    return;
+  }
+  hoverId = hitPiece(point.x, point.y)?.id || null;
+  setCursor();
+});
+
+function endDrag(event) {
+  if (coloring) {
+    if (!coloring.moved) {
+      if (activeLipstick.id === 'wipe') clearLips();
+      else fillLips(activeLipstick.color);
+    }
+    coloring = null;
+  }
+  if (drag && event && view.hasPointerCapture?.(event.pointerId)) {
+    view.releasePointerCapture(event.pointerId);
+  }
+  drag = null;
+  setCursor();
+}
+
+view.addEventListener('pointerup', endDrag);
+view.addEventListener('pointercancel', endDrag);
+view.addEventListener('pointerleave', () => {
+  if (!drag && !coloring) hoverId = null;
+  setCursor();
+});
+
+document.getElementById('reset-place')?.addEventListener('click', () => {
+  resetPins();
+  studioStatus.textContent = 'Makeup is back on the face.';
 });
 
 window.addEventListener('resize', resizeView);

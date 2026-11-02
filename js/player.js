@@ -33,7 +33,13 @@ import {
 import { isSolid, isPlatform, isLava, getTile, setTile, spawnBlockItem } from './world.js';
 import { sfx } from './audio.js';
 
-const EMOTE_KEYS = { '1': 'wave', '2': 'dance', '3': 'twirl' };
+const EMOTE_KEYS = {
+  '1': 'wave',
+  '2': 'dance',
+  '3': 'twirl',
+  '4': 'mummy-shuffle',
+  '5': 'sand-spin',
+};
 
 export function createPlayer(save, spawn) {
   const powered = !!save?.powered;
@@ -95,6 +101,7 @@ export function createPlayer(save, spawn) {
     actionHeld: false,
     heldEgg: null,
     heldBrick: null,
+    heldSword: false,
     aimX: null,
     aimY: null,
   };
@@ -114,7 +121,14 @@ export function triggerEmote(player, key) {
   }
   player.emote = emote;
   player.emoteTimer = 120;
-  showMessage(player, emote === 'wave' ? 'Hello!' : emote === 'dance' ? 'Happy dance!' : 'Tail twirl!');
+  const messages = {
+    wave: 'Hello!',
+    dance: 'Happy dance!',
+    twirl: 'Tail twirl!',
+    'mummy-shuffle': 'Mummy shuffle!',
+    'sand-spin': 'Sand spin!',
+  };
+  showMessage(player, messages[emote] || 'Emote!');
   sfx('coin');
 }
 
@@ -273,9 +287,12 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
       throwHeldEgg(player, world);
     } else if (player.heldBrick != null) {
       throwHeldBrick(player, world);
+    } else if (player.heldSword) {
+      throwHeldSword(player, world);
     } else if (
       !pickUpNestEgg(player, world) &&
       !pickUpCarryBrick(player, world) &&
+      !pickUpMummySword(player, world) &&
       !player.tongue &&
       player.tongueCooldown <= 0
     ) {
@@ -298,6 +315,7 @@ export function updatePlayer(player, world, keys, updateSharedWorld = true) {
   moveAndCollide(player, world);
   updateBossEggs(player, world, updateSharedWorld);
   updateCarryBricks(player, world, updateSharedWorld);
+  updateMummySword(player, world, updateSharedWorld);
   if (updateSharedWorld) updateButtonsAndGates(world, world._players || [player]);
   if (player.groundPounding && player.onGround) finishGroundPound(player, world);
   if (player.onGround) {
@@ -679,6 +697,100 @@ function throwHeldBrick(player, world) {
   sfx('bump');
 }
 
+function mummyBoss(world) {
+  return world.enemies.find((enemy) => enemy.alive && enemy.variant === 'mummy');
+}
+
+function pickUpMummySword(player, world) {
+  const boss = mummyBoss(world);
+  const sword = boss?.sword;
+  if (!sword || sword.state !== 'floor') return false;
+  const cx = player.x + player.w / 2;
+  const cy = player.y + player.h / 2;
+  const distance = Math.hypot(sword.x + sword.w / 2 - cx, sword.y + sword.h / 2 - cy);
+  if (distance > 56) return false;
+  sword.state = 'held';
+  sword.heldBy = player.slot ?? 0;
+  sword.vx = 0;
+  sword.vy = 0;
+  player.heldSword = true;
+  boss.state = 'search';
+  boss.stateTimer = boss.enraged ? 210 : 300;
+  showMessage(player, 'Sword ready! Aim and press Z to throw.');
+  sfx('coin');
+  return true;
+}
+
+function throwHeldSword(player, world) {
+  const boss = mummyBoss(world);
+  const sword = boss?.sword;
+  if (!sword || sword.state !== 'held' || sword.heldBy !== (player.slot ?? 0)) {
+    player.heldSword = false;
+    return;
+  }
+  player.heldSword = false;
+  sword.state = 'thrown';
+  sword.heldBy = null;
+  sword.x = player.x + player.w / 2 - sword.w / 2 + player.facing * 12;
+  sword.y = player.y + 6;
+  let dx = player.facing;
+  let dy = -0.35;
+  if (Number.isFinite(player.aimX) && Number.isFinite(player.aimY)) {
+    dx = player.aimX - (sword.x + sword.w / 2);
+    dy = player.aimY - (sword.y + sword.h / 2);
+  }
+  const distance = Math.max(1, Math.hypot(dx, dy));
+  sword.vx = dx / distance * 11;
+  sword.vy = dy / distance * 11;
+  showMessage(player, 'Sword throw!');
+  sfx('bump');
+}
+
+function updateMummySword(player, world, updateSharedWorld) {
+  const boss = mummyBoss(world);
+  const sword = boss?.sword;
+  if (!sword) {
+    if (player.heldSword) player.heldSword = false;
+    return;
+  }
+  if (sword.state === 'held') {
+    if (sword.heldBy === (player.slot ?? 0)) {
+      sword.x = player.x + player.w / 2 - sword.w / 2;
+      sword.y = player.y - sword.h + 2;
+      player.heldSword = true;
+    }
+    return;
+  }
+  if (sword.heldBy === (player.slot ?? 0)) player.heldSword = false;
+  if (!updateSharedWorld || sword.state !== 'thrown') return;
+
+  sword.x += sword.vx;
+  sword.y += sword.vy;
+  sword.vy = Math.min(sword.vy + 0.38, 10);
+  sword.vx *= 0.992;
+
+  if (overlap(sword, boss)) {
+    damageEnemy(player, boss, false, sword.x + sword.w / 2, sword.y, 'sword');
+    dropMummySword(boss, sword.x, boss.floorY + boss.h - sword.h);
+    return;
+  }
+
+  const floorY = (boss.floorY ?? 13 * TILE - 62) + boss.h - sword.h;
+  if (sword.y >= floorY || sword.x < 0 || sword.x > world.mapW * TILE) {
+    dropMummySword(boss, sword.x, floorY);
+  }
+}
+
+function dropMummySword(boss, x, y) {
+  const sword = boss.sword;
+  sword.state = 'floor';
+  sword.heldBy = null;
+  sword.vx = 0;
+  sword.vy = 0;
+  sword.x = Math.max(boss.arenaMin, Math.min(x, boss.arenaMax - sword.w));
+  sword.y = y;
+}
+
 function updateCarryBricks(player, world, updateSharedWorld) {
   for (const brick of world.carryBricks || []) {
     if (brick.state === 'held') {
@@ -967,7 +1079,7 @@ function checkGoal(player, world) {
   if (player.x + player.w > world.flagX + 8) {
     const bossAlive = world.enemies.some((enemy) => enemy.type === 'boss' && enemy.alive);
     if (bossAlive) {
-      showMessage(player, 'Defeat the giant owl first!');
+      showMessage(player, 'Defeat the boss first!');
       return;
     }
     world.completed = true;
@@ -984,6 +1096,19 @@ function checkGoal(player, world) {
 
 export function hurtPlayer(player, world) {
   if (player.invincible > 0 || player.dead || player.won || player.camouflaged) return;
+
+  if (player.barny || player.ridingBarny) {
+    player.barny = false;
+    player.ridingBarny = false;
+    player.barnyHatchTimer = 0;
+    player.barnyMountPending = false;
+    player.invincible = 120;
+    player.vy = -6;
+    player.vx = -(player.facing || 1) * 3;
+    showMessage(player, 'Barny saved you and disappeared!');
+    sfx('hurt');
+    return;
+  }
 
   if (player.powered) {
     player.powered = false;
@@ -1015,6 +1140,13 @@ function killPlayer(player, world, msg) {
     const brick = world.carryBricks?.find((entry) => entry.id === player.heldBrick);
     if (brick) respawnCarryBrick(brick);
     player.heldBrick = null;
+  }
+  if (player.heldSword) {
+    const boss = mummyBoss(world);
+    if (boss?.sword) {
+      dropMummySword(boss, player.x, (boss.floorY ?? player.y) + boss.h - boss.sword.h);
+    }
+    player.heldSword = false;
   }
   player.tailStandUntil = 0;
   showMessage(player, player.lives <= 0 ? 'Game Over!' : msg);
@@ -1064,6 +1196,33 @@ export function stompEnemy(player, enemy) {
 function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null, source = 'other') {
   if (enemy.type === 'spike') return false;
   if (enemy.type === 'boss') {
+    if (enemy.variant === 'mummy') {
+      if (enemy.state === 'enrage') return true;
+      if (enemy.state !== 'search' && source !== 'sword') {
+        showMessage(player, 'Grab the dropped sword with Z, then throw it or strike while he panics!');
+        sfx('bump');
+        return false;
+      }
+      if (enemy.hurtTimer > 0) return true;
+      enemy.hp--;
+      enemy.hurtTimer = 45;
+      player.score += STOMP_BONUS;
+      sfx('stomp');
+      if (enemy.hp <= 0) {
+        if (!enemy.enraged) {
+          growMummyBoss(enemy, player);
+        } else {
+          enemy.alive = false;
+          if (enemy.sword) enemy.sword.state = 'floor';
+          player.heldSword = false;
+          player.score += 3000;
+          showMessage(player, 'The giant sword mummy is defeated!');
+        }
+      } else {
+        showMessage(player, `${enemy.hp} mummy wraps left!`);
+      }
+      return true;
+    }
     if (enemy.state !== 'dizzy' && source !== 'stomp') {
       showMessage(player, 'Throw a nest egg to make the owl dizzy!');
       sfx('bump');
@@ -1108,6 +1267,34 @@ function damageEnemy(player, enemy, fromTongue, hitX = null, hitY = null, source
   sfx('stomp');
   if (fromTongue) showMessage(player, 'Tongue zap!');
   return true;
+}
+
+function growMummyBoss(enemy, player) {
+  const center = enemy.x + enemy.w / 2;
+  enemy.enraged = true;
+  enemy.maxHp = 6;
+  enemy.hp = 6;
+  enemy.w = 84;
+  enemy.h = 96;
+  enemy.floorY = 13 * TILE - enemy.h;
+  enemy.y = enemy.floorY;
+  enemy.x = Math.max(enemy.arenaMin, Math.min(center - enemy.w / 2, enemy.arenaMax - enemy.w));
+  enemy.state = 'enrage';
+  enemy.stateTimer = 110;
+  enemy.hurtTimer = 110;
+  enemy.vx = 0;
+  enemy.swordHitbox = null;
+  if (enemy.sword) {
+    enemy.sword.state = 'sheathed';
+    enemy.sword.heldBy = null;
+    enemy.sword.vx = 0;
+    enemy.sword.vy = 0;
+    enemy.sword.w = 70;
+    enemy.sword.h = 18;
+  }
+  player.heldSword = false;
+  player.score += 1500;
+  showMessage(player, 'He got bigger and stronger!');
 }
 
 function overlap(a, b) {

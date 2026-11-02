@@ -16,7 +16,7 @@
     <p class="kicker">Games and Things</p>
     <div class="hero" aria-hidden="true">💄</div>
     <h1>Glow Up</h1>
-    <p class="lead">Turn on the camera. Soften, blush, sparkle, and beautify yourself. Match the vibe, snap, and score.</p>
+    <p class="lead">Turn on the camera. Drag a lipstick onto your face, then blush, sparkle, snap, and score.</p>
     <p id="star-bank" class="star-bank">★ 0 stars saved</p>
     <button id="open-cam" type="button">Enable camera</button>
     <button id="open-standin" class="ghost" type="button">Practice without a camera</button>
@@ -25,11 +25,16 @@
 
   <section id="studio" class="studio hidden" hidden>
     <video id="cam" playsinline autoplay muted></video>
-    <canvas id="view"></canvas>
+    <canvas id="view" aria-label="Makeup canvas. Drag a lipstick onto your lips."></canvas>
+    <div id="lip-ghost" class="lip-ghost hidden" aria-hidden="true">
+      <span class="ghost-bullet"></span>
+      <span class="ghost-tube"></span>
+    </div>
     <div class="studio-top">
       <div class="top-left">
         <button id="studio-back" class="chip-btn" type="button">Back</button>
         <button id="cam-flip" class="chip-btn" type="button">Flip</button>
+        <button id="reset-place" class="chip-btn" type="button">Reset place</button>
       </div>
       <div id="mission" class="mission hidden">
         <p id="mission-label">Match Ice Queen</p>
@@ -42,6 +47,8 @@
     </div>
     <p id="studio-status" class="studio-status">Finding your face…</p>
     <div class="studio-dock">
+      <p class="tray-label">Lipstick</p>
+      <div id="lip-palette" class="lip-palette"></div>
       <div id="looks-row" class="looks-row"></div>
       <div id="sliders" class="sliders"></div>
       <div class="studio-bar">

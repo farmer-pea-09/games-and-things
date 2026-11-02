@@ -9,6 +9,14 @@ export const SHOP_ITEMS = [
   { id: 'cape', type: 'accessory', name: 'Golden Cape', icon: '🟨', price: 35 },
 ];
 
+export const DESERT_SHOP_ITEMS = [
+  { id: 'mummy-shuffle', type: 'emote', name: 'Mummy Shuffle', icon: '🧟', price: 18, key: 'E' },
+  { id: 'sand-spin', type: 'emote', name: 'Sand Spin', icon: '🌪️', price: 28, key: 'E' },
+  { id: 'desert-scarf', type: 'accessory', name: 'Desert Scarf', icon: '🧣', price: 16 },
+  { id: 'pharaoh-crown', type: 'accessory', name: 'Pharaoh Crown', icon: '👑', price: 30 },
+  { id: 'goggles', type: 'accessory', name: 'Dune Goggles', icon: '🥽', price: 24 },
+];
+
 export function updateHUD(player, world) {
   const score = document.getElementById('score-label');
   const lives = document.getElementById('lives-label');
@@ -66,15 +74,17 @@ export function showGameOver(onMap) {
   });
 }
 
-export function showBugShop(save, onChange, onClose) {
+export function showBugShop(save, onChange, onClose, shopId = 'shop') {
   const overlay = document.getElementById('overlay');
   const content = document.getElementById('overlay-content');
   overlay.classList.remove('hidden');
 
   function renderShop() {
+    const desertShop = shopId === '2-shop';
+    const shopItems = desertShop ? DESERT_SHOP_ITEMS : SHOP_ITEMS;
     const ownedEmotes = save.emotes || new Set();
     const ownedAccessories = save.accessories || new Set();
-    const cards = SHOP_ITEMS.map((item) => {
+    const cards = shopItems.map((item) => {
       const owned = item.type === 'emote'
         ? ownedEmotes.has(item.id)
         : ownedAccessories.has(item.id);
@@ -92,9 +102,11 @@ export function showBugShop(save, onChange, onClose) {
     }).join('');
 
     content.innerHTML = `
-      <h2>🦗 Bug Boutique</h2>
+      <h2>${desertShop ? '🐒 Lemur’s Desert Deals' : '🦗 Bug Boutique'}</h2>
       <p class="shop-balance">Your bugs: <strong>${save.coins}</strong></p>
-      <p class="shop-note">Buy emotes and accessories. Press E during a quest to choose an owned emote.</p>
+      <p class="shop-note">${desertShop
+        ? 'Trade bugs for rare desert emotes and traveling gear.'
+        : 'Buy emotes and accessories. Press E during a quest to choose an owned emote.'}</p>
       <div class="shop-grid">${cards}</div>
       <button id="unequip-btn" class="shop-secondary">Remove accessory</button>
       <button id="close-shop" class="shop-secondary">Back to map</button>
@@ -102,7 +114,7 @@ export function showBugShop(save, onChange, onClose) {
 
     content.querySelectorAll('[data-item]').forEach((button) => {
       button.addEventListener('click', () => {
-        const item = SHOP_ITEMS.find((entry) => entry.id === button.dataset.item);
+        const item = shopItems.find((entry) => entry.id === button.dataset.item);
         if (!item) return;
         const ownedSet = item.type === 'emote' ? ownedEmotes : ownedAccessories;
         if (!ownedSet.has(item.id)) {

@@ -1,13 +1,23 @@
 import { TILE, TILE_TYPES } from './constants.js';
 
 export const WORLD_NODES = [
-  { id: 'shop', name: 'Bug Boutique', x: 70, y: 315, kind: 'shop', next: ['1-1'] },
-  { id: '1-1', name: 'Leafy Lane', x: 150, y: 250, kind: 'grass', next: ['1-2'] },
-  { id: '1-2', name: 'Canopy Walk', x: 290, y: 210, kind: 'grass', next: ['1-3'] },
-  { id: '1-3', name: 'Windy Gulch', x: 430, y: 260, kind: 'athletic', next: ['1-4'] },
-  { id: '1-4', name: 'Murk Cavern', x: 560, y: 300, kind: 'cave', next: ['1-castle'] },
-  { id: '1-castle', name: 'Thorn Keep', x: 670, y: 220, kind: 'castle', next: ['1-5'] },
-  { id: '1-5', name: 'Moonlit Spires', x: 740, y: 330, kind: 'athletic', next: [] },
+  { id: 'shop', name: 'Bug Boutique', x: 70, y: 315, kind: 'shop', world: 1, next: ['1-1'] },
+  { id: '1-1', name: 'Leafy Lane', x: 150, y: 250, kind: 'grass', world: 1, next: ['1-2'] },
+  { id: '1-2', name: 'Canopy Walk', x: 290, y: 210, kind: 'grass', world: 1, next: ['1-3'] },
+  { id: '1-3', name: 'Windy Gulch', x: 430, y: 260, kind: 'athletic', world: 1, next: ['1-4'] },
+  { id: '1-4', name: 'Murk Cavern', x: 560, y: 300, kind: 'cave', world: 1, next: ['1-castle'] },
+  { id: '1-castle', name: 'Thorn Keep', x: 670, y: 220, kind: 'castle', world: 1, next: ['2-gate', '1-5'] },
+  { id: '1-5', name: 'Moonlit Spires', x: 740, y: 330, kind: 'athletic', world: 1, next: ['2-gate'] },
+  { id: '2-gate', name: 'Sunscorched Desert', x: 730, y: 130, kind: 'desert-gate', world: 1, next: ['2-shop'] },
+  { id: '2-shop', name: "Lemur's Desert Deals", x: 70, y: 315, kind: 'shop', world: 2, next: ['2-1'] },
+  { id: '2-1', name: 'Sunbaked Steps', x: 145, y: 250, kind: 'desert', world: 2, next: ['2-2'] },
+  { id: '2-2', name: 'Cactus Crossing', x: 235, y: 190, kind: 'desert', world: 2, next: ['2-3'] },
+  { id: '2-3', name: 'Scorpion Sands', x: 330, y: 280, kind: 'desert', world: 2, next: ['2-4'] },
+  { id: '2-4', name: 'Mirage Ruins', x: 425, y: 205, kind: 'desert', world: 2, next: ['2-5'] },
+  { id: '2-5', name: 'Temple Switches', x: 520, y: 295, kind: 'desert', world: 2, next: ['2-6'] },
+  { id: '2-6', name: 'Dune Summit', x: 610, y: 205, kind: 'desert', world: 2, next: ['2-7'] },
+  { id: '2-7', name: 'Tomb Approach', x: 690, y: 300, kind: 'desert', world: 2, next: ['2-castle'] },
+  { id: '2-castle', name: 'Mummy Tomb', x: 745, y: 185, kind: 'castle', world: 2, next: [] },
 ];
 
 const TILE_CHARS = {
@@ -46,6 +56,9 @@ const ENTITY_CHARS = {
   v: 'dori',
   g: 'pegasus',
   w: 'wingedSnake',
+  s: 'scorpion',
+  r: 'desertSnake',
+  m: 'mummyBoss',
 };
 
 const BLOCK_ITEMS = {
@@ -642,7 +655,11 @@ function level12Sky() {
     fill(20, 30, 11, '=');
     put(22, 9, 'o');
     put(25, 7, 'w');
-    put(28, 9, 'o');
+    for (let y = 3; y <= 10; y++) {
+      put(27, y, '#');
+      put(28, y, '#');
+    }
+    put(27, 2, 'o');
 
     fill(35, 45, 8, '=');
     put(37, 6, 'g');
@@ -660,7 +677,12 @@ function level12Sky() {
 
     fill(80, 88, 10, '=');
     put(82, 8, 'g');
-    put(86, 7, 'w');
+    for (let y = 2; y <= 9; y++) {
+      put(85, y, '#');
+      put(86, y, '#');
+    }
+    put(85, 1, 'j');
+    put(90, 6, 'w');
 
     fill(94, 106, 6, '=');
     put(96, 4, 'o');
@@ -679,6 +701,11 @@ function level12Sky() {
     fill(143, 152, 10, '=');
     put(145, 8, 'o');
     put(149, 7, 'g');
+    for (let y = 2; y <= 9; y++) {
+      put(150, y, '#');
+      put(151, y, '#');
+    }
+    put(150, 1, '$');
 
     fill(156, 164, 8, '=');
     put(158, 6, 'w');
@@ -690,6 +717,329 @@ function level12Sky() {
   }, 'sky', '1-2 Cloud Kingdom');
 }
 
+function level21() {
+  return makeLevel(190, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 32);
+    fill(32, 40, 14, 'L');
+    ground(40, 78);
+    fill(78, 88, 14, 'L');
+    ground(88, 128);
+    fill(128, 138, 14, 'L');
+    ground(138, 190);
+    put(3, 12, 'S');
+    blockRow(10, 8, '?!?');
+    put(18, 12, 'r');
+    pipe(25, 3);
+    put(25, 9, 'n');
+    fill(33, 39, 10, '=');
+    put(35, 8, 'o');
+    put(37, 7, 'j');
+    put(48, 12, 's');
+    put(57, 12, 'r');
+    blockRow(63, 7, 'B!?B');
+    put(72, 12, 'M');
+    fill(80, 86, 9, '=');
+    put(82, 7, 'o');
+    put(84, 6, 'f');
+    pipe(96, 4);
+    put(96, 8, 'n');
+    put(110, 12, 's');
+    put(119, 12, 'r');
+    fill(130, 136, 8, '=');
+    put(132, 6, '$');
+    blockRow(148, 7, '?!?');
+    put(158, 12, 's');
+    put(171, 12, 'r');
+    put(184, 10, 'G');
+    put(184, 11, 'G');
+    put(184, 12, 'G');
+  }, 'desert', '2-1 Sunbaked Steps');
+}
+
+function level22() {
+  return makeLevel(204, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 25);
+    fill(25, 36, 14, 'L');
+    ground(36, 66);
+    fill(66, 80, 14, 'L');
+    ground(80, 111);
+    fill(111, 126, 14, 'L');
+    ground(126, 160);
+    fill(160, 171, 14, 'L');
+    ground(171, 204);
+    put(3, 12, 'S');
+    pipe(14, 5);
+    put(14, 7, 'n');
+    put(20, 12, 's');
+    fill(27, 34, 10, '=');
+    put(29, 8, 'o');
+    put(32, 6, 'f');
+    pipe(43, 4);
+    put(43, 8, 'n');
+    put(53, 12, 'r');
+    blockRow(57, 7, 'B?!B');
+    fill(68, 78, 9, '=');
+    put(70, 7, 'o');
+    put(74, 5, 'j');
+    put(84, 12, 'M');
+    pipe(91, 6);
+    put(91, 6, 'n');
+    put(104, 12, 's');
+    fill(113, 124, 8, '=');
+    put(116, 6, 'o');
+    put(120, 4, 'f');
+    pipe(132, 3);
+    put(132, 9, 'n');
+    put(141, 12, 'r');
+    put(149, 12, 's');
+    fill(162, 169, 7, '=');
+    put(165, 5, '$');
+    blockRow(178, 8, '?!?');
+    put(188, 12, 'r');
+    put(198, 10, 'G');
+    put(198, 11, 'G');
+    put(198, 12, 'G');
+  }, 'desert', '2-2 Cactus Crossing');
+}
+
+function level23() {
+  return makeLevel(214, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 42);
+    fill(42, 51, 14, 'L');
+    ground(51, 92);
+    fill(92, 104, 14, 'L');
+    ground(104, 151);
+    fill(151, 165, 14, 'L');
+    ground(165, 214);
+    put(3, 12, 'S');
+    put(13, 12, 's');
+    put(20, 12, 's');
+    put(28, 12, 'r');
+    blockRow(31, 8, 'B?!?B');
+    fill(44, 49, 10, '=');
+    put(46, 8, 'o');
+    put(55, 12, 's');
+    pipe(63, 4);
+    put(63, 8, 'n');
+    put(72, 12, 'r');
+    put(79, 12, 's');
+    put(86, 12, 'M');
+    fill(94, 102, 8, '=');
+    put(96, 6, 'j');
+    put(100, 5, 'f');
+    put(112, 12, 's');
+    put(119, 12, 's');
+    blockRow(126, 6, '?!?');
+    put(136, 12, 'r');
+    pipe(143, 5);
+    put(143, 7, 'n');
+    fill(153, 163, 9, '=');
+    put(156, 7, 'o');
+    put(160, 5, '$');
+    put(174, 12, 's');
+    put(181, 12, 'r');
+    put(189, 12, 's');
+    blockRow(194, 8, 'B!?B');
+    put(208, 10, 'G');
+    put(208, 11, 'G');
+    put(208, 12, 'G');
+  }, 'desert', '2-3 Scorpion Sands');
+}
+
+function level24() {
+  return makeLevel(220, ({ put, fill, ground, blockRow }) => {
+    ground(0, 55);
+    fill(55, 68, 14, 'L');
+    ground(68, 120);
+    fill(120, 134, 14, 'L');
+    ground(134, 220);
+    put(3, 12, 'S');
+    blockRow(12, 8, 'B?!B');
+    put(23, 12, 'r');
+    put(31, 12, 'q');
+    put(38, 12, 't');
+    for (let y = 3; y <= 12; y++) put(45, y, 'D');
+    put(50, 12, 's');
+    fill(57, 66, 9, '=');
+    put(59, 7, 'o');
+    put(63, 5, 'j');
+    put(75, 12, 'M');
+    put(83, 12, 'q');
+    put(91, 12, 'u');
+    for (let y = 2; y <= 12; y++) put(99, y, 'E');
+    blockRow(84, 7, '?!?');
+    put(108, 12, 'r');
+    fill(122, 132, 8, '=');
+    put(125, 6, 'o');
+    put(129, 4, 'f');
+    put(143, 12, 's');
+    put(151, 12, 'q');
+    put(159, 12, 't');
+    for (let y = 4; y <= 12; y++) put(166, y, 'D');
+    put(175, 12, 'r');
+    blockRow(182, 7, 'B!?B');
+    put(195, 12, 's');
+    put(204, 5, '$');
+    put(214, 10, 'G');
+    put(214, 11, 'G');
+    put(214, 12, 'G');
+  }, 'desert', '2-4 Mirage Ruins');
+}
+
+function level25() {
+  return makeLevel(226, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 70);
+    fill(70, 82, 14, 'L');
+    ground(82, 145);
+    fill(145, 158, 14, 'L');
+    ground(158, 226);
+    put(3, 12, 'S');
+    put(12, 12, 'q');
+    put(19, 12, 't');
+    for (let y = 2; y <= 12; y++) put(27, y, 'D');
+    put(36, 12, 's');
+    put(44, 12, 'q');
+    put(52, 12, 'u');
+    for (let y = 3; y <= 12; y++) put(60, y, 'E');
+    blockRow(40, 7, 'B?!?B');
+    fill(72, 80, 9, '=');
+    put(75, 7, 'j');
+    put(87, 12, 'M');
+    pipe(94, 5);
+    put(94, 7, 'n');
+    put(104, 12, 'r');
+    put(111, 12, 'q');
+    put(120, 12, 't');
+    for (let y = 1; y <= 12; y++) put(129, y, 'D');
+    put(137, 12, 's');
+    fill(147, 156, 8, '=');
+    put(150, 6, '$');
+    put(163, 12, 'q');
+    put(172, 12, 'u');
+    for (let y = 2; y <= 12; y++) put(181, y, 'E');
+    blockRow(165, 7, '?!?');
+    put(191, 12, 's');
+    put(199, 12, 'r');
+    put(209, 12, 's');
+    put(220, 10, 'G');
+    put(220, 11, 'G');
+    put(220, 12, 'G');
+  }, 'desert', '2-5 Temple Switches');
+}
+
+function level26() {
+  return makeLevel(232, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 28);
+    fill(28, 42, 14, 'L');
+    ground(42, 64);
+    fill(64, 80, 14, 'L');
+    ground(80, 104);
+    fill(104, 120, 14, 'L');
+    ground(120, 148);
+    fill(148, 165, 14, 'L');
+    ground(165, 190);
+    fill(190, 204, 14, 'L');
+    ground(204, 232);
+    put(3, 12, 'S');
+    fill(16, 27, 8, '=');
+    put(20, 6, 'o');
+    put(24, 4, 'f');
+    fill(30, 40, 5, '=');
+    put(34, 3, 'j');
+    put(48, 12, 's');
+    pipe(55, 5);
+    put(55, 7, 'n');
+    fill(66, 78, 7, '=');
+    put(70, 5, 'r');
+    put(75, 3, '$');
+    put(85, 12, 'M');
+    fill(94, 103, 5, '=');
+    put(98, 3, 'f');
+    fill(106, 118, 8, '=');
+    put(112, 6, 'o');
+    put(128, 12, 's');
+    blockRow(134, 7, 'B?!B');
+    fill(150, 163, 6, '=');
+    put(154, 4, 'j');
+    put(160, 3, 'f');
+    pipe(172, 6);
+    put(172, 6, 'n');
+    put(183, 12, 'r');
+    fill(192, 202, 7, '=');
+    put(197, 5, 'o');
+    put(211, 12, 's');
+    put(226, 10, 'G');
+    put(226, 11, 'G');
+    put(226, 12, 'G');
+  }, 'desert', '2-6 Dune Summit');
+}
+
+function level27() {
+  return makeLevel(238, ({ put, fill, ground, pipe, blockRow }) => {
+    ground(0, 58);
+    fill(58, 70, 14, 'L');
+    ground(70, 132);
+    fill(132, 146, 14, 'L');
+    ground(146, 238);
+    put(3, 12, 'S');
+    put(14, 12, 's');
+    pipe(22, 5);
+    put(22, 7, 'n');
+    blockRow(32, 7, 'B?!?B');
+    put(43, 12, 'r');
+    put(50, 12, 'q');
+    put(55, 12, 't');
+    for (let y = 2; y <= 12; y++) put(57, y, 'D');
+    fill(60, 68, 8, '=');
+    put(63, 6, 'j');
+    put(76, 12, 'M');
+    put(84, 12, 's');
+    put(92, 12, 'r');
+    put(100, 12, 'q');
+    put(109, 12, 'u');
+    for (let y = 1; y <= 12; y++) put(118, y, 'E');
+    blockRow(98, 7, '?!?');
+    put(126, 12, 's');
+    fill(134, 144, 8, '=');
+    put(138, 6, '$');
+    put(152, 12, 'r');
+    pipe(160, 6);
+    put(160, 6, 'n');
+    put(171, 12, 's');
+    put(180, 12, 'q');
+    put(188, 12, 't');
+    for (let y = 3; y <= 12; y++) put(196, y, 'D');
+    blockRow(180, 7, 'B!?B');
+    put(204, 12, 's');
+    put(214, 12, 'r');
+    put(224, 12, 's');
+    put(232, 10, 'G');
+    put(232, 11, 'G');
+    put(232, 12, 'G');
+  }, 'desert', '2-7 Tomb Approach');
+}
+
+function level2Castle() {
+  return makeLevel(148, ({ put, ground, blockRow }) => {
+    ground(0, 148);
+    put(3, 12, 'S');
+    blockRow(10, 8, '?!?');
+    put(24, 12, 's');
+    put(32, 12, 'r');
+    for (let y = 5; y <= 12; y++) {
+      put(45, y, 'C');
+      put(46, y, 'C');
+    }
+    put(52, 12, 'M');
+    put(63, 12, 's');
+    put(74, 12, 'r');
+    put(92, 12, 'm');
+    put(140, 10, 'G');
+    put(140, 11, 'G');
+    put(140, 12, 'G');
+  }, 'desert-tomb', '2-Castle Mummy Tomb');
+}
+
 const LEVELS = {
   '1-1': level11,
   '1-2': level12,
@@ -698,6 +1048,14 @@ const LEVELS = {
   '1-castle': levelCastle,
   '1-5': level15,
   '1-2-sky': level12Sky,
+  '2-1': level21,
+  '2-2': level22,
+  '2-3': level23,
+  '2-4': level24,
+  '2-5': level25,
+  '2-6': level26,
+  '2-7': level27,
+  '2-castle': level2Castle,
 };
 
 export function createWorld(levelId = '1-1') {
@@ -893,6 +1251,47 @@ function makeEnemy(kind, x, y) {
       type: 'spike',
     };
   }
+  if (kind === 'scorpion') {
+    return { x, y, w: 30, h: 22, vx: -1.45, alive: true, type: 'scorpion' };
+  }
+  if (kind === 'desertSnake') {
+    return { x, y, w: 32, h: 25, vx: -1.75, alive: true, type: 'desertSnake' };
+  }
+  if (kind === 'mummyBoss') {
+    const floorY = 13 * TILE - 62;
+    return {
+      x,
+      y: floorY,
+      w: 54,
+      h: 62,
+      vx: -1.4,
+      vy: 0,
+      alive: true,
+      type: 'boss',
+      variant: 'mummy',
+      hp: 4,
+      maxHp: 4,
+      enraged: false,
+      hurtTimer: 0,
+      state: 'melee',
+      stateTimer: 240,
+      attackTimer: 70,
+      facing: -1,
+      floorY,
+      arenaMin: x - 280,
+      arenaMax: x + 360,
+      sword: {
+        x: x + 4,
+        y: floorY + 48,
+        w: 52,
+        h: 14,
+        state: 'sheathed',
+        heldBy: null,
+        vx: 0,
+        vy: 0,
+      },
+    };
+  }
   if (kind === 'boss') {
     return {
       x,
@@ -903,6 +1302,7 @@ function makeEnemy(kind, x, y) {
       vy: 0,
       alive: true,
       type: 'boss',
+      variant: 'owl',
       hp: 3,
       hurtTimer: 0,
       state: 'hover',
@@ -996,6 +1396,11 @@ export function unlockedIds(cleared) {
     const node = WORLD_NODES.find((n) => n.id === id);
     node?.next.forEach((n) => open.add(n));
     open.add(id);
+  }
+  for (const node of WORLD_NODES) {
+    if ((node.kind === 'shop' || node.kind === 'desert-gate') && open.has(node.id)) {
+      node.next.forEach((id) => open.add(id));
+    }
   }
   return open;
 }

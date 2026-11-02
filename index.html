@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Games and Things</title>
-  <link rel="stylesheet" href="css/hub.css?v=tiny-trinkets">
+  <link rel="stylesheet" href="css/hub.css?v=forge">
   <link rel="stylesheet" href="css/room.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,32 +14,44 @@
   <main class="hub">
     <p class="hub-kicker">Games and Things</p>
     <h1>Pick a game</h1>
-    <p class="hub-sub">Thirteen little worlds, plus Tiny Trinkets. Friends log in with a room code.</p>
+    <p class="hub-sub">Fifteen little worlds, plus Tiny Trinkets and a $45 Robot Lab. Friends log in with a room code.</p>
     <form id="hub-join-form" class="hub-join">
       <p>Joining a friend?</p>
       <div class="hub-join-row">
         <input id="hub-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
         <select id="hub-game" aria-label="Game">
           <option value="life.html">Oak Street Life</option>
+          <option value="grow.html">Grow Up</option>
           <option value="chameleon.html">Chameleon World</option>
           <option value="pet-sim.html">Pet Simulator</option>
-          <option value="orchard.html">Orchard Market</option>
         </select>
         <button type="submit">Log in</button>
       </div>
     </form>
     <div class="game-grid">
+      <a class="game-card animate" href="animate.html" data-game="animate">
+        <span class="game-art" aria-hidden="true">🎞️</span>
+        <h2>Animation</h2>
+        <p>Draw each pose, ghost the last frame, and play the loop. A bouncing pal starts you off.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card characters" href="characters.html" data-game="characters">
+        <span class="game-art" aria-hidden="true">🪄</span>
+        <h2>AI Characters</h2>
+        <p>Pick a creature, style, and mood. AI draws a character you can keep or trace in Animation.</p>
+        <span class="play-label">Open</span>
+      </a>
+      <a class="game-card robots" href="robots.html">
+        <span class="game-art" aria-hidden="true">🤖</span>
+        <h2>Robot Ideas</h2>
+        <p>Cardboard creatures for $45 or less. Reuse your Nano. Open a plan and build.</p>
+        <span class="play-label">Open</span>
+      </a>
       <a class="game-card shop" href="shop.html?owner=1">
         <span class="game-art" aria-hidden="true">💎</span>
         <h2>Tiny Trinkets</h2>
         <p>This PC posts listings. Friends make a Trinket Account, then chat to order. AI covers if the owner steps away.</p>
         <span class="play-label">Open</span>
-      </a>
-      <a class="game-card orchard" href="orchard.html" data-game="orchard">
-        <span class="game-art" aria-hidden="true">🍎</span>
-        <h2>Orchard Market</h2>
-        <p>Catch falling apples with your basket. After one minute, sell at the market. Most money wins — up to 6 players.</p>
-        <span class="play-label">Play</span>
       </a>
       <a class="game-card glowup" href="glowup.html" data-game="glowup">
         <span class="game-art" aria-hidden="true">💄</span>
@@ -63,6 +75,12 @@
         <span class="game-art" aria-hidden="true">🌈</span>
         <h2>Square Jumps</h2>
         <p>Auto-run rhythm hops. Jump, double jump, and clear spikes and floating hands. One hit restarts. Race to 100%.</p>
+        <span class="play-label">Play</span>
+      </a>
+      <a class="game-card grow" href="grow.html" data-game="grow">
+        <span class="game-art" aria-hidden="true">🌱</span>
+        <h2>Grow Up</h2>
+        <p>Start as a baby on Willow Lane. Live childhood, then move to the city, get a job, and keep the lights on.</p>
         <span class="play-label">Play</span>
       </a>
       <a class="game-card life" href="life.html" data-game="life">

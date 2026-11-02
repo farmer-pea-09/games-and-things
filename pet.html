@@ -31,8 +31,23 @@
       <button type="button" data-care="play"><kbd>P</kbd> Play</button>
       <button type="button" id="walk-btn"><kbd>W</kbd> <span class="btn-label">Walk</span></button>
     </div>
+    <div id="collar-popup" class="hidden">
+      <div class="collar">
+        <div class="collar-band"></div>
+        <div class="collar-ring"></div>
+        <div class="collar-tag">
+          <p id="collar-pet-kind"></p>
+          <p class="collar-ask">what is my name?</p>
+          <input id="pet-name-input" type="text" maxlength="14" placeholder="Type a name" autocomplete="off" spellcheck="false">
+          <button id="name-ok" type="button">Name me</button>
+        </div>
+      </div>
+    </div>
     <div id="overlay" class="hidden">
       <div id="overlay-content"></div>
+    </div>
+    <div id="controls-help">
+      <kbd>Z</kbd> food · <kbd>A</kbd> love · <kbd>S</kbd> water · <kbd>X</kbd> sleep · <kbd>P</kbd> play · <kbd>W</kbd> walk · <kbd>←→</kbd> stroll · <kbd>E</kbd> shop · <kbd>H</kbd> home · <kbd>Esc</kbd> pause
     </div>
   </div>
   <script type="module">

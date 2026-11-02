@@ -25,6 +25,12 @@ export function render(ctx, world, player, players = [player]) {
   }
   for (const button of world.buttons || []) drawPuzzleButton(ctx, button, camX, camY);
   for (const brick of world.carryBricks || []) drawCarryBrick(ctx, brick, camX, camY);
+  for (const enemy of world.enemies) {
+    const sword = enemy.sword;
+    if (enemy.variant === 'mummy' && sword && (sword.state === 'floor' || sword.state === 'thrown')) {
+      drawLooseSword(ctx, sword, camX, camY);
+    }
+  }
 
   for (const coin of world.coins) {
     if (!coin.collected) drawCoin(ctx, coin, camX, camY);
@@ -61,11 +67,17 @@ export function render(ctx, world, player, players = [player]) {
     }
     if (character.tongue) drawTongue(ctx, character.tongue, camX, camY);
     if (
-      (character.heldEgg != null || character.heldBrick != null) &&
+      (character.heldEgg != null || character.heldBrick != null || character.heldSword) &&
       Number.isFinite(character.aimX) &&
       Number.isFinite(character.aimY)
     ) {
       drawAimCursor(ctx, character, camX, camY);
+    }
+  }
+
+  for (const enemy of world.enemies) {
+    if (enemy.variant === 'mummy' && enemy.sword?.state === 'held') {
+      drawLooseSword(ctx, enemy.sword, camX, camY);
     }
   }
 
@@ -173,6 +185,12 @@ function drawBlueSnakePlayer(ctx, player, camX, camY) {
 }
 
 function themeColors(theme) {
+  if (theme === 'desert') {
+    return { top: '#f4a261', mid: '#ffe2a8', hill: '#e9c46a', hill2: '#c98b4b' };
+  }
+  if (theme === 'desert-tomb') {
+    return { top: '#281b2d', mid: '#6b3d37', hill: '#4b3030', hill2: '#2f2028' };
+  }
   if (theme === 'sky') {
     return { top: '#3178d4', mid: '#bde9ff', hill: '#dff7ff', hill2: '#9bdcf8' };
   }
@@ -196,7 +214,12 @@ function drawBackground(ctx, camX, theme) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  if (theme !== 'cave') {
+  if (theme === 'desert') {
+    ctx.fillStyle = '#ffe066';
+    ctx.beginPath();
+    ctx.arc(685, 82, 42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (theme !== 'cave' && theme !== 'desert-tomb') {
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     for (let i = 0; i < 5; i++) {
       const cx = ((i * 220 - camX * 0.08) % (CANVAS_W + 220)) - 40;
@@ -265,6 +288,18 @@ function drawTile(ctx, world, x, y, camX, camY) {
       ctx.fill();
       return;
     }
+    if (world.theme === 'desert' || world.theme === 'desert-tomb') {
+      const tomb = world.theme === 'desert-tomb';
+      ctx.fillStyle = tomb ? '#7b5b45' : '#d99b4e';
+      ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.fillStyle = tomb ? '#b78a5c' : '#f4c76b';
+      ctx.fillRect(sx, sy, TILE, 8);
+      ctx.fillStyle = tomb ? '#4f382f' : '#bd7b35';
+      ctx.fillRect(sx, sy + 8, TILE, 3);
+      ctx.fillRect(sx + 5, sy + 18, 8, 3);
+      ctx.fillRect(sx + 21, sy + 25, 6, 3);
+      return;
+    }
     const cave = world.theme === 'cave' || world.theme === 'castle';
     ctx.fillStyle = cave ? '#6b4f3a' : '#c84c0c';
     ctx.fillRect(sx, sy, TILE, TILE);
@@ -314,6 +349,21 @@ function drawTile(ctx, world, x, y, camX, camY) {
     ctx.fillStyle = '#d8c090';
     ctx.fillRect(sx + 8, sy + 16, 16, 3);
   } else if (type === TILE_TYPES.PIPE) {
+    if (world.theme === 'desert') {
+      const pipeAbove = y > 0 && world.tiles[y - 1][x] === TILE_TYPES.PIPE;
+      const pipeLeft = x > 0 && world.tiles[y][x - 1] === TILE_TYPES.PIPE;
+      ctx.fillStyle = '#2f9e44';
+      ctx.fillRect(sx + 9, sy, 14, TILE);
+      ctx.fillStyle = '#75c95b';
+      ctx.fillRect(sx + 11, sy, 4, TILE);
+      if (!pipeAbove && pipeLeft) {
+        ctx.fillRect(sx - 10, sy + 8, 16, 7);
+        ctx.fillRect(sx - 10, sy - 4, 7, 18);
+        ctx.fillRect(sx + 26, sy + 3, 15, 7);
+        ctx.fillRect(sx + 34, sy - 8, 7, 18);
+      }
+      return;
+    }
     const treeDark = world.theme === 'castle' || world.theme === 'cave';
     const pipeAbove = y > 0 && world.tiles[y - 1][x] === TILE_TYPES.PIPE;
     const pipeLeft = x > 0 && world.tiles[y][x - 1] === TILE_TYPES.PIPE;
@@ -347,6 +397,12 @@ function drawTile(ctx, world, x, y, camX, camY) {
       ctx.fill();
       ctx.fillStyle = '#9bdcf8';
       ctx.fillRect(sx, sy + 8, TILE, 5);
+    } else if (world.theme === 'desert' || world.theme === 'desert-tomb') {
+      ctx.fillStyle = world.theme === 'desert-tomb' ? '#a9784f' : '#efc46a';
+      ctx.fillRect(sx, sy, TILE, 11);
+      ctx.fillStyle = '#8f623c';
+      ctx.fillRect(sx, sy + 9, TILE, 4);
+      ctx.fillRect(sx + 5, sy + 3, 10, 2);
     } else {
       ctx.fillStyle = '#e8b060';
       ctx.fillRect(sx, sy, TILE, 10);
@@ -354,17 +410,19 @@ function drawTile(ctx, world, x, y, camX, camY) {
       ctx.fillRect(sx, sy + 8, TILE, 4);
     }
   } else if (type === TILE_TYPES.LAVA) {
-    ctx.fillStyle = '#ff3c00';
+    const sand = world.theme === 'desert' || world.theme === 'desert-tomb';
+    ctx.fillStyle = sand ? '#c9843f' : '#ff3c00';
     ctx.fillRect(sx, sy + 8, TILE, TILE - 8);
-    ctx.fillStyle = '#ffc000';
+    ctx.fillStyle = sand ? '#f4d06f' : '#ffc000';
     const wave = Math.sin(Date.now() / 140 + x) * 3;
     ctx.fillRect(sx, sy + 6 + wave, TILE, 8);
   } else if (type === TILE_TYPES.CASTLE) {
-    ctx.fillStyle = '#686880';
+    const tomb = world.theme === 'desert' || world.theme === 'desert-tomb';
+    ctx.fillStyle = tomb ? '#b4875a' : '#686880';
     ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#404058';
+    ctx.fillStyle = tomb ? '#7a543b' : '#404058';
     ctx.fillRect(sx + 8, sy + 10, 16, 16);
-    ctx.fillStyle = '#202030';
+    ctx.fillStyle = tomb ? '#3f2b27' : '#202030';
     ctx.fillRect(sx + 12, sy + 16, 8, 10);
   } else if (type === TILE_TYPES.GATE) {
     ctx.fillStyle = '#34495e';
@@ -386,6 +444,22 @@ function drawPuzzleButton(ctx, button, camX, camY) {
   ctx.fillRect(x + 2, y + (button.pressed ? 4 : 0), button.w - 4, button.pressed ? 4 : 8);
   ctx.fillStyle = button.pressed ? '#168f68' : '#9a6817';
   ctx.fillRect(x + 7, y + (button.pressed ? 6 : 5), button.w - 14, 2);
+}
+
+function drawLooseSword(ctx, sword, camX, camY) {
+  const x = sword.x - camX;
+  const y = sword.y - camY;
+  const thrown = sword.state === 'thrown';
+  ctx.save();
+  ctx.translate(x + sword.w / 2, y + sword.h / 2);
+  if (thrown) ctx.rotate(Date.now() / 80);
+  ctx.fillStyle = '#d9e2ec';
+  ctx.fillRect(-24, -3, 38, 6);
+  ctx.fillStyle = '#f4c430';
+  ctx.fillRect(10, -7, 7, 14);
+  ctx.fillStyle = '#7c2d12';
+  ctx.fillRect(16, -5, 12, 10);
+  ctx.restore();
 }
 
 function drawCarryBrick(ctx, brick, camX, camY) {
@@ -718,7 +792,7 @@ function drawItem(ctx, item, camX, camY) {
 function drawEnemy(ctx, enemy, camX, camY) {
   const sx = enemy.x - camX;
   const sy = enemy.y - camY;
-  const flash = enemy.hurtTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+  const flash = enemy.hurtTimer > 0 && enemy.state !== 'enrage' && Math.floor(Date.now() / 80) % 2 === 0;
   if (flash) return;
 
   if (enemy.type === 'pegasus') {
@@ -750,11 +824,60 @@ function drawEnemy(ctx, enemy, camX, camY) {
       ctx.fill();
       ctx.stroke();
     }
+  } else if (enemy.type === 'scorpion') {
+    drawScorpion(ctx, enemy, sx, sy);
+  } else if (enemy.type === 'desertSnake') {
+    drawDesertSnake(ctx, enemy, sx, sy);
   } else if (enemy.type === 'boss') {
-    drawGiantOwl(ctx, enemy, sx, sy);
+    if (enemy.variant === 'mummy') drawSwordMummy(ctx, enemy, sx, sy);
+    else drawGiantOwl(ctx, enemy, sx, sy);
   } else {
     drawSnake(ctx, sx, sy, enemy.vx);
   }
+}
+
+function drawScorpion(ctx, enemy, sx, sy) {
+  const dir = enemy.vx >= 0 ? 1 : -1;
+  ctx.strokeStyle = '#7c2d12';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx + 11, sy + 12);
+  ctx.quadraticCurveTo(sx - dir * 8, sy - 6, sx - dir * 1, sy + 2);
+  ctx.stroke();
+  ctx.fillStyle = '#c2410c';
+  ctx.beginPath();
+  ctx.ellipse(sx + 15, sy + 14, 12, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#9a3412';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(sx + 8 + i * 7, sy + 17);
+    ctx.lineTo(sx + 4 + i * 10, sy + 22);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(sx + 22 + dir * 2, sy + 10, 3, 3);
+}
+
+function drawDesertSnake(ctx, enemy, sx, sy) {
+  const dir = enemy.vx >= 0 ? 1 : -1;
+  ctx.strokeStyle = '#d4a017';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx + 3, sy + 21);
+  ctx.quadraticCurveTo(sx + 11, sy + 7, sx + 19, sy + 20);
+  ctx.stroke();
+  ctx.fillStyle = '#f4c430';
+  ctx.beginPath();
+  ctx.ellipse(sx + 18 + dir * 6, sy + 10, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#6b3f14';
+  ctx.beginPath();
+  ctx.arc(sx + 18 + dir * 9, sy + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawPegasus(ctx, enemy, sx, sy) {
@@ -911,6 +1034,119 @@ function drawGiantOwl(ctx, enemy, sx, sy) {
   }
 }
 
+function drawSwordMummy(ctx, enemy, sx, sy) {
+  const searching = enemy.state === 'search';
+  const fleeing = enemy.state === 'flee';
+  const retrieving = enemy.state === 'retrieve';
+  const enraging = enemy.state === 'enrage';
+  const running = fleeing || retrieving || searching;
+  const dir = enemy.facing || -1;
+  const scaleX = enemy.w / 54;
+  const scaleY = enemy.h / 62;
+  const pulse = enraging ? 1 + Math.sin(Date.now() / 80) * 0.06 : 1;
+  const dance = running ? Math.sin(Date.now() / 70) * 4 : enraging ? Math.sin(Date.now() / 50) * 3 : 0;
+  ctx.save();
+  ctx.translate(sx + enemy.w / 2, sy + enemy.h);
+  ctx.scale(scaleX * pulse, scaleY * pulse);
+  ctx.translate(-27, -62);
+
+  const bodyY = searching ? 16 : 0;
+  const wrap = enemy.enraged ? '#6b2418' : '#5b4636';
+  const linen = enemy.enraged ? '#d9b48a' : '#e5d3ad';
+  const head = enemy.enraged ? '#c9a077' : '#d8c49b';
+
+  ctx.fillStyle = wrap;
+  ctx.fillRect(12 + dance, bodyY + 15, 31, searching ? 32 : 43);
+  ctx.fillStyle = linen;
+  for (let i = 0; i < 5; i++) {
+    ctx.save();
+    ctx.translate(27 + dance, bodyY + 20 + i * 8);
+    ctx.rotate((i % 2 ? -1 : 1) * 0.15);
+    ctx.fillRect(-20, -3, 40, 7);
+    ctx.restore();
+  }
+
+  ctx.fillStyle = head;
+  ctx.beginPath();
+  ctx.arc(28 + dance, bodyY + 10, 17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = enemy.enraged ? '#7c2d12' : '#8f7a59';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(12 + dance, bodyY + 5);
+  ctx.lineTo(43 + dance, bodyY + 14);
+  ctx.moveTo(13 + dance, bodyY + 14);
+  ctx.lineTo(42 + dance, bodyY + 3);
+  ctx.stroke();
+
+  ctx.fillStyle = searching || fleeing ? '#ffe566' : enraging ? '#ff8a3d' : '#ff4d6d';
+  ctx.fillRect(20 + dance, bodyY + 7, 4, 4);
+  ctx.fillRect(33 + dance, bodyY + 7, 4, 4);
+
+  ctx.strokeStyle = linen;
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (fleeing) {
+    const pump = Math.sin(Date.now() / 55) * 8;
+    ctx.moveTo(14, bodyY + 25);
+    ctx.lineTo(14 - dir * 16, bodyY + 18 + pump);
+    ctx.moveTo(42, bodyY + 25);
+    ctx.lineTo(42 - dir * 16, bodyY + 18 - pump);
+  } else if (searching) {
+    ctx.moveTo(15, bodyY + 29);
+    ctx.lineTo(-3, bodyY + 45);
+    ctx.moveTo(41, bodyY + 29);
+    ctx.lineTo(58, bodyY + 45);
+  } else if (enraging) {
+    ctx.moveTo(15, bodyY + 25);
+    ctx.lineTo(15 - dir * 18, bodyY + 8);
+    ctx.moveTo(41, bodyY + 25);
+    ctx.lineTo(41 + dir * 18, bodyY + 8);
+  } else {
+    ctx.moveTo(15, bodyY + 25);
+    ctx.lineTo(15 - dir * 10, bodyY + 42);
+  }
+  ctx.stroke();
+
+  if ((enemy.state === 'melee' || enraging) && (!enemy.sword || enemy.sword.state === 'sheathed')) {
+    const swing = enemy.attackTimer < 28 ? Math.sin((28 - (enemy.attackTimer || 28)) / 28 * Math.PI) : 0;
+    const handX = 29 + dir * 17;
+    const handY = bodyY + 25;
+    const blade = enemy.enraged ? 64 : 52;
+    ctx.save();
+    ctx.translate(handX, handY);
+    ctx.rotate(dir * (-0.8 + swing * 1.6));
+    ctx.fillStyle = '#d9e2ec';
+    ctx.fillRect(dir > 0 ? 0 : -blade, -3, blade, enemy.enraged ? 8 : 6);
+    ctx.fillStyle = '#f4c430';
+    ctx.fillRect(-5, -8, 10, 16);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(dir > 0 ? -16 : 5, -5, 16, 10);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  const hearts = enemy.maxHp || 4;
+  const heartW = hearts > 4 ? 8 : 9;
+  const gap = hearts > 4 ? 10 : 12;
+  const barX = sx + enemy.w / 2 - (hearts * gap) / 2;
+  for (let i = 0; i < hearts; i++) {
+    ctx.fillStyle = i < enemy.hp ? (enemy.enraged ? '#ff8a3d' : '#ef476f') : '#40252b';
+    ctx.fillRect(barX + i * gap, sy - 13, heartW, 5);
+  }
+  ctx.fillStyle = '#ffe566';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  if (enraging) {
+    ctx.fillText('STRONGER!', sx + enemy.w / 2, sy - 20);
+  } else if (fleeing) {
+    ctx.fillText('Z TO GRAB!', sx + enemy.w / 2, sy - 20);
+  } else if (searching) {
+    ctx.fillText('WHERE IS IT?', sx + enemy.w / 2, sy - 20);
+  }
+}
+
 function drawKnockedOutEye(ctx, cx, cy) {
   ctx.beginPath();
   for (let i = 0; i <= 26; i++) {
@@ -1017,6 +1253,7 @@ export function drawChameleon(ctx, player, camX, camY) {
   const py = player.y - camY;
   let bounce = player.onGround && Math.abs(player.vx) > 0.5 ? Math.sin(player.animFrame * 3) * 2 : 0;
   if (player.emote === 'dance') bounce += Math.sin(player.emoteTimer * 0.45) * 4;
+  if (player.emote === 'mummy-shuffle') bounce += Math.sin(player.emoteTimer * 0.32) * 2;
   const flicker = player.invincible > 0 && Math.floor(Date.now() / 70) % 2 === 0;
   if (flicker) return;
 
@@ -1037,7 +1274,9 @@ export function drawChameleon(ctx, player, camX, camY) {
     return;
   }
 
-  const spin = player.spinning > 0 || player.emote === 'twirl' ? Date.now() / 40 : 0;
+  const spin = player.spinning > 0 || player.emote === 'twirl' || player.emote === 'sand-spin'
+    ? Date.now() / (player.emote === 'sand-spin' ? 28 : 40)
+    : 0;
   ctx.save();
   if (spin) {
     ctx.translate(px + player.w / 2, py + player.h / 2);
@@ -1050,6 +1289,7 @@ export function drawChameleon(ctx, player, camX, camY) {
   }
 
   if (player.emote === 'dance') drawDiscoEffect(ctx, player, px, py, bounce);
+  if (player.emote === 'sand-spin') drawSandSpinEffect(ctx, player, px, py);
 
   const hx = px + player.w / 2 + player.facing * 8;
   drawAccessory(ctx, player.accessory, hx, py + 10 + bounce, player.facing, 'back');
@@ -1116,6 +1356,16 @@ export function drawChameleon(ctx, player, camX, camY) {
     ctx.lineTo(px - 3, py + 7 + bounce - pose * 5);
     ctx.moveTo(px + player.w / 2 + 5, py + 18 + bounce);
     ctx.lineTo(px + player.w + 3, py + 7 + bounce + pose * 5);
+    ctx.stroke();
+  } else if (player.emote === 'mummy-shuffle') {
+    const reach = Math.sin(player.emoteTimer * 0.3) * 4;
+    ctx.strokeStyle = '#e8dcc4';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(px + 8, py + 16 + bounce);
+    ctx.lineTo(px - 8 - reach, py + 13 + bounce);
+    ctx.moveTo(px + player.w - 8, py + 16 + bounce);
+    ctx.lineTo(px + player.w + 8 + reach, py + 13 + bounce);
     ctx.stroke();
   }
 
@@ -1199,6 +1449,19 @@ function drawDiscoEffect(ctx, player, px, py, bounce) {
   ctx.fillStyle = colors[Math.floor(player.emoteTimer / 5) % colors.length];
   for (let i = 0; i < 5; i++) {
     ctx.fillRect(px - 8 + i * 11, py + 32 + bounce + (i % 2) * 3, 5, 3);
+  }
+  ctx.restore();
+}
+
+function drawSandSpinEffect(ctx, player, px, py) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(225, 174, 81, 0.75)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    const radius = 18 + i * 8;
+    ctx.beginPath();
+    ctx.ellipse(px + player.w / 2, py + player.h - 4, radius, 5 + i * 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -1293,6 +1556,12 @@ function drawAccessory(ctx, accessory, hx, hy, facing, phase) {
     ctx.stroke();
     return;
   }
+  if (accessory === 'desert-scarf' && phase === 'back') {
+    ctx.fillStyle = '#d9485f';
+    ctx.fillRect(hx - facing * 5, hy + 3, facing * -18, 5);
+    ctx.fillRect(hx - facing * 19, hy + 6, facing * 5, 13);
+    return;
+  }
   if (phase !== 'front') return;
   if (accessory === 'flowers') {
     const colors = ['#ff70a6', '#ffe066', '#70d6ff'];
@@ -1310,6 +1579,28 @@ function drawAccessory(ctx, accessory, hx, hy, facing, phase) {
     ctx.fillRect(hx - 8, hy - 18, 16, 8);
     ctx.fillStyle = '#754c24';
     ctx.fillRect(hx - 8, hy - 12, 16, 3);
+  } else if (accessory === 'pharaoh-crown') {
+    ctx.fillStyle = '#f4c430';
+    ctx.beginPath();
+    ctx.moveTo(hx - 10, hy - 10);
+    ctx.lineTo(hx - 7, hy - 22);
+    ctx.lineTo(hx, hy - 14);
+    ctx.lineTo(hx + 7, hy - 22);
+    ctx.lineTo(hx + 10, hy - 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#3185fc';
+    ctx.fillRect(hx - 2, hy - 17, 4, 4);
+  } else if (accessory === 'goggles') {
+    ctx.strokeStyle = '#4b5563';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(hx - 5, hy - 7, 5, 0, Math.PI * 2);
+    ctx.arc(hx + 5, hy - 7, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(67, 217, 255, 0.7)';
+    ctx.fillRect(hx - 8, hy - 10, 6, 6);
+    ctx.fillRect(hx + 2, hy - 10, 6, 6);
   }
 }
 
@@ -1398,12 +1689,16 @@ export function renderTitle(ctx) {
 }
 
 export function renderMap(ctx, save, cursorId) {
-  drawBackground(ctx, 0, 'grass');
-  ctx.fillStyle = '#2f9e44';
+  const cur = WORLD_NODES.find((n) => n.id === cursorId) || WORLD_NODES[0];
+  const region = cur.world || 1;
+  const regionNodes = WORLD_NODES.filter((node) => (node.world || 1) === region);
+  const desert = region === 2;
+  drawBackground(ctx, 0, desert ? 'desert' : 'grass');
+  ctx.fillStyle = desert ? '#d99b4e' : '#2f9e44';
   ctx.beginPath();
   ctx.ellipse(400, 300, 360, 160, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#208038';
+  ctx.fillStyle = desert ? '#efc46a' : '#208038';
   ctx.beginPath();
   ctx.ellipse(260, 250, 140, 70, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -1412,10 +1707,10 @@ export function renderMap(ctx, save, cursorId) {
   ctx.strokeStyle = '#c4a574';
   ctx.lineWidth = 8;
   ctx.lineCap = 'round';
-  for (const node of WORLD_NODES) {
+  for (const node of regionNodes) {
     for (const nid of node.next) {
       const other = WORLD_NODES.find((n) => n.id === nid);
-      if (!other) continue;
+      if (!other || (other.world || 1) !== region) continue;
       ctx.beginPath();
       ctx.moveTo(node.x, node.y);
       ctx.lineTo(other.x, other.y);
@@ -1423,7 +1718,7 @@ export function renderMap(ctx, save, cursorId) {
     }
   }
 
-  for (const node of WORLD_NODES) {
+  for (const node of regionNodes) {
     const open = unlocked.has(node.id);
     const done = save.cleared.has(node.id);
     ctx.fillStyle = !open
@@ -1432,6 +1727,8 @@ export function renderMap(ctx, save, cursorId) {
         ? '#d979a8'
         : node.kind === 'castle'
           ? '#c03030'
+        : node.kind === 'desert-gate'
+          ? '#e76f51'
           : done ? '#40c0ff' : '#ffe566';
     ctx.beginPath();
     ctx.arc(node.x, node.y, node.kind === 'castle' || node.kind === 'shop' ? 16 : 12, 0, Math.PI * 2);
@@ -1439,7 +1736,22 @@ export function renderMap(ctx, save, cursorId) {
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 3;
     ctx.stroke();
-    if (node.kind === 'shop') {
+    if (node.id === '2-shop') {
+      drawMapLemur(ctx, node.x, node.y - 25);
+    } else if (node.kind === 'desert-gate') {
+      ctx.fillStyle = open ? '#e9c46a' : '#6b5b45';
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y - 38);
+      ctx.lineTo(node.x + 18, node.y - 14);
+      ctx.lineTo(node.x - 18, node.y - 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffe566';
+      ctx.font = '5px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('WORLD 2', node.x, node.y - 44);
+      ctx.textAlign = 'left';
+    } else if (node.kind === 'shop') {
       ctx.fillStyle = '#7a335d';
       ctx.fillRect(node.x - 19, node.y - 30, 38, 18);
       ctx.fillStyle = '#ffe566';
@@ -1450,7 +1762,6 @@ export function renderMap(ctx, save, cursorId) {
     }
   }
 
-  const cur = WORLD_NODES.find((n) => n.id === cursorId) || WORLD_NODES[0];
   drawChameleon(ctx, {
     x: cur.x - 14,
     y: cur.y - 42,
@@ -1478,17 +1789,50 @@ export function renderMap(ctx, save, cursorId) {
   ctx.font = '7px "Press Start 2P"';
   const hint = cur.kind === 'shop'
     ? 'ENTER to shop with bugs  ·  → quests'
+    : cur.kind === 'desert-gate'
+      ? (unlocked.has(cur.id) ? 'ENTER to enter World 2' : 'Beat Thorn Keep to open World 2')
     : unlocked.has(cur.id)
       ? 'ENTER to play  ·  ← → move'
       : 'Clear the last course first';
   ctx.fillText(hint, CANVAS_W / 2, 446);
   ctx.textAlign = 'left';
 
-  if (save.cleared.has('1-castle')) {
+  ctx.fillStyle = desert ? '#5b321d' : '#ffe566';
+  ctx.font = '10px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText(desert ? 'WORLD 2 · SUNSCORCHED DESERT' : 'WORLD 1 · CHAMELEON ISLE', CANVAS_W / 2, 34);
+  ctx.textAlign = 'left';
+
+  if (save.cleared.has('2-castle')) {
     ctx.fillStyle = '#ffe566';
     ctx.font = '10px "Press Start 2P"';
     ctx.textAlign = 'center';
-    ctx.fillText('You cleared Chameleon World!', CANVAS_W / 2, 40);
+    ctx.fillText('Both worlds cleared!', CANVAS_W / 2, 60);
     ctx.textAlign = 'left';
   }
+}
+
+function drawMapLemur(ctx, x, y) {
+  ctx.save();
+  ctx.strokeStyle = '#4b5563';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(x - 18, y + 4, 15, 0.4, Math.PI * 1.8);
+  ctx.stroke();
+  ctx.fillStyle = '#8b7355';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 3, 11, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d8c7a2';
+  ctx.beginPath();
+  ctx.arc(x, y - 8, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x - 5, y - 10, 3, 3);
+  ctx.fillRect(x + 3, y - 10, 3, 3);
+  ctx.fillStyle = '#ffe566';
+  ctx.font = '5px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('DEALS', x, y - 23);
+  ctx.restore();
 }

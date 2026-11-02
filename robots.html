@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Robot Ideas · $45</title>
+  <link rel="stylesheet" href="css/robots.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a href="index.html" class="home-link">← Games and Things</a>
+  <main class="lab">
+    <header class="lab-hero">
+      <p class="kicker">Robot Lab</p>
+      <h1>$45 Robot Ideas</h1>
+      <p class="sub">Reuse your Nano. Cardboard is free. Each build stays at or under forty-five dollars. No mic. No LiPo. No official Arduino tax.</p>
+    </header>
+
+    <section class="kit">
+      <h2>What you already own</h2>
+      <p>Arduino Nano, one SG90, one button, USB cable, jumper wires, cardboard, hot glue.</p>
+      <p>The $45 is extra parts for that one robot — leftover packs become the next robot.</p>
+      <ul>
+        <li>Do buy: clone Nano if you need a spare (~$7), SG90 packs, 5 V power bank, Dollar Tree junk.</li>
+        <li>Do not buy: official Nano, LiPo + charger, ESP32, Raspberry Pi, metal chassis kits.</li>
+      </ul>
+    </section>
+
+    <div class="filters" role="group" aria-label="Filter ideas">
+      <button type="button" data-kind="all" aria-pressed="true">All</button>
+      <button type="button" data-kind="new" aria-pressed="false">New $45</button>
+      <button type="button" data-kind="sketched" aria-pressed="false">Sketch ready</button>
+    </div>
+
+    <section class="lab-section">
+      <h2>New builds</h2>
+      <div class="idea-grid">
+
+        <article class="idea-card" data-kind="new" data-ready="1">
+          <span class="idea-art" aria-hidden="true">⚙️</span>
+          <h3>Switch Motor</h3>
+          <p class="idea-blurb">Toggle on, DC motor runs. Toggle off, it stops. MOSFET does the work so the Nano pin does not fry.</p>
+          <div class="idea-meta">
+            <span class="tag">~$16 extra</span>
+            <span class="tag ready">sketch ready</span>
+          </div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$16)</h4>
+            <ul>
+              <li>Slide / toggle switch — $2</li>
+              <li>MOSFET module — $7</li>
+              <li>Small DC motor — $6</li>
+              <li>Diode if you skip the module — $1</li>
+            </ul>
+            <p class="total">Reuse Nano, USB / 5 V pack, jumper wires. Motor pack and Nano share GND. Do not feed the motor from the Nano 5V pin.</p>
+            <h4>Pins</h4>
+            <p>Switch D2 → GND. MOSFET SIG D3. LED D13 on while it spins.</p>
+            <p>Sketch: <span class="folder">switch-motor/switch-motor.ino</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new" data-ready="1">
+          <span class="idea-art" aria-hidden="true">🐦</span>
+          <h3>Temp Birdbath</h3>
+          <p class="idea-blurb">12 V heat under the bowl. Probe in the water. Thaws ice, never cooks birds. Optional foam bird sips when it is liquid.</p>
+          <div class="idea-meta">
+            <span class="tag">~$44 extra</span>
+            <span class="tag ready">sketch ready</span>
+          </div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$44)</h4>
+            <ul>
+              <li>Waterproof DS18B20 probe — $7</li>
+              <li>MOSFET module — $7</li>
+              <li>12 V 2 A wall adapter — $9</li>
+              <li>12 V heat pad / PTC + pie tin under the dish — $12</li>
+              <li>Plant saucer if you need a bath — $4</li>
+              <li>Dry box + silicone — $4</li>
+              <li>2 A fuse — $1</li>
+            </ul>
+            <p class="total">Reuse Nano, USB charger, servo, button. Whole-kit ceiling ~$44. Skip the saucer if you already have a plastic bath.</p>
+            <h4>The rule</h4>
+            <p>Heat is DRY under the bowl. 12 V only. GFCI on the wall. No mains in the water. No galvanized tub. Water stays ~39–46 °F, lockout at 55 °F.</p>
+            <h4>Pins</h4>
+            <p>Probe D4 (4.7k to 5V) · heater MOSFET D3 · optional pump MOSFET D5 · bird servo D9 · button D2.</p>
+            <p>Libraries: OneWire + DallasTemperature. Sketch: <span class="folder">temp-birdbath/temp-birdbath.ino</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new" data-ready="1">
+          <span class="idea-art" aria-hidden="true">🦎</span>
+          <h3>Tape Tongue</h3>
+          <p class="idea-blurb">A tape measure is the tongue. The servo only yanks. The spring spits a paper fly and reels it home.</p>
+          <div class="idea-meta">
+            <span class="tag">~$22 extra</span>
+            <span class="tag ready">sketch ready</span>
+          </div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$22)</h4>
+            <ul>
+              <li>SG90 4-pack — $11 (yank + leftover head)</li>
+              <li>Cheap tape measure — $3</li>
+              <li>Fridge magnet / paperclips — $1</li>
+              <li>Foam + paint — $7</li>
+            </ul>
+            <p class="total">Reuse Nano, button, bank. Total extra under $25. Whole-kit ceiling ~$41.</p>
+            <h4>Pins</h4>
+            <p>Yank D9 · optional head D5 · button D2. Aim at the desk, never a face.</p>
+            <p>Sketch: <span class="folder">tape-tongue/tape-tongue.ino</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new" data-ready="1">
+          <span class="idea-art" aria-hidden="true">🗿</span>
+          <h3>Weeping Statue</h3>
+          <p class="idea-blurb">Lights on = frozen. A shadow crosses the LDR = it leans one inch toward you, then pretends it never moved.</p>
+          <div class="idea-meta">
+            <span class="tag">~$25 extra</span>
+            <span class="tag ready">sketch ready</span>
+          </div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$25)</h4>
+            <ul>
+              <li>LDR + 10k pack — $5</li>
+              <li>Red LEDs + 220 Ω — $4</li>
+              <li>Thrift / foam statue — $8</li>
+              <li>5 V power bank if needed — $8</li>
+            </ul>
+            <p class="total">One servo you already have. Whole-kit ceiling ~$38.</p>
+            <h4>Pins</h4>
+            <p>Servo D9 · LDR A0 (5V / 10k to GND) · eyes D3 · button D2.</p>
+            <p>Sketch: <span class="folder">weeping-statue/weeping-statue.ino</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new" data-ready="1">
+          <span class="idea-art" aria-hidden="true">📱</span>
+          <h3>Phone Jail</h3>
+          <p class="idea-blurb">Drop your phone in. Latch slams. 25 minutes. Hold 2 seconds to quit — and feel shame.</p>
+          <div class="idea-meta">
+            <span class="tag">~$15 extra</span>
+            <span class="tag ready">sketch ready</span>
+          </div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$15)</h4>
+            <ul>
+              <li>Shoebox / snack box — $2</li>
+              <li>Felt scrap — $1</li>
+              <li>Extra SG90 if the feeder one is busy — $3</li>
+              <li>5 V pack — $9</li>
+            </ul>
+            <p class="total">Your phone only. USB hole in the side is fine. Whole-kit ceiling ~$31.</p>
+            <h4>Pins</h4>
+            <p>Latch D9 · button D2 on the outside.</p>
+            <p>Sketch: <span class="folder">phone-jail/phone-jail.ino</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🕷️</span>
+          <h3>Ceiling Drop-Spider</h3>
+          <p class="idea-blurb">Winch on a servo, fishing line, plastic spider. Someone walks under — it drops to face height, stares, yoinks back up.</p>
+          <div class="idea-meta"><span class="tag">~$22 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$22)</h4>
+            <ul>
+              <li>PIR motion module — $5</li>
+              <li>SG90 — $3 (or from a 4-pack)</li>
+              <li>Plastic spider — $3</li>
+              <li>Fishing line — $2</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">PIR on D3. Servo D9 is the reel. Ignore the mic. Whole-kit ceiling ~$38.</p>
+            <h4>Mount</h4>
+            <p>Clamp the servo to a coat hanger over a doorway you own. Line on the horn. PIR looks down. First drop: over a pillow, not a face.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🏗️</span>
+          <h3>Junkyard Crane</h3>
+          <p class="idea-blurb">Real electromagnet on a popsicle boom. It picks up paperclips, swings, dumps them in a tin. Feels like a dock.</p>
+          <div class="idea-meta"><span class="tag">~$26 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$26)</h4>
+            <ul>
+              <li>5 V mini electromagnet — $9</li>
+              <li>NPN transistor + diode pack — $5</li>
+              <li>Extra servo for the boom — $3</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Nano pin cannot drive the magnet. Transistor on D3, diode across the coil. Boom servo D9. Whole-kit ceiling ~$42.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🕹️</span>
+          <h3>Mini Claw Machine</h3>
+          <p class="idea-blurb">Three servos: X, Y, grab. Paperclip prizes, cardboard booth, one button for drop. This is the one people film.</p>
+          <div class="idea-meta"><span class="tag">~$20 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$20)</h4>
+            <ul>
+              <li>SG90 4-pack — $11</li>
+              <li>Power bank — $9</li>
+              <li>Booth = cereal box. Prizes = paperclips + foam.</li>
+            </ul>
+            <p class="total">X on D9, Y on D5, claw on D6, button D2. Soft foam claw, not metal hooks. Whole-kit ceiling ~$36.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🪴</span>
+          <h3>Venus Snap-Trap</h3>
+          <p class="idea-blurb">Two cardboard jaws. A hand-shadow over an LDR = chomp. Hold a foam fly for the demo.</p>
+          <div class="idea-meta"><span class="tag">~$23 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$23)</h4>
+            <ul>
+              <li>LDR pack — $5</li>
+              <li>2 extra SG90s — $6</li>
+              <li>Green foam — $3</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Jaws D9 + D5. LDR A0. Pad the bite. Whole-kit ceiling ~$39.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🦉</span>
+          <h3>Desk Owl</h3>
+          <p class="idea-blurb">One servo, 180° head snap. Idle ten seconds, then it looks at you like you owe it money.</p>
+          <div class="idea-meta"><span class="tag">~$18 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$18)</h4>
+            <ul>
+              <li>Foam + googly eyes — $6</li>
+              <li>Extra servo — $3</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Head D9. Short press = snap. Hold = random stares. Whole-kit ceiling ~$34.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🔵</span>
+          <h3>Marble Labyrinth</h3>
+          <p class="idea-blurb">Cardboard maze on two tilt servos. You drive it with two buttons, or it auto-solves badly. The ball falling off is the show.</p>
+          <div class="idea-meta"><span class="tag">~$19 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$19)</h4>
+            <ul>
+              <li>2 SG90s — $6</li>
+              <li>2 extra buttons — $3</li>
+              <li>Marble — $1</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Tilt X D9, tilt Y D5, buttons D2 + D4. Maze is free cardboard. Whole-kit ceiling ~$35.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🎯</span>
+          <h3>Rubber-Band Sentry</h3>
+          <p class="idea-blurb">Foil tripwire across a doorway you own. Break the contact, a paint-stirrer arm fires a rubber band. Mean, and it is just tape.</p>
+          <div class="idea-meta"><span class="tag">~$15 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$15)</h4>
+            <ul>
+              <li>Rubber bands + foil — $3</li>
+              <li>Paint stirrer — junk / $1</li>
+              <li>Extra servo — $3</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Foil strips = a switch into D3. Sear servo D9. Soft targets only. Whole-kit ceiling ~$31.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🌿</span>
+          <h3>Plant Slapper</h3>
+          <p class="idea-blurb">Soil probe says dry. A foam leaf slaps the pot, then a cup tips a sip of water. The plant is judging you.</p>
+          <div class="idea-meta"><span class="tag">~$24 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$24)</h4>
+            <ul>
+              <li>Soil moisture probe — $5</li>
+              <li>2 SG90s (slap + tip) — $6</li>
+              <li>Paper cup — junk</li>
+              <li>Power bank — $9</li>
+              <li>Leftover jumper slack — $4</li>
+            </ul>
+            <p class="total">Probe A0. Slap D9. Cup tip D5. Tiny sips, not a flood. Whole-kit ceiling ~$40.</p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="new">
+          <span class="idea-art" aria-hidden="true">🐸</span>
+          <h3>Sock-Yeet Frog</h3>
+          <p class="idea-blurb">Servo arm lobs a sock at a laundry basket. Best of five. Roommate sport.</p>
+          <div class="idea-meta"><span class="tag">~$16 extra</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <h4>Buy (~$16)</h4>
+            <ul>
+              <li>Ruler / paint stirrer — $1</li>
+              <li>Rubber band assist — $1</li>
+              <li>Extra servo — $3</li>
+              <li>Foam frog bits — $2</li>
+              <li>Power bank — $9</li>
+            </ul>
+            <p class="total">Throw D9. Short press = yeet. Soft socks only. Whole-kit ceiling ~$32.</p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <section class="lab-section">
+      <h2>Sketches you already have</h2>
+      <div class="idea-grid">
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🦗</span>
+          <h3>Chameleon Feeder</h3>
+          <p class="idea-blurb">4-pocket wheel drops live bugs on a clock. Hopper stays outside the cage.</p>
+          <div class="idea-meta"><span class="tag">~$35 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>RTC ~$8, servo you have, tube + cups ~$8, hopper box $4, bank $9. Stay under $45 if you skip a second clock.</p>
+            <p>Folder: <span class="folder">chameleon-feeder/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🐦‍⬛</span>
+          <h3>Page Raven</h3>
+          <p class="idea-blurb">Beak caws. Rubber claw flips the top-right corner of a junk paperback.</p>
+          <div class="idea-meta"><span class="tag">~$20 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>3 servos from a 4-pack ($11) + bank $9. Folder: <span class="folder">page-raven/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🦑</span>
+          <h3>Desk Kraken</h3>
+          <p class="idea-blurb">Four tentacles under the lip. Talk or press — magnet steals paperclips.</p>
+          <div class="idea-meta"><span class="tag">~$20 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>4-pack SG90 $11 + bank $9. Mic is optional; button still hunts. Folder: <span class="folder">desk-kraken/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">✊</span>
+          <h3>Door Knocker</h3>
+          <p class="idea-blurb">One fist on the inside of the door. Short press knocks. Haunt knocks alone.</p>
+          <div class="idea-meta"><span class="tag">~$12 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>Servo you have + bead + slat. Bank $9. Folder: <span class="folder">door-knocker/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">👹</span>
+          <h3>Garden Gargoyle</h3>
+          <p class="idea-blurb">Turns, raises arms, optional shout. PIR watches the path behind it.</p>
+          <div class="idea-meta"><span class="tag">~$40 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>3 servos $11, PIR $5, DFPlayer + speaker ~$12, bank $9. Skip the voice module and you are ~$25. Folder: <span class="folder">garden-gargoyle/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🦀</span>
+          <h3>Hermit Swap</h3>
+          <p class="idea-blurb">Drags the small cup off. Drops a bigger cup on. Legs wiggle like it is annoyed.</p>
+          <div class="idea-meta"><span class="tag">~$20 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>3 servos $11 + bank $9 + dixie cups. Folder: <span class="folder">hermit-swap/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🐛</span>
+          <h3>Bookmark Crawler</h3>
+          <p class="idea-blurb">Inchworm climbs a page edge, then sits there as a bookmark.</p>
+          <div class="idea-meta"><span class="tag">~$18 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>2 servos $6 + rubber feet + bank $9. Junk paperback only. Folder: <span class="folder">bookmark-crawler/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">✊</span>
+          <h3>RPS Hand</h3>
+          <p class="idea-blurb">Rocky homework edition. Three IR eyes watch your throw, then it slams the winner.</p>
+          <div class="idea-meta"><span class="tag">~$28 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>3 servos $11, IR 3-pack ~$8, bank $9. Folder: <span class="folder">rps-hand/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🦜</span>
+          <h3>Shoulder Parrot</h3>
+          <p class="idea-blurb">Clamp-on. Head bobs. Piezo chirp. Beak does not bite.</p>
+          <div class="idea-meta"><span class="tag">~$16 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>Piezo $3, clamp $2, foam $2, bank $9. Folder: <span class="folder">shoulder-parrot/</span></p>
+          </div>
+        </article>
+
+        <article class="idea-card" data-kind="sketched">
+          <span class="idea-art" aria-hidden="true">🧹</span>
+          <h3>Whiteboard Wiper</h3>
+          <p class="idea-blurb">One felt stripe, then it parks like a stick that was always there.</p>
+          <div class="idea-meta"><span class="tag">~$18 extra</span><span class="tag ready">sketch ready</span></div>
+          <button type="button" class="idea-toggle" aria-expanded="false">Show plan</button>
+          <div class="idea-panel">
+            <p>2 servos $6, felt eraser $3, bank $9. Board you are allowed to touch. Folder: <span class="folder">whiteboard-wiper/</span></p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+  </main>
+  <script src="js/robots.js"></script>
+</body>
+</html>

@@ -50,6 +50,8 @@ const EMOTES = [
   { id: 'wave', name: 'Wave', icon: '👋' },
   { id: 'dance', name: 'Happy Dance', icon: '🎵' },
   { id: 'twirl', name: 'Tail Twirl', icon: '🌀' },
+  { id: 'mummy-shuffle', name: 'Mummy Shuffle', icon: '🧟' },
+  { id: 'sand-spin', name: 'Sand Spin', icon: '🌪️' },
 ];
 
 let mode = 'title';
@@ -67,6 +69,7 @@ let lobbyOpen = false;
 let netFrame = 0;
 let introPromptOpen = true;
 
+const SAVE_KEY = 'chameleon-world-save';
 const CUSTOMIZATION_KEY = 'chameleon-world-design';
 let savedCustomization = null;
 try {
@@ -88,6 +91,46 @@ const save = {
   customization: savedCustomization,
 };
 
+function loadProgress() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (!raw) return;
+    save.lives = raw.lives ?? save.lives;
+    save.coins = raw.coins ?? 0;
+    save.score = raw.score ?? 0;
+    save.powered = !!raw.powered;
+    save.cleared = new Set(raw.cleared || []);
+    save.emotes = new Set(raw.emotes || []);
+    save.accessories = new Set(raw.accessories || []);
+    save.accessory = raw.accessory ?? null;
+    save.barny = !!raw.barny;
+    if (raw.customization) save.customization = raw.customization;
+  } catch {
+    /* keep a fresh save */
+  }
+}
+
+function persistSave() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      lives: save.lives,
+      coins: save.coins,
+      score: save.score,
+      powered: save.powered,
+      cleared: [...save.cleared],
+      emotes: [...save.emotes],
+      accessories: [...save.accessories],
+      accessory: save.accessory,
+      barny: save.barny,
+      customization: save.customization,
+    }));
+  } catch {
+    /* progress still works for this session */
+  }
+}
+
+loadProgress();
+
 function snapshotSave() {
   if (!player || player.lives == null) return;
   save.lives = Math.max(player.lives, 0);
@@ -98,6 +141,7 @@ function snapshotSave() {
   save.accessory = player.accessory ?? save.accessory ?? null;
   save.barny = !!player.barny;
   save.customization = player.customization || save.customization;
+  persistSave();
 }
 
 function goMap() {
@@ -166,9 +210,13 @@ function completeLevel() {
   snapshotSave();
   const completedId = world.progressId || world.id;
   save.cleared.add(completedId);
+  persistSave();
   const node = WORLD_NODES.find((entry) => entry.id === completedId);
   if (multiplayerRole === 'host') {
-    const next = node?.next.find((id) => id !== 'shop');
+    let next = node?.next[0];
+    while (['shop', 'desert-gate'].includes(WORLD_NODES.find((entry) => entry.id === next)?.kind)) {
+      next = WORLD_NODES.find((entry) => entry.id === next)?.next[0];
+    }
     if (next) startLevel(next);
     else showHostLobby('All quests cleared! Play again?');
     return;
@@ -184,8 +232,10 @@ function openShop() {
     () => {
       player.coins = save.coins;
       player.accessory = save.accessory;
+      player.emotes = new Set(save.emotes);
     },
-    () => { shopOpen = false; }
+    () => { shopOpen = false; },
+    cursorId
   );
 }
 
@@ -854,6 +904,17 @@ function moveCursor(dir) {
   for (const id of options) {
     const node = WORLD_NODES.find((entry) => entry.id === id);
     const dx = node.x - current.x;
+    const worldStep = (node.world || 1) - (current.world || 1);
+    if (dir > 0 && worldStep > 0) {
+      best = id;
+      bestDistance = 0;
+      continue;
+    }
+    if (dir < 0 && worldStep < 0) {
+      best = id;
+      bestDistance = 0;
+      continue;
+    }
     if (dir > 0 && dx > 4 && dx < bestDistance) {
       best = id;
       bestDistance = dx;
@@ -918,7 +979,11 @@ window.addEventListener('keydown', (event) => {
     if (key === 'arrowright' || key === 'd') moveCursor(1);
     if (key === ' ' || key === 'enter') {
       startMusic();
-      if (cursorId === 'shop') openShop();
+      const node = WORLD_NODES.find((entry) => entry.id === cursorId);
+      if (node?.kind === 'shop') openShop();
+      else if (node?.kind === 'desert-gate' && unlockedIds(save.cleared).has(cursorId)) {
+        cursorId = node.next[0] || '2-shop';
+      }
       else if (unlockedIds(save.cleared).has(cursorId)) startLevel(cursorId);
     }
     return;

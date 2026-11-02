@@ -52,6 +52,10 @@ const petSearch = document.getElementById('pet-search');
 const petEmpty = document.getElementById('pet-empty');
 const careButtons = document.getElementById('care-buttons');
 const walkBtn = document.getElementById('walk-btn');
+const collarPopup = document.getElementById('collar-popup');
+const petNameInput = document.getElementById('pet-name-input');
+const nameOkBtn = document.getElementById('name-ok');
+const collarPetKind = document.getElementById('collar-pet-kind');
 
 let pet;
 let gameStarted = false;
@@ -70,6 +74,7 @@ let walking = false;
 let camX = 0;
 let walkEarn = 0;
 let shopNote = '';
+let pendingSpecies = null;
 const held = new Set();
 
 function pick(list) {
@@ -104,20 +109,27 @@ function spec(p) {
 }
 
 function petName(p) {
-  return spec(p).name;
+  return p?.name || spec(p).name;
 }
 
-function createPet(species) {
+function cleanPetName(text, fallback) {
+  const name = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+  return name || fallback;
+}
+
+function createPet(species, givenName) {
   const chosen = species || PETS[0];
+  const name = cleanPetName(givenName, chosen.name);
   return {
     species: chosen,
+    name,
     needs: { food: 78, love: 84, water: 72, sleep: 70, play: 80 },
     action: null,
     actionTime: 0,
     actionDur: 0,
     blink: 0,
     blinkWait: 2.2,
-    message: `Hi! I am your ${chosen.name}.`,
+    message: `Hi! I am ${name}.`,
     messageTimer: 3,
     bond: 0,
     critical: 0,
@@ -145,10 +157,33 @@ function renderPetGrid(query) {
 }
 
 function selectPet(species) {
-  picking = false;
+  pendingSpecies = species;
+  picking = true;
   picker.classList.add('hidden');
-  careButtons.classList.remove('hidden');
-  startGame(species);
+  careButtons.classList.add('hidden');
+  collarPetKind.textContent = species.emoji + ' ' + species.name;
+  petNameInput.value = '';
+  collarPopup.classList.remove('hidden');
+  window.setTimeout(() => petNameInput.focus(), 40);
+}
+
+function hideCollar() {
+  collarPopup.classList.add('hidden');
+  pendingSpecies = null;
+  petNameInput.blur();
+}
+
+function confirmPetName() {
+  if (!pendingSpecies) return;
+  const species = pendingSpecies;
+  const name = cleanPetName(petNameInput.value, species.name);
+  hideCollar();
+  startGame(species, name);
+}
+
+function focusGame() {
+  canvas.tabIndex = 0;
+  canvas.focus({ preventScroll: true });
 }
 
 function showPicker() {
@@ -156,6 +191,7 @@ function showPicker() {
   paused = false;
   picking = true;
   scene = 'home';
+  hideCollar();
   overlay.classList.add('hidden');
   overlayContent.classList.remove('shop-panel');
   careButtons.classList.add('hidden');
@@ -632,13 +668,15 @@ function drawHud(p) {
 
   ctx.font = '8px "Press Start 2P"';
   ctx.fillStyle = '#e9c46a';
-  ctx.fillText(`Bond ${Math.floor(p.bond)}`, 16, 24);
+  ctx.fillText(petName(p), 16, 24);
+  const nameW = Math.min(160, ctx.measureText(petName(p)).width);
   ctx.fillStyle = '#fff8ef';
-  ctx.fillText(`Coins ${coins}`, 168, 24);
+  ctx.fillText(`Bond ${Math.floor(p.bond)}`, 28 + nameW, 24);
+  ctx.fillText(`Coins ${coins}`, 250, 24);
   ctx.fillStyle = '#e07a5f';
-  ctx.fillText(`Food x${foodStock}`, 330, 24);
+  ctx.fillText(`Food x${foodStock}`, 390, 24);
   ctx.fillStyle = '#4cc9f0';
-  ctx.fillText(`Water x${waterStock}`, 470, 24);
+  ctx.fillText(`Water x${waterStock}`, 530, 24);
 
   ctx.fillStyle = '#fff8ef';
   ctx.font = '6px "Press Start 2P"';
@@ -1053,15 +1091,16 @@ function endGame() {
   `;
   overlayContent.querySelector('#retry-btn').onclick = () => {
     overlay.classList.add('hidden');
-    startGame(pet.species);
+    startGame(pet.species, pet.name);
   };
   overlayContent.querySelector('#changepet-btn').onclick = () => {
     showPicker();
   };
 }
 
-function startGame(species) {
-  pet = createPet(species || pet?.species);
+function startGame(species, givenName) {
+  const chosen = species || pet?.species;
+  pet = createPet(chosen, givenName || pet?.name);
   gameStarted = true;
   paused = false;
   picking = false;
@@ -1071,12 +1110,15 @@ function startGame(species) {
   waterStock = 4;
   clock = 0;
   picker.classList.add('hidden');
+  collarPopup.classList.add('hidden');
+  petNameInput.blur();
   careButtons.classList.remove('hidden');
   overlay.classList.add('hidden');
   overlayContent.classList.remove('shop-panel');
   shopNote = '';
   setWalkButton(true);
-  say(pet, `Hi! I am your ${petName(pet)}.`, 2.6);
+  say(pet, `Hi! I am ${petName(pet)}.`, 2.6);
+  focusGame();
 }
 
 function loop(now) {
@@ -1107,6 +1149,24 @@ function loop(now) {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (!collarPopup.classList.contains('hidden')) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmPetName();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hideCollar();
+      picker.classList.remove('hidden');
+      petSearch.focus();
+    }
+    return;
+  }
+
+  if (e.target === petNameInput) {
+    petNameInput.blur();
+  }
+
   if (e.target === petSearch) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1131,7 +1191,7 @@ window.addEventListener('keydown', (e) => {
 
   if (!gameStarted && (key === 'enter' || key === ' ')) {
     e.preventDefault();
-    if (pet?.species) startGame(pet.species);
+    if (pet?.species) startGame(pet.species, pet.name);
     return;
   }
 
@@ -1192,6 +1252,21 @@ document.querySelectorAll('#care-buttons button').forEach((btn) => {
 
 petSearch.addEventListener('input', () => {
   renderPetGrid(petSearch.value);
+});
+
+nameOkBtn.addEventListener('click', confirmPetName);
+petNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    confirmPetName();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideCollar();
+    picker.classList.remove('hidden');
+    petSearch.focus();
+  }
+  e.stopPropagation();
 });
 
 renderPetGrid('');

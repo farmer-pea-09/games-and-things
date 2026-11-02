@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Characters</title>
+  <link rel="stylesheet" href="css/characters.css">
+  <link rel="stylesheet" href="css/room.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <button id="fullscreen-btn" type="button" aria-label="Toggle full screen">⛶ Full Screen</button>
+  <div id="app">
+    <a href="index.html" id="home-link">← Games</a>
+    <header class="page-header">
+      <p class="kicker">Games and Things</p>
+      <h1>AI Characters</h1>
+      <p class="lede">Choose a creature and a style. AI draws one character. Send a favorite to Animation to trace.</p>
+    </header>
+
+    <div class="layout">
+      <form id="maker" class="panel">
+        <label>Name
+          <input id="name" type="text" maxlength="24" placeholder="Optional" autocomplete="off">
+        </label>
+        <label>Creature
+          <select id="kind"></select>
+        </label>
+        <label>Style
+          <select id="style"></select>
+        </label>
+        <label>Mood
+          <select id="mood"></select>
+        </label>
+        <label>Outfit
+          <select id="outfit"></select>
+        </label>
+        <label>Colors
+          <select id="palette"></select>
+        </label>
+        <label>Extra
+          <textarea id="extra" maxlength="80" placeholder="tiny hat, freckles"></textarea>
+        </label>
+        <div class="actions">
+          <button type="button" id="surprise">Surprise</button>
+          <button type="submit" id="draw" class="primary">Draw character</button>
+        </div>
+        <p class="hint">A new picture can be drawn about every 45 seconds. Pictures are made by Pollinations.</p>
+      </form>
+
+      <div class="stage">
+        <div id="portrait" class="portrait">
+          <p id="portrait-empty" class="empty">Your character shows up here.</p>
+          <img id="portrait-img" alt="" class="hidden">
+          <p class="wait">The artist is drawing...</p>
+        </div>
+        <p id="summary" class="summary"></p>
+        <div class="actions">
+          <button type="button" id="download" disabled>Download</button>
+          <button type="button" id="to-flipbook" disabled>Use in Animation</button>
+          <button type="button" id="remove" disabled>Remove</button>
+        </div>
+        <p id="status" class="status" role="status"></p>
+      </div>
+    </div>
+
+    <section class="kept" aria-label="Saved characters">
+      <h2>Kept on this computer</h2>
+      <div id="gallery" class="gallery"></div>
+      <p id="gallery-empty" class="hint">Drawn characters stay in this browser until you remove them.</p>
+    </section>
+  </div>
+  <script type="module">
+    import { gateGame } from './js/room-code.js';
+    if (gateGame('characters')) {
+      await import('./js/characters.js');
+    }
+  </script>
+</body>
+</html>

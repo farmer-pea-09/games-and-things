@@ -121,6 +121,10 @@ h1 {
   background: linear-gradient(180deg, #e94560 0%, #b5179e 100%);
 }
 
+.game-card.grow {
+  background: linear-gradient(180deg, #8ecae6 0%, #e07a9a 100%);
+}
+
 .game-card.life {
   background: linear-gradient(180deg, #e8a87c 0%, #2a9d8f 100%);
 }
@@ -161,16 +165,24 @@ h1 {
   background: linear-gradient(180deg, #4cc9f0 0%, #7b2cbf 100%);
 }
 
-.game-card.orchard {
-  background: linear-gradient(180deg, #e63946 0%, #2d6a4f 100%);
-}
-
 .game-card.glowup {
   background: linear-gradient(180deg, #ff8fab 0%, #7b2cbf 100%);
 }
 
+.game-card.robots {
+  background: linear-gradient(180deg, #4a6b3a 0%, #2d4a28 100%);
+}
+
 .game-card.shop {
   background: linear-gradient(180deg, #e9c46a 0%, #2a9d8f 100%);
+}
+
+.game-card.animate {
+  background: linear-gradient(180deg, #f72585 0%, #4361ee 100%);
+}
+
+.game-card.characters {
+  background: linear-gradient(180deg, #c77dff 0%, #5a189a 100%);
 }
 
 .game-art {
