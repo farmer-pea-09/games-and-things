@@ -326,6 +326,27 @@ function deleteFrame() {
   scheduleSave();
 }
 
+function loadExample() {
+  if ((hadSave || dirty) && !window.confirm('Replace this cartoon with the bouncing example?')) return;
+  stop();
+  frames = demoFrames();
+  index = 0;
+  undos.length = 0;
+  rebuildStrip();
+  render();
+  scheduleSave();
+  setStatus('Example bounce. New clears it so you can draw your own.');
+}
+
+function showMode(mode) {
+  document.getElementById('draw-panel').classList.toggle('hidden', mode !== 'draw');
+  document.getElementById('cast-panel').classList.toggle('hidden', mode !== 'cast');
+  document.getElementById('mode-draw').classList.toggle('active', mode === 'draw');
+  document.getElementById('mode-cast').classList.toggle('active', mode === 'cast');
+  document.getElementById('mode-draw').setAttribute('aria-selected', mode === 'draw' ? 'true' : 'false');
+  document.getElementById('mode-cast').setAttribute('aria-selected', mode === 'cast' ? 'true' : 'false');
+}
+
 function fresh() {
   if ((hadSave || dirty) && !window.confirm('Erase this flipbook and start blank?')) return;
   stop();
@@ -582,6 +603,7 @@ function bindColors() {
 function bind() {
   bindFullscreen();
   bindColors();
+  bindCast();
   document.querySelectorAll('.tool').forEach((btn) => {
     btn.addEventListener('click', () => setTool(btn.dataset.tool));
   });
@@ -604,6 +626,9 @@ function bind() {
     commit();
   });
   document.getElementById('fresh').addEventListener('click', fresh);
+  document.getElementById('example').addEventListener('click', loadExample);
+  document.getElementById('mode-draw').addEventListener('click', () => showMode('draw'));
+  document.getElementById('mode-cast').addEventListener('click', () => showMode('cast'));
   document.getElementById('prev').addEventListener('click', () => step(-1));
   document.getElementById('next').addEventListener('click', () => step(1));
   playBtn.addEventListener('click', togglePlay);
@@ -664,6 +689,288 @@ function bind() {
   });
 }
 
+const CAST_KEY = 'gat-characters';
+const CAST_NEXT_KEY = 'gat-character-next';
+const CAST_WAIT_MS = 45000;
+const CAST_LISTS = {
+  kind: [
+    ['kid', 'Kid hero', 'a young human hero'],
+    ['wizard', 'Wizard', 'a friendly wizard'],
+    ['knight', 'Knight', 'a small knight'],
+    ['cat', 'Cat', 'an anthropomorphic cat'],
+    ['fox', 'Fox', 'an anthropomorphic fox'],
+    ['robot', 'Robot', 'a cute round robot'],
+    ['dragon', 'Dragon', 'a small friendly dragon'],
+    ['ghost', 'Ghost', 'a round sheet ghost'],
+    ['mushroom', 'Mushroom', 'a walking mushroom'],
+    ['bird', 'Bird', 'a songbird character'],
+    ['astro', 'Astronaut', 'a kid astronaut'],
+    ['vampire', 'Vampire', 'a friendly vampire'],
+    ['mermaid', 'Mermaid', 'a mermaid'],
+    ['skeleton', 'Skeleton', 'a cheerful skeleton'],
+    ['slime', 'Slime', 'a bouncy slime'],
+  ],
+  style: [
+    ['sticker', 'Sticker', 'sticker illustration, thick dark outline, flat colors'],
+    ['pixel', 'Pixel', 'crisp pixel-art character, limited palette'],
+    ['story', 'Storybook', 'soft storybook painting, gentle light'],
+    ['clay', 'Clay', 'handmade clay toy, soft studio light'],
+    ['anime', 'Anime', 'anime character design, clean line art'],
+    ['crayon', 'Crayon', 'crayon and marker drawing on paper'],
+  ],
+  mood: [
+    ['brave', 'Brave', 'brave'],
+    ['sleepy', 'Sleepy', 'sleepy'],
+    ['mischief', 'Mischief', 'mischievous'],
+    ['shy', 'Shy', 'shy'],
+    ['grumpy', 'Grumpy', 'grumpy'],
+    ['cheerful', 'Cheerful', 'cheerful'],
+    ['mystery', 'Mystery', 'mysterious'],
+  ],
+  outfit: [
+    ['hoodie', 'Hoodie', 'wearing a hoodie and sneakers'],
+    ['armor', 'Armor', 'wearing simple storybook armor'],
+    ['cape', 'Cape', 'wearing a short cape and boots'],
+    ['overalls', 'Overalls', 'wearing overalls'],
+    ['suit', 'Space suit', 'wearing a rounded space suit'],
+    ['robes', 'Robes', 'wearing long soft robes'],
+    ['rain', 'Raincoat', 'wearing a bright raincoat'],
+    ['scarf', 'Scarf', 'wearing a very long scarf and boots'],
+  ],
+  palette: [
+    ['sunset', 'Sunset', 'sunset orange, pink, and gold'],
+    ['ocean', 'Ocean', 'ocean teal, blue, and sand'],
+    ['forest', 'Forest', 'forest green, moss, and cream'],
+    ['candy', 'Candy', 'candy pink, lavender, and mint'],
+    ['midnight', 'Midnight', 'midnight blue, silver, and violet'],
+    ['gold', 'Gold', 'gold, cream, and warm brown'],
+  ],
+};
+const CAST_EXTRAS = ['', 'round glasses', 'a tiny backpack', 'a star pin', 'striped socks', 'a flower crown', 'freckles'];
+const CAST_NAMES = ['Pip', 'Moth', 'Bramble', 'Noodle', 'Juniper', 'Pebble', 'Lumen', 'Sable', 'Cricket', 'Toffee', 'Wisp'];
+
+let castItems = [];
+let castCurrent = null;
+let castBusy = false;
+let castNextAt = Number(localStorage.getItem(CAST_NEXT_KEY) || 0);
+
+function castRow(list, id) {
+  return list.find((item) => item[0] === id) || list[0];
+}
+
+function castSeconds() {
+  return Math.max(0, Math.ceil((castNextAt - Date.now()) / 1000));
+}
+
+function castName() {
+  const typed = document.getElementById('name').value.trim();
+  if (typed) return typed.slice(0, 24);
+  return castRow(CAST_LISTS.kind, document.getElementById('kind').value)[1];
+}
+
+function castSummary() {
+  const mood = castRow(CAST_LISTS.mood, document.getElementById('mood').value)[1];
+  const kind = castRow(CAST_LISTS.kind, document.getElementById('kind').value)[1];
+  const style = castRow(CAST_LISTS.style, document.getElementById('style').value)[1];
+  const extra = document.getElementById('extra').value.trim();
+  const base = `${mood} ${kind.toLowerCase()}, ${style.toLowerCase()} style`;
+  return extra ? `${base}. ${extra}` : base;
+}
+
+function castPrompt() {
+  const extra = document.getElementById('extra').value.trim();
+  const parts = [
+    `A single original character, full body, ${castRow(CAST_LISTS.mood, document.getElementById('mood').value)[2]} ${castRow(CAST_LISTS.kind, document.getElementById('kind').value)[2]}`,
+    castRow(CAST_LISTS.outfit, document.getElementById('outfit').value)[2],
+    `${castRow(CAST_LISTS.palette, document.getElementById('palette').value)[2]} color palette`,
+    castRow(CAST_LISTS.style, document.getElementById('style').value)[2],
+  ];
+  if (extra) parts.push(extra);
+  parts.push('centered, simple empty background, clean silhouette, family-friendly, no text, no letters, no watermark');
+  return parts.join(', ');
+}
+
+function syncCastButtons() {
+  const drawBtn = document.getElementById('draw');
+  const wait = castSeconds();
+  drawBtn.disabled = castBusy || wait > 0;
+  document.getElementById('surprise').disabled = castBusy;
+  if (castBusy) drawBtn.textContent = 'Drawing...';
+  else if (wait > 0) drawBtn.textContent = `Wait ${wait}s`;
+  else drawBtn.textContent = 'Draw';
+}
+
+function paintCastGallery() {
+  const gallery = document.getElementById('gallery');
+  gallery.replaceChildren();
+  castItems.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.classList.toggle('on', castCurrent && castCurrent.id === item.id);
+    btn.setAttribute('aria-label', item.name);
+    const img = document.createElement('img');
+    img.src = item.image;
+    img.alt = '';
+    btn.append(img);
+    btn.addEventListener('click', () => {
+      placeCharacter(item);
+    });
+    gallery.append(btn);
+  });
+}
+
+function showCastPortrait(item) {
+  castCurrent = item;
+  const img = document.getElementById('portrait-img');
+  const empty = document.getElementById('portrait-empty');
+  if (!item) {
+    img.classList.add('hidden');
+    img.removeAttribute('src');
+    empty.classList.remove('hidden');
+  } else {
+    img.src = item.image;
+    img.alt = item.name;
+    img.classList.remove('hidden');
+    empty.classList.add('hidden');
+  }
+  syncCastButtons();
+  paintCastGallery();
+}
+
+function rememberCast() {
+  const copy = castItems.slice(0, 6);
+  try {
+    localStorage.setItem(CAST_KEY, JSON.stringify(copy));
+    castItems = copy;
+    return true;
+  } catch {
+    if (copy.length > 1) {
+      castItems = copy.slice(0, -1);
+      return rememberCast();
+    }
+    return false;
+  }
+}
+
+async function placeCharacter(item) {
+  showCastPortrait(item);
+  try {
+    localStorage.setItem(REF_KEY, item.image);
+    localStorage.setItem(REF_NAME_KEY, item.name);
+  } catch {
+    setStatus('This picture is too big to keep, but you can still trace it now.');
+  }
+  try {
+    refImage = await loadImage(item.image);
+    showRef = true;
+  } catch {
+    refImage = null;
+    showRef = false;
+    setStatus('That character picture would not load.');
+    return;
+  }
+  render();
+  sync();
+  showMode('draw');
+  setStatus(`${item.name} is behind the page. Draw your own poses on top, or Stamp to drop them on this frame.`);
+}
+
+async function drawCharacter() {
+  if (castBusy || castSeconds() > 0) return;
+  const prompt = castPrompt();
+  const seed = Math.floor(Math.random() * 1_000_000_000);
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&seed=${seed}&nologo=true&safe=true`;
+  castBusy = true;
+  document.getElementById('portrait').classList.add('busy');
+  syncCastButtons();
+  setStatus('Asking for a character. You will draw the animation.');
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(90000) });
+    if (response.status === 402) {
+      const retry = Number(response.headers.get('retry-after'));
+      castNextAt = Date.now() + (retry > 0 ? retry : 45) * 1000;
+      localStorage.setItem(CAST_NEXT_KEY, String(castNextAt));
+      throw new Error('wait');
+    }
+    if (!response.ok) throw new Error('bad');
+    const type = response.headers.get('content-type') || '';
+    if (!type.includes('image')) throw new Error('bad');
+    const blob = await response.blob();
+    if (!blob.size || !blob.type.startsWith('image/')) throw new Error('bad');
+    const image = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('read'));
+      reader.readAsDataURL(blob);
+    });
+    const item = {
+      id: crypto.randomUUID?.() || String(Date.now()),
+      name: castName(),
+      summary: castSummary(),
+      image,
+      at: Date.now(),
+    };
+    castItems.unshift(item);
+    rememberCast();
+    castNextAt = Date.now() + CAST_WAIT_MS;
+    localStorage.setItem(CAST_NEXT_KEY, String(castNextAt));
+    await placeCharacter(item);
+  } catch (error) {
+    if (error.message === 'wait') {
+      setStatus(`The artist needs a rest. Try again in ${castSeconds()}s.`);
+    } else if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      setStatus('That took too long. Try again in a moment.');
+    } else {
+      setStatus('The artist could not be reached. Check your connection and try again.');
+    }
+  } finally {
+    castBusy = false;
+    document.getElementById('portrait').classList.remove('busy');
+    syncCastButtons();
+  }
+}
+
+function showSavedCast() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CAST_KEY) || '[]');
+    castItems = Array.isArray(parsed) ? parsed.filter((item) => item && item.image && item.name) : [];
+  } catch {
+    castItems = [];
+  }
+  const savedName = localStorage.getItem(REF_NAME_KEY);
+  const match = castItems.find((item) => item.name === savedName) || null;
+  showCastPortrait(match);
+}
+
+function bindCast() {
+  Object.entries(CAST_LISTS).forEach(([id, rows]) => {
+    const select = document.getElementById(id);
+    rows.forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      select.append(option);
+    });
+  });
+  document.getElementById('cast-panel').addEventListener('submit', (event) => {
+    event.preventDefault();
+    drawCharacter();
+  });
+  document.getElementById('surprise').addEventListener('click', () => {
+    Object.keys(CAST_LISTS).forEach((id) => {
+      const select = document.getElementById(id);
+      const options = [...select.options];
+      select.value = options[Math.floor(Math.random() * options.length)].value;
+    });
+    document.getElementById('extra').value = CAST_EXTRAS[Math.floor(Math.random() * CAST_EXTRAS.length)];
+    const name = document.getElementById('name');
+    if (!name.value.trim()) name.value = CAST_NAMES[Math.floor(Math.random() * CAST_NAMES.length)];
+    if (castSeconds() === 0) drawCharacter();
+    else setStatus(`Picked a new character. The artist can draw in ${castSeconds()}s.`);
+  });
+  setInterval(syncCastButtons, 1000);
+}
+
 async function init() {
   bind();
   frames = [makeFrame()];
@@ -677,24 +984,27 @@ async function init() {
   } catch {
     saved = false;
   }
-if (!saved) {
-  const hasGuide = Boolean(localStorage.getItem(REF_KEY));
-  frames = hasGuide ? [makeFrame()] : demoFrames();
-  index = 0;
-  hadSave = false;
-}
+  if (!saved) {
+    frames = [makeFrame()];
+    index = 0;
+    hadSave = false;
+  }
   try {
     const ref = localStorage.getItem(REF_KEY);
     if (ref) {
       refImage = await loadImage(ref);
       showRef = true;
       const name = localStorage.getItem(REF_NAME_KEY) || 'Character';
-      setStatus(`${name} is the tracing guide. Stamp drops them on this frame.`);
+      setStatus(`${name} is behind the page. Draw your own poses on top, or Stamp to drop them on this frame.`);
+    } else if (!saved) {
+      setStatus('Blank page. Draw your own poses, copy a frame, then play.');
     }
   } catch {
     refImage = null;
     showRef = false;
+    if (!saved) setStatus('Blank page. Draw your own poses, copy a frame, then play.');
   }
+  showSavedCast();
   rebuildStrip();
   render();
   ready = true;
