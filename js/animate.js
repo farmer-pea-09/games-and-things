@@ -2,7 +2,63 @@ const W = 640;
 const H = 360;
 const MAX_FRAMES = 16;
 const PROJECT_KEY = 'gat-puppet-v1';
+const CAST_KEY = 'gat-puppet-cast';
+const NEXT_KEY = 'gat-puppet-next';
+const WAIT_MS = 45000;
+const MAX_CAST = 4;
 const LINE = '#4a3428';
+
+const SPRITE_KEY = {
+  body: 'body',
+  head: 'head',
+  tail: 'tail',
+  ear: 'ear',
+  frontArm: 'arm',
+  backArm: 'arm',
+  frontFore: 'hand',
+  backFore: 'hand',
+  frontLeg: 'leg',
+  backLeg: 'leg',
+  frontShin: 'paw',
+  backShin: 'paw',
+};
+
+const FIT = {
+  body: { w: 148, h: 78, x: -36, y: -34 },
+  head: { w: 96, h: 88, x: -6, y: -40 },
+  ear: { w: 34, h: 42, x: -17, y: -38 },
+  tail: { w: 30, h: 36, x: -15, y: 0 },
+  arm: { w: 34 },
+  hand: { w: 28 },
+  leg: { w: 36 },
+  paw: { w: 30 },
+};
+
+const KINDS = [
+  ['puppy', 'Puppy', 'a puppy'],
+  ['kitten', 'Kitten', 'a kitten'],
+  ['bunny', 'Bunny', 'a bunny'],
+  ['fox', 'Fox', 'a fox'],
+  ['bear', 'Bear', 'a bear cub'],
+  ['bird', 'Bird', 'a small bird'],
+  ['dragon', 'Dragon', 'a small dragon'],
+  ['robot', 'Robot', 'a friendly robot'],
+];
+
+const STYLES = [
+  ['paper', 'Paper', 'flat paper cut-out'],
+  ['marker', 'Marker', 'thick marker cartoon'],
+  ['crayon', 'Crayon', 'crayon cartoon'],
+  ['felt', 'Felt', 'felt puppet'],
+];
+
+const PALETTES = [
+  ['honey', 'Honey', 'honey, cream, and warm brown colors'],
+  ['teal', 'Teal', 'teal, cream, and dark teal colors'],
+  ['berry', 'Berry', 'berry pink, cream, and plum colors'],
+  ['sunny', 'Sunny', 'sunny yellow, orange, and brown colors'],
+  ['leaf', 'Leaf', 'leaf green, cream, and forest colors'],
+];
 
 const COATS = {
   honey: { fur: '#f0b56a', dark: '#d9924a', belly: '#fff6e4' },
@@ -66,6 +122,10 @@ let hadSave = false;
 let saving = false;
 let saveTimer = 0;
 let drag = null;
+let cast = [];
+let sprites = null;
+let activeId = null;
+let making = false;
 const undos = [];
 
 function setStatus(text) {
@@ -162,7 +222,29 @@ function drawLimb(ctx, len, width, color) {
   strokeShape(ctx);
 }
 
+function drawSprite(ctx, id, sprite) {
+  const fit = FIT[SPRITE_KEY[id]] || FIT.arm;
+  const h = fit.h || SPEC[id].len;
+  const w = fit.w;
+  const x = fit.x == null ? -w / 2 : fit.x;
+  const y = fit.y == null ? 0 : fit.y;
+  ctx.drawImage(sprite, x, y, w, h);
+}
+
 function drawPart(ctx, id) {
+  if (sprites && sprites.whole) {
+    if (id !== 'body') return;
+    const sprite = sprites.whole;
+    const h = 176;
+    const w = h * (sprite.width / Math.max(1, sprite.height));
+    ctx.drawImage(sprite, -w * 0.38, 72 - h, w, h);
+    return;
+  }
+  const sprite = sprites && sprites[SPRITE_KEY[id]];
+  if (sprite) {
+    drawSprite(ctx, id, sprite);
+    return;
+  }
   const colors = coatColors();
   if (id === 'body') {
     ctx.fillStyle = colors.fur;
@@ -310,8 +392,12 @@ function sync() {
   document.querySelectorAll('#parts button').forEach((btn) => {
     btn.classList.toggle('on', btn.dataset.part === selected);
   });
-  document.querySelectorAll('#coats button').forEach((btn) => {
-    btn.classList.toggle('on', btn.dataset.coat === coat);
+  document.querySelectorAll('#coats .coat').forEach((btn) => {
+    btn.classList.toggle('on', !sprites && btn.dataset.coat === coat);
+  });
+  document.getElementById('drawn').classList.toggle('on', !sprites);
+  document.querySelectorAll('#cast button').forEach((btn) => {
+    btn.classList.toggle('on', Boolean(sprites) && btn.dataset.id === activeId);
   });
   [...strip.children].forEach((btn, i) => btn.classList.toggle('on', i === index));
   const active = strip.children[index];
@@ -412,6 +498,7 @@ function saveNow() {
       index,
       onion,
       coat,
+      activeId,
       frames,
     }));
   } catch {
@@ -509,6 +596,12 @@ function hits(id, point, world) {
 }
 
 function pickPart(point, world) {
+  if (sprites && sprites.whole) {
+    const node = world.body;
+    const dx = point.x - node.x;
+    const dy = point.y - node.y;
+    return dx * dx + dy * dy < 130 * 130 ? 'body' : null;
+  }
   for (let i = PARTS.length - 1; i >= 0; i -= 1) {
     const id = PARTS[i].id;
     if (hits(id, point, world)) return id;
@@ -660,6 +753,385 @@ async function saveVideo() {
   }
 }
 
+function fillSelect(id, options) {
+  const select = document.getElementById(id);
+  options.forEach(([value, label, phrase]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    option.dataset.phrase = phrase;
+    select.append(option);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('The picture did not load.'));
+    img.src = src;
+  });
+}
+
+function knockBackground(data, w, h, limit) {
+  const corners = [0, (w - 1) * 4, (h - 1) * w * 4, (h * w - 1) * 4];
+  let br = 0;
+  let bg = 0;
+  let bb = 0;
+  corners.forEach((i) => {
+    br += data[i];
+    bg += data[i + 1];
+    bb += data[i + 2];
+  });
+  br /= 4;
+  bg /= 4;
+  bb /= 4;
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (let x = 0; x < w; x += 1) stack.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 1) stack.push(y * w, y * w + w - 1);
+  while (stack.length) {
+    const p = stack.pop();
+    if (seen[p]) continue;
+    seen[p] = 1;
+    const i = p * 4;
+    const dr = data[i] - br;
+    const dg = data[i + 1] - bg;
+    const db = data[i + 2] - bb;
+    if (dr * dr + dg * dg + db * db > limit * limit) continue;
+    data[i + 3] = 0;
+    const x = p % w;
+    const y = Math.floor(p / w);
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (y > 0) stack.push(p - w);
+    if (y < h - 1) stack.push(p + w);
+  }
+}
+
+function extractPieces(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = image.data;
+  const w = canvas.width;
+  const h = canvas.height;
+  const original = new Uint8ClampedArray(data);
+  knockBackground(data, w, h, 32);
+  let clear = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
+  if (clear / (w * h) < 0.08) {
+    data.set(original);
+    knockBackground(data, w, h, 58);
+    clear = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
+  }
+  if (clear / (w * h) < 0.08) {
+    throw new Error('That picture had no empty background. Try Make again.');
+  }
+  const labels = new Int32Array(w * h);
+  const blobs = [];
+  let count = 0;
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      const start = y * w + x;
+      if (labels[start] || data[start * 4 + 3] < 16) continue;
+      count += 1;
+      const stack = [start];
+      labels[start] = count;
+      let area = 0;
+      let sumX = 0;
+      let sumY = 0;
+      let minX = x;
+      let minY = y;
+      let maxX = x;
+      let maxY = y;
+      while (stack.length) {
+        const p = stack.pop();
+        const px = p % w;
+        const py = Math.floor(p / w);
+        area += 1;
+        sumX += px;
+        sumY += py;
+        if (px < minX) minX = px;
+        if (py < minY) minY = py;
+        if (px > maxX) maxX = px;
+        if (py > maxY) maxY = py;
+        const next = [p - 1, p + 1, p - w, p + w];
+        if (px === 0) next[0] = -1;
+        if (px === w - 1) next[1] = -1;
+        if (py === 0) next[2] = -1;
+        if (py === h - 1) next[3] = -1;
+        next.forEach((n) => {
+          if (n < 0 || labels[n] || data[n * 4 + 3] < 16) return;
+          labels[n] = count;
+          stack.push(n);
+        });
+      }
+      if (area < 100) continue;
+      blobs.push({
+        id: count,
+        area,
+        minX,
+        minY,
+        maxX,
+        maxY,
+        cx: sumX / area,
+        cy: sumY / area,
+      });
+    }
+  }
+  const pieces = blobs.filter((blob) => !((blob.maxY > h - 40) && (blob.maxY - blob.minY) < 28));
+  if (!pieces.length) throw new Error('That picture had no puppet to cut out. Try Make again.');
+
+  function crop(blob) {
+    const piece = document.createElement('canvas');
+    piece.width = blob.maxX - blob.minX + 1;
+    piece.height = blob.maxY - blob.minY + 1;
+    const out = piece.getContext('2d').createImageData(piece.width, piece.height);
+    for (let yy = blob.minY; yy <= blob.maxY; yy += 1) {
+      for (let xx = blob.minX; xx <= blob.maxX; xx += 1) {
+        if (labels[yy * w + xx] !== blob.id) continue;
+        const src = (yy * w + xx) * 4;
+        const dst = ((yy - blob.minY) * piece.width + (xx - blob.minX)) * 4;
+        out.data[dst] = data[src];
+        out.data[dst + 1] = data[src + 1];
+        out.data[dst + 2] = data[src + 2];
+        out.data[dst + 3] = data[src + 3];
+      }
+    }
+    piece.getContext('2d').putImageData(out, 0, 0);
+    return piece;
+  }
+
+  if (pieces.length >= 6) {
+    const sorted = pieces.slice().sort((a, b) => a.cy - b.cy);
+    let split = 1;
+    let gap = 0;
+    for (let i = 1; i < sorted.length; i += 1) {
+      const space = sorted[i].cy - sorted[i - 1].cy;
+      if (space > gap) {
+        gap = space;
+        split = i;
+      }
+    }
+    const top = sorted.slice(0, split).sort((a, b) => a.cx - b.cx);
+    const bottom = sorted.slice(split).sort((a, b) => a.cx - b.cx);
+    if (top.length >= 2 && bottom.length >= 2) {
+      const parts = {};
+      top.slice(0, 4).forEach((blob, i) => {
+        parts[['head', 'body', 'tail', 'ear'][i]] = crop(blob);
+      });
+      bottom.slice(0, 4).forEach((blob, i) => {
+        parts[['arm', 'hand', 'leg', 'paw'][i]] = crop(blob);
+      });
+      if (parts.head && parts.body) return parts;
+    }
+  }
+
+  const biggest = pieces.slice().sort((a, b) => b.area - a.area)[0];
+  return { whole: crop(biggest) };
+}
+
+function buildPrompt() {
+  const kind = document.getElementById('kind').selectedOptions[0].dataset.phrase;
+  const colors = document.getElementById('palette').selectedOptions[0].dataset.phrase;
+  const style = document.getElementById('style').selectedOptions[0].dataset.phrase;
+  const extra = document.getElementById('extra').value.replace(/[^\w\s,.'-]/g, '').trim().slice(0, 80);
+  return [
+    `one original ${kind}, full body, side view facing right, standing`,
+    style,
+    colors,
+    extra,
+    'thick dark outline, solid flat colors, simple paper puppet',
+    'centered on a plain pure white background, no ground, no shadow, no scenery, no text',
+    'family-friendly',
+  ].filter(Boolean).join(', ');
+}
+
+function waitLeft() {
+  return Math.max(0, (Number(localStorage.getItem(NEXT_KEY)) || 0) - Date.now());
+}
+
+function saveCast() {
+  try {
+    localStorage.setItem(CAST_KEY, JSON.stringify(cast));
+  } catch {
+    cast = cast.slice(-2);
+    try {
+      localStorage.setItem(CAST_KEY, JSON.stringify(cast));
+    } catch {
+      setStatus('The browser could not keep this puppet. It still works until you leave the page.');
+    }
+  }
+}
+
+function paintCast() {
+  const box = document.getElementById('cast');
+  box.replaceChildren();
+  cast.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.id = item.id;
+    btn.setAttribute('aria-label', item.name);
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = item.parts.head || item.parts.whole || item.parts.body || '';
+    btn.append(img);
+    btn.addEventListener('click', () => {
+      applyCast(item.id).then(() => {
+        render();
+        rebuildStrip();
+        scheduleSave();
+        sync();
+        setStatus(`${item.name} is on the stage. Drag the parts.`);
+      }).catch(() => {
+        setStatus('That puppet could not be opened.');
+      });
+    });
+    box.append(btn);
+  });
+}
+
+function loadCast() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CAST_KEY) || '[]');
+    if (Array.isArray(data)) {
+      cast = data.filter((item) => item && item.id && item.parts).slice(-MAX_CAST);
+    }
+  } catch {
+    cast = [];
+  }
+  paintCast();
+}
+
+async function spritesFromParts(parts) {
+  const next = {};
+  await Promise.all(Object.entries(parts).map(async ([name, url]) => {
+    if (!url) return;
+    const img = await loadImage(url);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    next[name] = canvas;
+  }));
+  return next;
+}
+
+async function applyCast(id) {
+  const item = cast.find((entry) => entry.id === id);
+  if (!item) {
+    sprites = null;
+    activeId = null;
+    return;
+  }
+  sprites = await spritesFromParts(item.parts);
+  activeId = id;
+  if (sprites.whole) selected = 'body';
+}
+
+function surpriseChoices() {
+  const pick = (id, list) => {
+    document.getElementById(id).value = list[Math.floor(Math.random() * list.length)][0];
+  };
+  pick('kind', KINDS);
+  pick('style', STYLES);
+  pick('palette', PALETTES);
+  document.getElementById('extra').value = '';
+}
+
+async function generatePuppet() {
+  if (making) return;
+  const left = Math.ceil(waitLeft() / 1000);
+  if (left > 0) {
+    setStatus(`The picture maker needs a rest. Try again in ${left} seconds.`);
+    return;
+  }
+  const button = document.getElementById('generate');
+  making = true;
+  button.disabled = true;
+  button.textContent = 'Making';
+  setStatus('Making the puppet pieces. This can take a little while.');
+  let sent = false;
+  try {
+    const seed = Math.floor(Math.random() * 1e9);
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(buildPrompt())}?width=512&height=512&seed=${seed}&nologo=true&safe=true&model=flux`;
+    const res = await fetch(url);
+    sent = true;
+    if (res.status === 402) {
+      const retry = Number(res.headers.get('Retry-After')) || 45;
+      localStorage.setItem(NEXT_KEY, String(Date.now() + retry * 1000));
+      throw new Error(`The picture maker needs a rest. Try again in ${retry} seconds.`);
+    }
+    localStorage.setItem(NEXT_KEY, String(Date.now() + WAIT_MS));
+    if (!res.ok) throw new Error('The picture maker did not answer. Try again in a minute.');
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) throw new Error('The picture maker did not send a picture.');
+    const blobUrl = URL.createObjectURL(blob);
+    let sheet;
+    try {
+      sheet = await loadImage(blobUrl);
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+    const parts = extractPieces(sheet);
+    const urls = {};
+    Object.entries(parts).forEach(([name, canvas]) => {
+      urls[name] = canvas.toDataURL('image/png');
+    });
+    const name = document.getElementById('kind').selectedOptions[0].textContent;
+    const item = { id: String(Date.now()), name, parts: urls };
+    cast.push(item);
+    cast = cast.slice(-MAX_CAST);
+    sprites = parts;
+    activeId = item.id;
+    if (parts.whole) selected = 'body';
+    saveCast();
+    paintCast();
+    render();
+    rebuildStrip();
+    scheduleSave();
+    sync();
+    setStatus(parts.whole
+      ? `${name} is on the stage. Drag the puppet to move it. Copy a frame, then move it again.`
+      : `${name} is on the stage. Drag the parts.`);
+  } catch (error) {
+    if (!sent) localStorage.removeItem(NEXT_KEY);
+    setStatus(error.message || 'The puppet could not be made.');
+  } finally {
+    making = false;
+    button.disabled = false;
+    button.textContent = 'Make';
+  }
+}
+
+function bindMaker() {
+  fillSelect('kind', KINDS);
+  fillSelect('style', STYLES);
+  fillSelect('palette', PALETTES);
+  document.getElementById('maker').addEventListener('submit', (event) => {
+    event.preventDefault();
+    generatePuppet();
+  });
+  document.getElementById('surprise').addEventListener('click', () => {
+    surpriseChoices();
+    generatePuppet();
+  });
+  document.getElementById('drawn').addEventListener('click', () => {
+    sprites = null;
+    activeId = null;
+    render();
+    rebuildStrip();
+    scheduleSave();
+    sync();
+    setStatus('Drawn puppy. Pick a coat, then drag the parts.');
+  });
+}
+
 function bindFullscreen() {
   const btn = document.getElementById('fullscreen-btn');
   if (!btn) return;
@@ -693,6 +1165,12 @@ function bindParts() {
     btn.dataset.part = part.id;
     btn.textContent = part.name;
     btn.addEventListener('click', () => {
+      if (sprites && sprites.whole) {
+        selected = 'body';
+        setStatus('This puppet is one piece. Drag it to move.');
+        sync();
+        return;
+      }
       selected = part.id;
       setStatus(`${part.name} selected. Drag it on the stage.`);
       sync();
@@ -712,6 +1190,7 @@ function bindParts() {
       render();
       rebuildStrip();
       scheduleSave();
+      if (sprites) setStatus('This puppet keeps the colors it was made with. Show the drawn puppy to use a coat.');
     });
     coats.append(btn);
   });
@@ -720,6 +1199,7 @@ function bindParts() {
 function bind() {
   bindFullscreen();
   bindParts();
+  bindMaker();
   document.getElementById('add').addEventListener('click', () => addFrame());
   document.getElementById('copy').addEventListener('click', () => addFrame());
   document.getElementById('del').addEventListener('click', deleteFrame);
@@ -790,24 +1270,40 @@ function restore(data) {
   if ([4, 8, 12, 24].includes(Number(data.fps))) fps = Number(data.fps);
   onion = data.onion !== false;
   if (COATS[data.coat]) coat = data.coat;
+  activeId = typeof data.activeId === 'string' ? data.activeId : null;
   fpsSelect.value = String(fps);
   hadSave = true;
 }
 
-function init() {
+async function init() {
   bind();
+  loadCast();
   frames = [restPose()];
+  let savedId = null;
   try {
     const raw = localStorage.getItem(PROJECT_KEY);
-    if (raw) restore(JSON.parse(raw));
+    if (raw) {
+      restore(JSON.parse(raw));
+      savedId = activeId;
+    }
   } catch {
     frames = [restPose()];
     index = 0;
     hadSave = false;
+    activeId = null;
   }
-  if (!hadSave) setStatus('Drag the arm, the head, or a leg. Copy the frame to make the next pose.');
+  try {
+    if (savedId) await applyCast(savedId);
+  } catch {
+    sprites = null;
+    activeId = null;
+  }
+  if (!hadSave) setStatus('Make a puppet, or drag the drawn puppy. Copy the frame to make the next pose.');
+  else if (sprites && sprites.whole) setStatus('Your puppet is back. Drag it to move it.');
+  else if (sprites) setStatus('Your puppet is back. Drag the parts.');
   rebuildStrip();
   render();
+  sync();
   ready = true;
 }
 

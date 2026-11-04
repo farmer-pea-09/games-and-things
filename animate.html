@@ -17,13 +17,35 @@
     <header class="page-header">
       <p class="kicker">Games and Things</p>
       <h1>Animation</h1>
-      <p class="lede">Pose the puppet, copy the frame, then press play. Cut-out cartoons are made this way: the body is in pieces, and you turn each part.</p>
+      <p class="lede">Make a puppet, then turn the pieces. Copy a frame, change the pose, and press play.</p>
     </header>
 
     <div class="studio">
       <aside class="tools" aria-label="Puppet controls">
-        <p class="box-label">Coat</p>
-        <div id="coats" class="row"></div>
+        <p class="box-label">Make a puppet</p>
+        <form id="maker" class="maker">
+          <label>Creature
+            <select id="kind"></select>
+          </label>
+          <label>Style
+            <select id="style"></select>
+          </label>
+          <label>Colors
+            <select id="palette"></select>
+          </label>
+          <label>Extra
+            <textarea id="extra" maxlength="80" placeholder="tiny hat, freckles"></textarea>
+          </label>
+          <div class="row">
+            <button type="button" id="surprise">Surprise</button>
+            <button type="submit" id="generate" class="primary">Make</button>
+          </div>
+        </form>
+        <div id="cast" class="cast-row" aria-label="Generated puppets"></div>
+        <p class="box-label">Drawn puppy</p>
+        <div id="coats" class="row">
+          <button type="button" id="drawn">Show</button>
+        </div>
         <p class="box-label">Parts</p>
         <div id="parts" class="parts"></div>
         <p class="box-label">Frames</p>
@@ -67,7 +89,7 @@
           </label>
         </div>
         <div id="strip" class="strip" aria-label="Frames"></div>
-        <p class="hint">Drag a part to turn it. Copy the frame, change the pose, then press play. Space plays. Arrows change frames.</p>
+        <p class="hint">Make a puppet, then drag a part to turn it. Copy the frame, change the pose, and press play. Space plays. Arrows change frames.</p>
         <p id="status" class="status" role="status"></p>
       </div>
     </div>
