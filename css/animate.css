@@ -243,6 +243,31 @@ button.primary {
   flex: 1 1 auto;
 }
 
+.parts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.parts button.on {
+  background: #e9c46a;
+  color: #1a120c;
+}
+
+.coat {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #000;
+  flex: 0 0 auto;
+}
+
+.coat.on {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
 .colors {
   display: flex;
   flex-wrap: wrap;

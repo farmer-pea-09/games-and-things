@@ -17,30 +17,15 @@
     <header class="page-header">
       <p class="kicker">Games and Things</p>
       <h1>Animation</h1>
-      <p class="lede">This cartoon is yours. Draw each pose, copy the frame, and press play. A character can sit behind the page if you want someone to trace.</p>
+      <p class="lede">Pose the puppet, copy the frame, then press play. Cut-out cartoons are made this way: the body is in pieces, and you turn each part.</p>
     </header>
 
     <div class="studio">
-      <aside class="tools" aria-label="Animation tools">
-        <div class="modes" role="tablist" aria-label="Studio">
-          <button type="button" id="mode-draw" class="active" role="tab" aria-selected="true">Yours</button>
-          <button type="button" id="mode-cast" role="tab" aria-selected="false">Character</button>
-        </div>
-        <div id="draw-panel">
-        <p class="box-label">Tools</p>
-        <div class="row">
-          <button type="button" class="tool active" data-tool="draw">Draw</button>
-          <button type="button" class="tool" data-tool="erase">Erase</button>
-          <button type="button" class="tool" data-tool="fill">Fill</button>
-        </div>
-        <p class="box-label">Size</p>
-        <div class="row">
-          <button type="button" class="size" data-size="4">S</button>
-          <button type="button" class="size active" data-size="10">M</button>
-          <button type="button" class="size" data-size="22">L</button>
-        </div>
-        <p class="box-label">Colors</p>
-        <div id="colors" class="colors"></div>
+      <aside class="tools" aria-label="Puppet controls">
+        <p class="box-label">Coat</p>
+        <div id="coats" class="row"></div>
+        <p class="box-label">Parts</p>
+        <div id="parts" class="parts"></div>
         <p class="box-label">Frames</p>
         <div class="row">
           <button type="button" id="add">Add</button>
@@ -49,63 +34,22 @@
         </div>
         <div class="row">
           <button type="button" id="undo">Undo</button>
-          <button type="button" id="clear">Clear</button>
           <button type="button" id="fresh">New</button>
+          <button type="button" id="example">Wave</button>
         </div>
         <div class="row">
-          <button type="button" id="example">Example</button>
-        </div>
-        <p class="box-label">Guide</p>
-        <div class="row">
-          <button type="button" id="guide" aria-pressed="false">Guide</button>
-          <button type="button" id="stamp">Stamp</button>
+          <button type="button" id="flip">Turn</button>
         </div>
         <p class="box-label">Keep</p>
         <div class="row">
           <button type="button" id="png">PNG</button>
           <button type="button" id="video">Video</button>
         </div>
-        </div>
-        <form id="cast-panel" class="cast hidden">
-          <p class="box-label">Start from a character</p>
-          <div id="portrait" class="mini-portrait">
-            <p id="portrait-empty" class="empty">They show up here.</p>
-            <img id="portrait-img" alt="" class="hidden">
-            <p class="wait">Drawing...</p>
-          </div>
-          <label>Name
-            <input id="name" type="text" maxlength="24" placeholder="Optional" autocomplete="off">
-          </label>
-          <label>Creature
-            <select id="kind"></select>
-          </label>
-          <label>Style
-            <select id="style"></select>
-          </label>
-          <label>Mood
-            <select id="mood"></select>
-          </label>
-          <label>Outfit
-            <select id="outfit"></select>
-          </label>
-          <label>Colors
-            <select id="palette"></select>
-          </label>
-          <label>Extra
-            <textarea id="extra" maxlength="80" placeholder="tiny hat, freckles"></textarea>
-          </label>
-          <div class="row">
-            <button type="button" id="surprise">Surprise</button>
-            <button type="submit" id="draw" class="primary">Draw</button>
-          </div>
-          <p class="hint">About one new picture every 45 seconds. Then you animate them yourself.</p>
-          <div id="gallery" class="cast-gallery" aria-label="Saved characters"></div>
-        </form>
       </aside>
 
       <div class="stage">
         <div class="paper" id="paper">
-          <canvas id="view" width="640" height="360" aria-label="Drawing canvas"></canvas>
+          <canvas id="view" width="640" height="360" aria-label="Puppet stage"></canvas>
         </div>
         <div class="transport">
           <button type="button" id="prev">Prev</button>
@@ -123,7 +67,7 @@
           </label>
         </div>
         <div id="strip" class="strip" aria-label="Frames"></div>
-        <p class="hint">Space plays. Arrow keys change frames. Onion ghosts the other pose so you can trace it.</p>
+        <p class="hint">Drag a part to turn it. Copy the frame, change the pose, then press play. Space plays. Arrows change frames.</p>
         <p id="status" class="status" role="status"></p>
       </div>
     </div>

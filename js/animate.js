@@ -1,14 +1,46 @@
 const W = 640;
 const H = 360;
-const PAPER = '#f4efe6';
-const MAX_FRAMES = 12;
-const PROJECT_KEY = 'gat-flipbook';
-const REF_KEY = 'gat-character-ref';
-const REF_NAME_KEY = 'gat-character-ref-name';
-const COLORS = [
-  '#1a120c', '#fff8ef', '#e94560', '#e9c46a', '#f4a261', '#2a9d8f',
-  '#40916c', '#4cc9f0', '#4361ee', '#7b2cbf', '#f15bb5', '#6d4c41',
+const MAX_FRAMES = 16;
+const PROJECT_KEY = 'gat-puppet-v1';
+const LINE = '#4a3428';
+
+const COATS = {
+  honey: { fur: '#f0b56a', dark: '#d9924a', belly: '#fff6e4' },
+  teal: { fur: '#6ec8c0', dark: '#3aa39a', belly: '#e9fffb' },
+  berry: { fur: '#e58aa6', dark: '#c45b7a', belly: '#ffe8f0' },
+};
+
+const PARTS = [
+  { id: 'body', parent: null, x: 0, y: 0, name: 'Body', blob: { x: 6, y: 2, r: 48 } },
+  { id: 'tail', parent: 'body', x: -58, y: -8, len: 34, thick: 14, name: 'Tail' },
+  { id: 'backLeg', parent: 'body', x: -34, y: 16, len: 36, thick: 14, name: 'Far leg' },
+  { id: 'backShin', parent: 'backLeg', x: 0, y: 36, len: 26, thick: 12, name: 'Far paw' },
+  { id: 'backArm', parent: 'body', x: -18, y: -12, len: 26, thick: 12, name: 'Far arm' },
+  { id: 'backFore', parent: 'backArm', x: 0, y: 26, len: 16, thick: 11, name: 'Far hand' },
+  { id: 'frontLeg', parent: 'body', x: 32, y: 14, len: 36, thick: 15, name: 'Leg' },
+  { id: 'frontShin', parent: 'frontLeg', x: 0, y: 36, len: 24, thick: 13, name: 'Paw' },
+  { id: 'frontArm', parent: 'body', x: 16, y: -14, len: 30, thick: 13, name: 'Arm' },
+  { id: 'frontFore', parent: 'frontArm', x: 0, y: 30, len: 16, thick: 12, name: 'Hand' },
+  { id: 'head', parent: 'body', x: 52, y: -22, name: 'Head', blob: { x: 18, y: 2, r: 32 } },
+  { id: 'ear', parent: 'head', x: 4, y: -20, len: 18, thick: 14, name: 'Ear' },
 ];
+
+const LIMITS = {
+  body: [-0.4, 0.4],
+  head: [-0.8, 0.6],
+  ear: [-0.6, 0.8],
+  tail: [1.2, 2.8],
+  frontArm: [-2.8, 1.4],
+  frontFore: [-1.4, 1.6],
+  backArm: [-1.4, 2.2],
+  backFore: [-1.5, 1.4],
+  frontLeg: [-1.4, 1.2],
+  frontShin: [-0.2, 1.4],
+  backLeg: [-1.2, 1.4],
+  backShin: [-0.2, 1.4],
+};
+
+const SPEC = Object.fromEntries(PARTS.map((part) => [part.id, part]));
 
 const view = document.getElementById('view');
 const viewCtx = view.getContext('2d');
@@ -17,131 +49,254 @@ const paper = document.getElementById('paper');
 const playBtn = document.getElementById('play');
 const counter = document.getElementById('counter');
 const onionBtn = document.getElementById('onion');
-const guideBtn = document.getElementById('guide');
-const stampBtn = document.getElementById('stamp');
 const fpsSelect = document.getElementById('fps');
-const status = document.getElementById('status');
+const statusEl = document.getElementById('status');
 
 let frames = [];
 let index = 0;
-let tool = 'draw';
-let color = COLORS[0];
-let size = 10;
+let coat = 'honey';
+let selected = 'frontArm';
 let onion = true;
 let playing = false;
 let timer = 0;
 let fps = 8;
-let drawing = false;
-let last = null;
 let ready = false;
 let dirty = false;
 let hadSave = false;
 let saving = false;
 let saveTimer = 0;
-let showRef = false;
-let refImage = null;
+let drag = null;
 const undos = [];
 
-function makeFrame() {
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  canvas.getContext('2d', { willReadFrequently: true });
-  return canvas;
-}
-
-function frameCtx(frame) {
-  return frame.getContext('2d', { willReadFrequently: true });
-}
-
 function setStatus(text) {
-  status.textContent = text;
+  statusEl.textContent = text;
 }
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('image'));
-    img.src = src;
+function clone(pose) {
+  return {
+    x: pose.x,
+    y: pose.y,
+    flip: pose.flip,
+    angles: { ...pose.angles },
+  };
+}
+
+function restPose() {
+  return {
+    x: 318,
+    y: 196,
+    flip: false,
+    angles: {
+      body: 0,
+      head: -0.08,
+      ear: 0.25,
+      tail: 2.35,
+      frontArm: -0.25,
+      frontFore: 0.35,
+      backArm: 0.55,
+      backFore: -0.25,
+      frontLeg: -0.12,
+      frontShin: 0.18,
+      backLeg: 0.28,
+      backShin: 0.16,
+    },
+  };
+}
+
+function wavePoses() {
+  const arms = [-0.3, -2.05, -1.15, -2.35, -0.85, -0.25];
+  const hands = [0.3, -0.4, 0.5, -0.55, 0.35, 0.2];
+  return arms.map((arm, i) => {
+    const pose = restPose();
+    pose.angles.frontArm = arm;
+    pose.angles.frontFore = hands[i];
+    pose.angles.head = i % 2 ? 0.12 : -0.18;
+    pose.angles.tail = 2.15 + (i % 2) * 0.25;
+    pose.y = 196 - (i % 2) * 6;
+    return pose;
   });
 }
 
-function drawContain(ctx, img) {
-  const scale = Math.min(W / img.width, H / img.height) * 0.92;
-  const dw = img.width * scale;
-  const dh = img.height * scale;
-  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+function pose() {
+  return frames[index];
 }
 
-function demoFrames() {
-  const poses = [
-    { cy: 92, rx: 34, ry: 36 },
-    { cy: 168, rx: 34, ry: 36 },
-    { cy: 228, rx: 48, ry: 22 },
-    { cy: 150, rx: 32, ry: 40 },
-  ];
-  return poses.map((pose) => {
-    const frame = makeFrame();
-    const ctx = frameCtx(frame);
-    ctx.strokeStyle = '#6d4c41';
-    ctx.lineWidth = 4;
+function rot(x, y, angle) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return { x: x * c - y * s, y: x * s + y * c };
+}
+
+function compute(current) {
+  const world = {};
+  function walk(id, parentAngle, ox, oy) {
+    const angle = parentAngle + (current.angles[id] || 0);
+    world[id] = { x: ox, y: oy, angle };
+    PARTS.forEach((part) => {
+      if (part.parent !== id) return;
+      const joint = rot(part.x, part.y, angle);
+      walk(part.id, angle, ox + joint.x, oy + joint.y);
+    });
+  }
+  walk('body', 0, current.x, current.y);
+  return world;
+}
+
+function coatColors() {
+  return COATS[coat] || COATS.honey;
+}
+
+function strokeShape(ctx) {
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+function drawLimb(ctx, len, width, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(-width / 2, 0, width, len, width * 0.45);
+  ctx.fill();
+  strokeShape(ctx);
+}
+
+function drawPart(ctx, id) {
+  const colors = coatColors();
+  if (id === 'body') {
+    ctx.fillStyle = colors.fur;
     ctx.beginPath();
-    ctx.moveTo(90, 252);
-    ctx.lineTo(550, 252);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(26, 18, 12, 0.18)';
-    ctx.beginPath();
-    ctx.ellipse(320, 252, 40, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(4, 4, 66, 32, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#e94560';
+    strokeShape(ctx);
+    ctx.fillStyle = colors.belly;
     ctx.beginPath();
-    ctx.ellipse(320, pose.cy, pose.rx, pose.ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(16, 12, 28, 16, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff8ef';
+    strokeShape(ctx);
+    return;
+  }
+  if (id === 'head') {
+    ctx.fillStyle = colors.fur;
     ctx.beginPath();
-    ctx.ellipse(320, pose.cy + pose.ry * 0.15, pose.rx * 0.45, pose.ry * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(18, 2, 32, 28, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#1a120c';
+    strokeShape(ctx);
+    ctx.fillStyle = colors.belly;
     ctx.beginPath();
-    ctx.arc(308, pose.cy - 6, 4, 0, Math.PI * 2);
-    ctx.arc(332, pose.cy - 6, 4, 0, Math.PI * 2);
+    ctx.ellipse(42, 10, 16, 12, 0.15, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#1a120c';
+    strokeShape(ctx);
+    ctx.fillStyle = LINE;
+    ctx.beginPath();
+    ctx.arc(50, 10, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(24, -6, 8, 0, Math.PI * 2);
+    ctx.fill();
+    strokeShape(ctx);
+    ctx.fillStyle = LINE;
+    ctx.beginPath();
+    ctx.arc(26, -6, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = LINE;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(320, pose.cy + 2, 10, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.arc(36, 12, 8, 0.1 * Math.PI, 0.75 * Math.PI);
     ctx.stroke();
-    return frame;
+    return;
+  }
+  if (id === 'tail') {
+    drawLimb(ctx, 32, 14, colors.dark);
+    return;
+  }
+  if (id === 'ear') {
+    ctx.fillStyle = colors.dark;
+    ctx.beginPath();
+    ctx.ellipse(0, -14, 9, 16, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    strokeShape(ctx);
+    ctx.fillStyle = colors.belly;
+    ctx.beginPath();
+    ctx.ellipse(1, -12, 4, 8, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  const width = id.includes('Arm') || id.includes('Fore') ? 16 : 18;
+  drawLimb(ctx, SPEC[id].len, width, colors.fur);
+}
+
+function drawPuppet(ctx, current, ghost) {
+  const world = compute(current);
+  ctx.save();
+  ctx.translate(current.x, current.y);
+  if (current.flip) ctx.scale(-1, 1);
+  ctx.translate(-current.x, -current.y);
+  if (ghost) ctx.globalAlpha = 0.28;
+  PARTS.forEach((part) => {
+    const node = world[part.id];
+    ctx.save();
+    ctx.translate(node.x, node.y);
+    ctx.rotate(node.angle);
+    drawPart(ctx, part.id);
+    ctx.restore();
   });
+  if (!ghost && !playing) {
+    const node = world[selected];
+    if (node) {
+      ctx.fillStyle = '#e9c46a';
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = LINE;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawScene(ctx, current, ghosts) {
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#8fd4f2');
+  sky.addColorStop(0.62, '#d7f3c8');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#f6d56a';
+  ctx.beginPath();
+  ctx.arc(86, 64, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8dce73';
+  ctx.beginPath();
+  ctx.ellipse(120, 250, 90, 28, 0, 0, Math.PI * 2);
+  ctx.ellipse(520, 246, 110, 34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5eae62';
+  ctx.fillRect(0, 262, W, H - 262);
+  ctx.fillStyle = '#d8b48a';
+  ctx.fillRect(0, 300, W, 18);
+  ctx.fillStyle = 'rgba(74, 52, 40, 0.18)';
+  ctx.beginPath();
+  ctx.ellipse(current.x, 276, 46, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (ghosts) drawPuppet(ctx, ghosts, true);
+  drawPuppet(ctx, current, false);
 }
 
 function render() {
-  viewCtx.fillStyle = PAPER;
-  viewCtx.fillRect(0, 0, W, H);
-  if (showRef && refImage && !playing) {
-    viewCtx.save();
-    viewCtx.globalAlpha = 0.42;
-    drawContain(viewCtx, refImage);
-    viewCtx.restore();
-  }
-  if (onion && !playing && frames.length > 1) {
-    const prev = (index - 1 + frames.length) % frames.length;
-    viewCtx.save();
-    viewCtx.globalAlpha = 0.28;
-    viewCtx.drawImage(frames[prev], 0, 0);
-    viewCtx.restore();
-  }
-  if (frames[index]) viewCtx.drawImage(frames[index], 0, 0);
+  const previous = frames.length > 1 ? frames[(index - 1 + frames.length) % frames.length] : null;
+  drawScene(viewCtx, pose(), onion && !playing && previous && previous !== pose() ? previous : null);
 }
 
 function paintThumb(i) {
   const canvas = strip.children[i]?.querySelector('canvas');
   if (!canvas || !frames[i]) return;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(frames[i], 0, 0, canvas.width, canvas.height);
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  drawScene(ctx, frames[i], null);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function sync() {
@@ -151,10 +306,13 @@ function sync() {
   paper.classList.toggle('is-playing', playing);
   onionBtn.classList.toggle('active', onion);
   onionBtn.setAttribute('aria-pressed', onion ? 'true' : 'false');
-  guideBtn.disabled = !refImage;
-  guideBtn.textContent = !refImage ? 'No guide' : showRef ? 'Guide on' : 'Guide off';
-  guideBtn.setAttribute('aria-pressed', showRef ? 'true' : 'false');
-  stampBtn.disabled = !refImage;
+  document.getElementById('flip').classList.toggle('active', Boolean(pose()?.flip));
+  document.querySelectorAll('#parts button').forEach((btn) => {
+    btn.classList.toggle('on', btn.dataset.part === selected);
+  });
+  document.querySelectorAll('#coats button').forEach((btn) => {
+    btn.classList.toggle('on', btn.dataset.coat === coat);
+  });
   [...strip.children].forEach((btn, i) => btn.classList.toggle('on', i === index));
   const active = strip.children[index];
   if (active) {
@@ -220,9 +378,8 @@ function step(dir) {
 }
 
 function snapshot() {
-  const data = frameCtx(frames[index]).getImageData(0, 0, W, H);
-  undos.push({ index, data });
-  if (undos.length > 15) undos.shift();
+  undos.push({ index, pose: clone(pose()) });
+  if (undos.length > 20) undos.shift();
 }
 
 function undo() {
@@ -233,14 +390,7 @@ function undo() {
   }
   stop();
   index = item.index;
-  frameCtx(frames[index]).putImageData(item.data, 0, 0);
-  paintThumb(index);
-  render();
-  sync();
-  scheduleSave();
-}
-
-function commit() {
+  frames[index] = item.pose;
   paintThumb(index);
   render();
   sync();
@@ -255,54 +405,27 @@ function scheduleSave() {
 }
 
 function saveNow() {
-  const payload = {
-    v: 1,
-    fps,
-    index,
-    onion,
-    frames: frames.map((frame) => frame.toDataURL('image/png')),
-  };
   try {
-    localStorage.setItem(PROJECT_KEY, JSON.stringify(payload));
+    localStorage.setItem(PROJECT_KEY, JSON.stringify({
+      v: 1,
+      fps,
+      index,
+      onion,
+      coat,
+      frames,
+    }));
   } catch {
-    setStatus('This flipbook is too big to keep in the browser.');
+    setStatus('This cartoon is too big to keep in the browser.');
   }
 }
 
-async function frameFromUrl(url) {
-  const frame = makeFrame();
-  const img = await loadImage(url);
-  frameCtx(frame).drawImage(img, 0, 0, W, H);
-  return frame;
-}
-
-async function restore(data) {
-  const loaded = [];
-  for (const url of data.frames || []) {
-    try {
-      loaded.push(await frameFromUrl(url));
-    } catch {
-      /* Skip a frame that no longer loads. */
-    }
-  }
-  if (!loaded.length) throw new Error('empty');
-  frames = loaded.slice(0, MAX_FRAMES);
-  index = Math.min(Math.max(0, data.index || 0), frames.length - 1);
-  if ([4, 8, 12, 24].includes(Number(data.fps))) fps = Number(data.fps);
-  onion = data.onion !== false;
-  fpsSelect.value = String(fps);
-  hadSave = true;
-}
-
-function addFrame(copy) {
+function addFrame() {
   if (frames.length >= MAX_FRAMES) {
-    setStatus('Twelve frames is the limit.');
+    setStatus('Sixteen frames is the limit.');
     return;
   }
   stop();
-  const frame = makeFrame();
-  if (copy) frameCtx(frame).drawImage(frames[index], 0, 0);
-  frames.splice(index + 1, 0, frame);
+  frames.splice(index + 1, 0, clone(pose()));
   index += 1;
   rebuildStrip();
   render();
@@ -313,9 +436,13 @@ function deleteFrame() {
   stop();
   if (frames.length === 1) {
     snapshot();
-    frameCtx(frames[0]).clearRect(0, 0, W, H);
-    commit();
-    setStatus('Cleared the only frame.');
+    frames[0] = restPose();
+    frames[0].flip = false;
+    paintThumb(0);
+    render();
+    sync();
+    scheduleSave();
+    setStatus('Reset the only frame.');
     return;
   }
   frames.splice(index, 1);
@@ -326,151 +453,133 @@ function deleteFrame() {
   scheduleSave();
 }
 
-function loadExample() {
-  if ((hadSave || dirty) && !window.confirm('Replace this cartoon with the bouncing example?')) return;
-  stop();
-  frames = demoFrames();
-  index = 0;
-  undos.length = 0;
-  rebuildStrip();
-  render();
-  scheduleSave();
-  setStatus('Example bounce. New clears it so you can draw your own.');
-}
-
-function showMode(mode) {
-  document.getElementById('draw-panel').classList.toggle('hidden', mode !== 'draw');
-  document.getElementById('cast-panel').classList.toggle('hidden', mode !== 'cast');
-  document.getElementById('mode-draw').classList.toggle('active', mode === 'draw');
-  document.getElementById('mode-cast').classList.toggle('active', mode === 'cast');
-  document.getElementById('mode-draw').setAttribute('aria-selected', mode === 'draw' ? 'true' : 'false');
-  document.getElementById('mode-cast').setAttribute('aria-selected', mode === 'cast' ? 'true' : 'false');
-}
-
 function fresh() {
-  if ((hadSave || dirty) && !window.confirm('Erase this flipbook and start blank?')) return;
+  if ((hadSave || dirty) && !window.confirm('Erase this cartoon and start again?')) return;
   stop();
-  frames = [makeFrame()];
+  frames = [restPose()];
   index = 0;
   undos.length = 0;
   rebuildStrip();
   render();
   scheduleSave();
-  setStatus('Blank frame. Draw the first pose.');
+  setStatus('Standing still. Drag the arm to start a pose.');
 }
 
-function setTool(next) {
-  tool = next;
-  document.querySelectorAll('.tool').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.tool === tool);
-  });
-  view.classList.toggle('fill-tool', tool === 'fill');
+function loadExample() {
+  if ((hadSave || dirty || frames.length > 1) && !window.confirm('Replace this cartoon with a wave?')) return;
+  stop();
+  frames = wavePoses();
+  index = 0;
+  undos.length = 0;
+  rebuildStrip();
+  render();
+  scheduleSave();
+  setStatus('A wave. Copy a frame and bend the arm somewhere new.');
 }
 
-function point(event) {
+function pointer(event) {
   const rect = view.getBoundingClientRect();
   return {
-    x: Math.max(0, Math.min(W - 1, (event.clientX - rect.left) * (W / rect.width))),
-    y: Math.max(0, Math.min(H - 1, (event.clientY - rect.top) * (H / rect.height))),
+    x: (event.clientX - rect.left) * (W / rect.width),
+    y: (event.clientY - rect.top) * (H / rect.height),
   };
 }
 
-function hexToRgb(hex) {
-  const n = Number.parseInt(hex.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+function toRig(point, current) {
+  if (!current.flip) return point;
+  return { x: current.x - (point.x - current.x), y: point.y };
 }
 
-function flood(frame, x, y, fill) {
-  const ctx = frameCtx(frame);
-  const img = ctx.getImageData(0, 0, W, H);
-  const data = img.data;
-  const sx = Math.floor(x);
-  const sy = Math.floor(y);
-  const start = (sy * W + sx) * 4;
-  const sr = data[start];
-  const sg = data[start + 1];
-  const sb = data[start + 2];
-  const sa = data[start + 3];
-  const near = (r, g, b, a, cr, cg, cb, ca) => (
-    Math.abs(r - cr) <= 18
-    && Math.abs(g - cg) <= 18
-    && Math.abs(b - cb) <= 18
-    && Math.abs(a - ca) <= 18
-  );
-  if (near(sr, sg, sb, sa, fill.r, fill.g, fill.b, 255)) return;
-  const seen = new Uint8Array(W * H);
-  const stack = [sy * W + sx];
-  while (stack.length) {
-    const p = stack.pop();
-    if (seen[p]) continue;
-    seen[p] = 1;
-    const i = p * 4;
-    if (!near(data[i], data[i + 1], data[i + 2], data[i + 3], sr, sg, sb, sa)) continue;
-    data[i] = fill.r;
-    data[i + 1] = fill.g;
-    data[i + 2] = fill.b;
-    data[i + 3] = 255;
-    const px = p % W;
-    const py = (p / W) | 0;
-    if (px > 0) stack.push(p - 1);
-    if (px < W - 1) stack.push(p + 1);
-    if (py > 0) stack.push(p - W);
-    if (py < H - 1) stack.push(p + W);
+function hits(id, point, world) {
+  const node = world[id];
+  const spec = SPEC[id];
+  const dx = point.x - node.x;
+  const dy = point.y - node.y;
+  const c = Math.cos(node.angle);
+  const s = Math.sin(node.angle);
+  const lx = dx * c + dy * s;
+  const ly = -dx * s + dy * c;
+  if (spec.blob) {
+    const cx = spec.blob.x;
+    const cy = spec.blob.y;
+    return (lx - cx) ** 2 + (ly - cy) ** 2 <= spec.blob.r ** 2;
   }
-  ctx.putImageData(img, 0, 0);
+  const along = Math.max(0, Math.min(spec.len, ly));
+  return lx * lx + (ly - along) ** 2 <= spec.thick ** 2;
+}
+
+function pickPart(point, world) {
+  for (let i = PARTS.length - 1; i >= 0; i -= 1) {
+    const id = PARTS[i].id;
+    if (hits(id, point, world)) return id;
+  }
+  return null;
+}
+
+function wrap(angle) {
+  let next = angle;
+  while (next > Math.PI) next -= Math.PI * 2;
+  while (next < -Math.PI) next += Math.PI * 2;
+  return next;
+}
+
+function clampAngle(id, angle) {
+  const [min, max] = LIMITS[id] || [-Math.PI, Math.PI];
+  return Math.max(min, Math.min(max, angle));
 }
 
 function onDown(event) {
   if (!ready || event.button !== 0) return;
   event.preventDefault();
   stop();
-  sync();
-  render();
-  const p = point(event);
-  if (tool === 'fill') {
-    snapshot();
-    flood(frames[index], p.x, p.y, hexToRgb(color));
-    commit();
-    return;
-  }
-  drawing = true;
-  last = p;
+  const current = pose();
+  const screen = pointer(event);
+  const at = toRig(screen, current);
+  const world = compute(current);
+  const id = pickPart(at, world) || selected;
+  selected = id;
   snapshot();
+  if (id === 'body') {
+    drag = { mode: 'move', sx: screen.x - current.x, sy: screen.y - current.y };
+  } else {
+    drag = { mode: 'rot', id };
+  }
   try {
     view.setPointerCapture?.(event.pointerId);
   } catch {
-    /* Untrusted events and some browsers refuse capture. */
+    /* Some browsers refuse capture. */
   }
-  const ctx = frameCtx(frames[index]);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = size;
-  ctx.strokeStyle = color;
-  ctx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : 'source-over';
-  ctx.beginPath();
-  ctx.moveTo(p.x, p.y);
-  ctx.lineTo(p.x + 0.01, p.y + 0.01);
-  ctx.stroke();
+  setStatus(`Posing the ${SPEC[id].name.toLowerCase()}.`);
   render();
+  sync();
 }
 
 function onMove(event) {
-  if (!drawing) return;
-  const p = point(event);
-  const ctx = frameCtx(frames[index]);
-  ctx.beginPath();
-  ctx.moveTo(last.x, last.y);
-  ctx.lineTo(p.x, p.y);
-  ctx.stroke();
-  last = p;
+  if (!drag) return;
+  const current = pose();
+  const screen = pointer(event);
+  const at = toRig(screen, current);
+  if (drag.mode === 'move') {
+    current.x = Math.max(90, Math.min(550, screen.x - drag.sx));
+    current.y = Math.max(120, Math.min(220, screen.y - drag.sy));
+  } else {
+    const world = compute(current);
+    const joint = world[drag.id];
+    const parent = SPEC[drag.id].parent;
+    const parentAngle = parent ? world[parent].angle : 0;
+    const aim = -Math.atan2(at.x - joint.x, at.y - joint.y);
+    current.angles[drag.id] = clampAngle(drag.id, wrap(aim - parentAngle));
+  }
   render();
 }
 
 function onUp() {
-  if (!drawing) return;
-  drawing = false;
-  frameCtx(frames[index]).globalCompositeOperation = 'source-over';
-  commit();
+  if (!drag) return;
+  drag = null;
+  paintThumb(index);
+  render();
+  sync();
+  scheduleSave();
 }
 
 function downloadBlob(blob, filename) {
@@ -486,13 +595,10 @@ function savePng() {
   const out = document.createElement('canvas');
   out.width = W;
   out.height = H;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(frames[index], 0, 0);
+  drawScene(out.getContext('2d'), pose(), null);
   out.toBlob((blob) => {
     if (!blob) return;
-    downloadBlob(blob, `animation-${index + 1}.png`);
+    downloadBlob(blob, `puppet-${index + 1}.png`);
     setStatus('PNG saved.');
   });
 }
@@ -504,13 +610,13 @@ function wait(ms) {
 async function saveVideo() {
   if (saving) return;
   if (typeof MediaRecorder === 'undefined') {
-    setStatus('This browser can play the flipbook, but it cannot save a video.');
+    setStatus('This browser can play the cartoon, but it cannot save a video.');
     return;
   }
   const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
     .find((item) => MediaRecorder.isTypeSupported(item));
   if (!type) {
-    setStatus('This browser can play the flipbook, but it cannot save a video.');
+    setStatus('This browser can play the cartoon, but it cannot save a video.');
     return;
   }
   saving = true;
@@ -537,9 +643,7 @@ async function saveVideo() {
     const gap = 1000 / fps;
     for (let loop = 0; loop < 2; loop += 1) {
       for (const frame of frames) {
-        ctx.fillStyle = PAPER;
-        ctx.fillRect(0, 0, W, H);
-        ctx.drawImage(frame, 0, 0);
+        drawScene(ctx, frame, null);
         track.requestFrame?.();
         await wait(gap);
       }
@@ -547,7 +651,7 @@ async function saveVideo() {
     await wait(200);
     rec.stop();
     await stopped;
-    downloadBlob(new Blob(chunks, { type: 'video/webm' }), 'animation.webm');
+    downloadBlob(new Blob(chunks, { type: 'video/webm' }), 'puppet.webm');
     setStatus('Video saved.');
   } catch {
     setStatus('The video could not be saved.');
@@ -581,54 +685,55 @@ function bindFullscreen() {
   document.addEventListener('webkitfullscreenchange', syncLabel);
 }
 
-function bindColors() {
-  const box = document.getElementById('colors');
-  COLORS.forEach((hex, i) => {
+function bindParts() {
+  const box = document.getElementById('parts');
+  PARTS.forEach((part) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `swatch${i === 0 ? ' active' : ''}`;
-    btn.style.background = hex;
-    btn.setAttribute('aria-label', hex);
+    btn.dataset.part = part.id;
+    btn.textContent = part.name;
     btn.addEventListener('click', () => {
-      color = hex;
-      if (tool === 'erase') setTool('draw');
-      box.querySelectorAll('.swatch').forEach((swatch) => {
-        swatch.classList.toggle('active', swatch === btn);
-      });
+      selected = part.id;
+      setStatus(`${part.name} selected. Drag it on the stage.`);
+      sync();
     });
     box.append(btn);
+  });
+  const coats = document.getElementById('coats');
+  Object.entries(COATS).forEach(([id, colors]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'coat';
+    btn.dataset.coat = id;
+    btn.style.background = colors.fur;
+    btn.setAttribute('aria-label', `${id} coat`);
+    btn.addEventListener('click', () => {
+      coat = id;
+      render();
+      rebuildStrip();
+      scheduleSave();
+    });
+    coats.append(btn);
   });
 }
 
 function bind() {
   bindFullscreen();
-  bindColors();
-  bindCast();
-  document.querySelectorAll('.tool').forEach((btn) => {
-    btn.addEventListener('click', () => setTool(btn.dataset.tool));
-  });
-  document.querySelectorAll('.size').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      size = Number(btn.dataset.size);
-      document.querySelectorAll('.size').forEach((item) => {
-        item.classList.toggle('active', item === btn);
-      });
-    });
-  });
-  document.getElementById('add').addEventListener('click', () => addFrame(false));
-  document.getElementById('copy').addEventListener('click', () => addFrame(true));
+  bindParts();
+  document.getElementById('add').addEventListener('click', () => addFrame());
+  document.getElementById('copy').addEventListener('click', () => addFrame());
   document.getElementById('del').addEventListener('click', deleteFrame);
   document.getElementById('undo').addEventListener('click', undo);
-  document.getElementById('clear').addEventListener('click', () => {
-    stop();
-    snapshot();
-    frameCtx(frames[index]).clearRect(0, 0, W, H);
-    commit();
-  });
   document.getElementById('fresh').addEventListener('click', fresh);
   document.getElementById('example').addEventListener('click', loadExample);
-  document.getElementById('mode-draw').addEventListener('click', () => showMode('draw'));
-  document.getElementById('mode-cast').addEventListener('click', () => showMode('cast'));
+  document.getElementById('flip').addEventListener('click', () => {
+    snapshot();
+    pose().flip = !pose().flip;
+    render();
+    paintThumb(index);
+    sync();
+    scheduleSave();
+  });
   document.getElementById('prev').addEventListener('click', () => step(-1));
   document.getElementById('next').addEventListener('click', () => step(1));
   playBtn.addEventListener('click', togglePlay);
@@ -645,20 +750,6 @@ function bind() {
       play();
     }
     if (hadSave) scheduleSave();
-  });
-  guideBtn.addEventListener('click', () => {
-    if (!refImage) return;
-    showRef = !showRef;
-    render();
-    sync();
-  });
-  stampBtn.addEventListener('click', () => {
-    if (!refImage) return;
-    stop();
-    snapshot();
-    drawContain(frameCtx(frames[index]), refImage);
-    commit();
-    setStatus('Stamped onto this frame. Erase what you do not want.');
   });
   document.getElementById('png').addEventListener('click', savePng);
   document.getElementById('video').addEventListener('click', () => {
@@ -683,328 +774,38 @@ function bind() {
     } else if ((event.key === 'z' || event.key === 'Z') && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       undo();
-    } else if (event.key === 'b' || event.key === 'B') setTool('draw');
-    else if (event.key === 'e' || event.key === 'E') setTool('erase');
-    else if (event.key === 'f' || event.key === 'F') setTool('fill');
-  });
-}
-
-const CAST_KEY = 'gat-characters';
-const CAST_NEXT_KEY = 'gat-character-next';
-const CAST_WAIT_MS = 45000;
-const CAST_LISTS = {
-  kind: [
-    ['kid', 'Kid hero', 'a young human hero'],
-    ['wizard', 'Wizard', 'a friendly wizard'],
-    ['knight', 'Knight', 'a small knight'],
-    ['cat', 'Cat', 'an anthropomorphic cat'],
-    ['fox', 'Fox', 'an anthropomorphic fox'],
-    ['robot', 'Robot', 'a cute round robot'],
-    ['dragon', 'Dragon', 'a small friendly dragon'],
-    ['ghost', 'Ghost', 'a round sheet ghost'],
-    ['mushroom', 'Mushroom', 'a walking mushroom'],
-    ['bird', 'Bird', 'a songbird character'],
-    ['astro', 'Astronaut', 'a kid astronaut'],
-    ['vampire', 'Vampire', 'a friendly vampire'],
-    ['mermaid', 'Mermaid', 'a mermaid'],
-    ['skeleton', 'Skeleton', 'a cheerful skeleton'],
-    ['slime', 'Slime', 'a bouncy slime'],
-  ],
-  style: [
-    ['sticker', 'Sticker', 'sticker illustration, thick dark outline, flat colors'],
-    ['pixel', 'Pixel', 'crisp pixel-art character, limited palette'],
-    ['story', 'Storybook', 'soft storybook painting, gentle light'],
-    ['clay', 'Clay', 'handmade clay toy, soft studio light'],
-    ['anime', 'Anime', 'anime character design, clean line art'],
-    ['crayon', 'Crayon', 'crayon and marker drawing on paper'],
-  ],
-  mood: [
-    ['brave', 'Brave', 'brave'],
-    ['sleepy', 'Sleepy', 'sleepy'],
-    ['mischief', 'Mischief', 'mischievous'],
-    ['shy', 'Shy', 'shy'],
-    ['grumpy', 'Grumpy', 'grumpy'],
-    ['cheerful', 'Cheerful', 'cheerful'],
-    ['mystery', 'Mystery', 'mysterious'],
-  ],
-  outfit: [
-    ['hoodie', 'Hoodie', 'wearing a hoodie and sneakers'],
-    ['armor', 'Armor', 'wearing simple storybook armor'],
-    ['cape', 'Cape', 'wearing a short cape and boots'],
-    ['overalls', 'Overalls', 'wearing overalls'],
-    ['suit', 'Space suit', 'wearing a rounded space suit'],
-    ['robes', 'Robes', 'wearing long soft robes'],
-    ['rain', 'Raincoat', 'wearing a bright raincoat'],
-    ['scarf', 'Scarf', 'wearing a very long scarf and boots'],
-  ],
-  palette: [
-    ['sunset', 'Sunset', 'sunset orange, pink, and gold'],
-    ['ocean', 'Ocean', 'ocean teal, blue, and sand'],
-    ['forest', 'Forest', 'forest green, moss, and cream'],
-    ['candy', 'Candy', 'candy pink, lavender, and mint'],
-    ['midnight', 'Midnight', 'midnight blue, silver, and violet'],
-    ['gold', 'Gold', 'gold, cream, and warm brown'],
-  ],
-};
-const CAST_EXTRAS = ['', 'round glasses', 'a tiny backpack', 'a star pin', 'striped socks', 'a flower crown', 'freckles'];
-const CAST_NAMES = ['Pip', 'Moth', 'Bramble', 'Noodle', 'Juniper', 'Pebble', 'Lumen', 'Sable', 'Cricket', 'Toffee', 'Wisp'];
-
-let castItems = [];
-let castCurrent = null;
-let castBusy = false;
-let castNextAt = Number(localStorage.getItem(CAST_NEXT_KEY) || 0);
-
-function castRow(list, id) {
-  return list.find((item) => item[0] === id) || list[0];
-}
-
-function castSeconds() {
-  return Math.max(0, Math.ceil((castNextAt - Date.now()) / 1000));
-}
-
-function castName() {
-  const typed = document.getElementById('name').value.trim();
-  if (typed) return typed.slice(0, 24);
-  return castRow(CAST_LISTS.kind, document.getElementById('kind').value)[1];
-}
-
-function castSummary() {
-  const mood = castRow(CAST_LISTS.mood, document.getElementById('mood').value)[1];
-  const kind = castRow(CAST_LISTS.kind, document.getElementById('kind').value)[1];
-  const style = castRow(CAST_LISTS.style, document.getElementById('style').value)[1];
-  const extra = document.getElementById('extra').value.trim();
-  const base = `${mood} ${kind.toLowerCase()}, ${style.toLowerCase()} style`;
-  return extra ? `${base}. ${extra}` : base;
-}
-
-function castPrompt() {
-  const extra = document.getElementById('extra').value.trim();
-  const parts = [
-    `A single original character, full body, ${castRow(CAST_LISTS.mood, document.getElementById('mood').value)[2]} ${castRow(CAST_LISTS.kind, document.getElementById('kind').value)[2]}`,
-    castRow(CAST_LISTS.outfit, document.getElementById('outfit').value)[2],
-    `${castRow(CAST_LISTS.palette, document.getElementById('palette').value)[2]} color palette`,
-    castRow(CAST_LISTS.style, document.getElementById('style').value)[2],
-  ];
-  if (extra) parts.push(extra);
-  parts.push('centered, simple empty background, clean silhouette, family-friendly, no text, no letters, no watermark');
-  return parts.join(', ');
-}
-
-function syncCastButtons() {
-  const drawBtn = document.getElementById('draw');
-  const wait = castSeconds();
-  drawBtn.disabled = castBusy || wait > 0;
-  document.getElementById('surprise').disabled = castBusy;
-  if (castBusy) drawBtn.textContent = 'Drawing...';
-  else if (wait > 0) drawBtn.textContent = `Wait ${wait}s`;
-  else drawBtn.textContent = 'Draw';
-}
-
-function paintCastGallery() {
-  const gallery = document.getElementById('gallery');
-  gallery.replaceChildren();
-  castItems.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.classList.toggle('on', castCurrent && castCurrent.id === item.id);
-    btn.setAttribute('aria-label', item.name);
-    const img = document.createElement('img');
-    img.src = item.image;
-    img.alt = '';
-    btn.append(img);
-    btn.addEventListener('click', () => {
-      placeCharacter(item);
-    });
-    gallery.append(btn);
-  });
-}
-
-function showCastPortrait(item) {
-  castCurrent = item;
-  const img = document.getElementById('portrait-img');
-  const empty = document.getElementById('portrait-empty');
-  if (!item) {
-    img.classList.add('hidden');
-    img.removeAttribute('src');
-    empty.classList.remove('hidden');
-  } else {
-    img.src = item.image;
-    img.alt = item.name;
-    img.classList.remove('hidden');
-    empty.classList.add('hidden');
-  }
-  syncCastButtons();
-  paintCastGallery();
-}
-
-function rememberCast() {
-  const copy = castItems.slice(0, 6);
-  try {
-    localStorage.setItem(CAST_KEY, JSON.stringify(copy));
-    castItems = copy;
-    return true;
-  } catch {
-    if (copy.length > 1) {
-      castItems = copy.slice(0, -1);
-      return rememberCast();
     }
-    return false;
-  }
-}
-
-async function placeCharacter(item) {
-  showCastPortrait(item);
-  try {
-    localStorage.setItem(REF_KEY, item.image);
-    localStorage.setItem(REF_NAME_KEY, item.name);
-  } catch {
-    setStatus('This picture is too big to keep, but you can still trace it now.');
-  }
-  try {
-    refImage = await loadImage(item.image);
-    showRef = true;
-  } catch {
-    refImage = null;
-    showRef = false;
-    setStatus('That character picture would not load.');
-    return;
-  }
-  render();
-  sync();
-  showMode('draw');
-  setStatus(`${item.name} is behind the page. Draw your own poses on top, or Stamp to drop them on this frame.`);
-}
-
-async function drawCharacter() {
-  if (castBusy || castSeconds() > 0) return;
-  const prompt = castPrompt();
-  const seed = Math.floor(Math.random() * 1_000_000_000);
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&seed=${seed}&nologo=true&safe=true`;
-  castBusy = true;
-  document.getElementById('portrait').classList.add('busy');
-  syncCastButtons();
-  setStatus('Asking for a character. You will draw the animation.');
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(90000) });
-    if (response.status === 402) {
-      const retry = Number(response.headers.get('retry-after'));
-      castNextAt = Date.now() + (retry > 0 ? retry : 45) * 1000;
-      localStorage.setItem(CAST_NEXT_KEY, String(castNextAt));
-      throw new Error('wait');
-    }
-    if (!response.ok) throw new Error('bad');
-    const type = response.headers.get('content-type') || '';
-    if (!type.includes('image')) throw new Error('bad');
-    const blob = await response.blob();
-    if (!blob.size || !blob.type.startsWith('image/')) throw new Error('bad');
-    const image = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('read'));
-      reader.readAsDataURL(blob);
-    });
-    const item = {
-      id: crypto.randomUUID?.() || String(Date.now()),
-      name: castName(),
-      summary: castSummary(),
-      image,
-      at: Date.now(),
-    };
-    castItems.unshift(item);
-    rememberCast();
-    castNextAt = Date.now() + CAST_WAIT_MS;
-    localStorage.setItem(CAST_NEXT_KEY, String(castNextAt));
-    await placeCharacter(item);
-  } catch (error) {
-    if (error.message === 'wait') {
-      setStatus(`The artist needs a rest. Try again in ${castSeconds()}s.`);
-    } else if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-      setStatus('That took too long. Try again in a moment.');
-    } else {
-      setStatus('The artist could not be reached. Check your connection and try again.');
-    }
-  } finally {
-    castBusy = false;
-    document.getElementById('portrait').classList.remove('busy');
-    syncCastButtons();
-  }
-}
-
-function showSavedCast() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CAST_KEY) || '[]');
-    castItems = Array.isArray(parsed) ? parsed.filter((item) => item && item.image && item.name) : [];
-  } catch {
-    castItems = [];
-  }
-  const savedName = localStorage.getItem(REF_NAME_KEY);
-  const match = castItems.find((item) => item.name === savedName) || null;
-  showCastPortrait(match);
-}
-
-function bindCast() {
-  Object.entries(CAST_LISTS).forEach(([id, rows]) => {
-    const select = document.getElementById(id);
-    rows.forEach(([value, label]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      select.append(option);
-    });
   });
-  document.getElementById('cast-panel').addEventListener('submit', (event) => {
-    event.preventDefault();
-    drawCharacter();
-  });
-  document.getElementById('surprise').addEventListener('click', () => {
-    Object.keys(CAST_LISTS).forEach((id) => {
-      const select = document.getElementById(id);
-      const options = [...select.options];
-      select.value = options[Math.floor(Math.random() * options.length)].value;
-    });
-    document.getElementById('extra').value = CAST_EXTRAS[Math.floor(Math.random() * CAST_EXTRAS.length)];
-    const name = document.getElementById('name');
-    if (!name.value.trim()) name.value = CAST_NAMES[Math.floor(Math.random() * CAST_NAMES.length)];
-    if (castSeconds() === 0) drawCharacter();
-    else setStatus(`Picked a new character. The artist can draw in ${castSeconds()}s.`);
-  });
-  setInterval(syncCastButtons, 1000);
 }
 
-async function init() {
+function restore(data) {
+  if (!Array.isArray(data.frames) || !data.frames.length) throw new Error('empty');
+  frames = data.frames.slice(0, MAX_FRAMES).map((item) => ({
+    x: Number(item.x) || 318,
+    y: Number(item.y) || 186,
+    flip: Boolean(item.flip),
+    angles: { ...restPose().angles, ...(item.angles || {}) },
+  }));
+  index = Math.min(Math.max(0, data.index || 0), frames.length - 1);
+  if ([4, 8, 12, 24].includes(Number(data.fps))) fps = Number(data.fps);
+  onion = data.onion !== false;
+  if (COATS[data.coat]) coat = data.coat;
+  fpsSelect.value = String(fps);
+  hadSave = true;
+}
+
+function init() {
   bind();
-  frames = [makeFrame()];
-  let saved = false;
+  frames = [restPose()];
   try {
     const raw = localStorage.getItem(PROJECT_KEY);
-    if (raw) {
-      await restore(JSON.parse(raw));
-      saved = true;
-    }
+    if (raw) restore(JSON.parse(raw));
   } catch {
-    saved = false;
-  }
-  if (!saved) {
-    frames = [makeFrame()];
+    frames = [restPose()];
     index = 0;
     hadSave = false;
   }
-  try {
-    const ref = localStorage.getItem(REF_KEY);
-    if (ref) {
-      refImage = await loadImage(ref);
-      showRef = true;
-      const name = localStorage.getItem(REF_NAME_KEY) || 'Character';
-      setStatus(`${name} is behind the page. Draw your own poses on top, or Stamp to drop them on this frame.`);
-    } else if (!saved) {
-      setStatus('Blank page. Draw your own poses, copy a frame, then play.');
-    }
-  } catch {
-    refImage = null;
-    showRef = false;
-    if (!saved) setStatus('Blank page. Draw your own poses, copy a frame, then play.');
-  }
-  showSavedCast();
+  if (!hadSave) setStatus('Drag the arm, the head, or a leg. Copy the frame to make the next pose.');
   rebuildStrip();
   render();
   ready = true;
