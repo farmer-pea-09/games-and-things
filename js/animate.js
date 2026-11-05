@@ -35,18 +35,18 @@ const FIT = {
 };
 
 const SLICES = [
-  { id: 'ear', parent: 'head', x0: 0.52, y0: 0, x1: 0.84, y1: 0.22, jx: 0.68, jy: 0.2 },
-  { id: 'tail', parent: 'body', x0: 0, y0: 0.1, x1: 0.26, y1: 0.5, jx: 0.24, jy: 0.34 },
-  { id: 'frontShin', parent: 'frontLeg', x0: 0.5, y0: 0.76, x1: 0.76, y1: 1, jx: 0.62, jy: 0.78 },
-  { id: 'backShin', parent: 'backLeg', x0: 0.16, y0: 0.76, x1: 0.42, y1: 1, jx: 0.3, jy: 0.78 },
-  { id: 'frontFore', parent: 'frontArm', x0: 0.66, y0: 0.38, x1: 0.9, y1: 0.6, jx: 0.68, jy: 0.42 },
-  { id: 'backFore', parent: 'backArm', x0: 0.08, y0: 0.4, x1: 0.32, y1: 0.62, jx: 0.28, jy: 0.44 },
-  { id: 'frontLeg', parent: 'body', x0: 0.48, y0: 0.56, x1: 0.74, y1: 0.8, jx: 0.6, jy: 0.58 },
-  { id: 'backLeg', parent: 'body', x0: 0.16, y0: 0.56, x1: 0.42, y1: 0.8, jx: 0.3, jy: 0.58 },
-  { id: 'frontArm', parent: 'body', x0: 0.5, y0: 0.24, x1: 0.72, y1: 0.46, jx: 0.58, jy: 0.3 },
-  { id: 'backArm', parent: 'body', x0: 0.24, y0: 0.26, x1: 0.46, y1: 0.48, jx: 0.36, jy: 0.32 },
-  { id: 'head', parent: 'body', x0: 0.6, y0: 0.04, x1: 1, y1: 0.5, jx: 0.64, jy: 0.34 },
-  { id: 'body', parent: null, x0: 0.2, y0: 0.2, x1: 0.66, y1: 0.62, jx: 0.42, jy: 0.44 },
+  { id: 'ear', parent: 'head', x0: 0.6, y0: 0, x1: 0.78, y1: 0.16, jx: 0.68, jy: 0.15 },
+  { id: 'tail', parent: 'body', x0: 0, y0: 0.2, x1: 0.18, y1: 0.46, jx: 0.16, jy: 0.34 },
+  { id: 'frontShin', parent: 'frontLeg', x0: 0.56, y0: 0.84, x1: 0.7, y1: 1, jx: 0.62, jy: 0.84 },
+  { id: 'backShin', parent: 'backLeg', x0: 0.3, y0: 0.84, x1: 0.44, y1: 1, jx: 0.36, jy: 0.84 },
+  { id: 'frontFore', parent: 'frontArm', x0: 0.7, y0: 0.36, x1: 0.84, y1: 0.52, jx: 0.72, jy: 0.38 },
+  { id: 'backFore', parent: 'backArm', x0: 0.18, y0: 0.38, x1: 0.32, y1: 0.54, jx: 0.3, jy: 0.4 },
+  { id: 'frontLeg', parent: 'body', x0: 0.54, y0: 0.64, x1: 0.68, y1: 0.86, jx: 0.6, jy: 0.64 },
+  { id: 'backLeg', parent: 'body', x0: 0.28, y0: 0.64, x1: 0.42, y1: 0.86, jx: 0.34, jy: 0.64 },
+  { id: 'frontArm', parent: 'body', x0: 0.58, y0: 0.28, x1: 0.72, y1: 0.46, jx: 0.62, jy: 0.3 },
+  { id: 'backArm', parent: 'body', x0: 0.32, y0: 0.3, x1: 0.46, y1: 0.48, jx: 0.38, jy: 0.32 },
+  { id: 'head', parent: 'body', x0: 0.7, y0: 0.02, x1: 1, y1: 0.38, jx: 0.72, jy: 0.26 },
+  { id: 'body', parent: null, x0: 0, y0: 0, x1: 1, y1: 1, jx: 0.46, jy: 0.5 },
 ];
 
 const COATS = {
@@ -839,6 +839,53 @@ function knockBackground(data, w, h, limit) {
   }
 }
 
+function floodShadows(data, w, h) {
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (let x = 0; x < w; x += 1) stack.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 1) stack.push(y * w, y * w + w - 1);
+  while (stack.length) {
+    const p = stack.pop();
+    if (seen[p]) continue;
+    seen[p] = 1;
+    const i = p * 4;
+    if (data[i + 3] >= 16) {
+      const max = Math.max(data[i], data[i + 1], data[i + 2]);
+      const min = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (max - min > 26 || max < 150 || max > 230) continue;
+      data[i + 3] = 0;
+    }
+    const x = p % w;
+    const y = Math.floor(p / w);
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (y > 0) stack.push(p - w);
+    if (y < h - 1) stack.push(p + w);
+  }
+}
+
+function clearBottomJunk(data, w, h) {
+  const y0 = Math.max(0, h - 30);
+  let empty = 0;
+  let total = 0;
+  for (let y = y0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      total += 1;
+      if (data[(y * w + x) * 4 + 3] < 16) empty += 1;
+    }
+  }
+  if (empty / total < 0.7) return;
+  for (let y = y0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      const i = (y * w + x) * 4;
+      if (data[i + 3] < 16) continue;
+      const max = Math.max(data[i], data[i + 1], data[i + 2]);
+      const min = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (max < 140 || max - min < 45) data[i + 3] = 0;
+    }
+  }
+}
+
 function extractPieces(img) {
   const canvas = document.createElement('canvas');
   canvas.width = img.width;
@@ -866,6 +913,8 @@ function extractPieces(img) {
       throw new Error('That picture had no empty background. Try Make again.');
     }
   }
+  floodShadows(data, w, h);
+  clearBottomJunk(data, w, h);
   const labels = new Int32Array(w * h);
   const blobs = [];
   let count = 0;
@@ -977,20 +1026,7 @@ function sliceCutout(cutout) {
           break;
         }
       }
-      if (found < 0) {
-        let best = 0;
-        let bestD = Infinity;
-        SLICES.forEach((zone, i) => {
-          const dx = fx - zone.jx;
-          const dy = fy - zone.jy;
-          const dist = dx * dx + dy * dy;
-          if (dist < bestD) {
-            bestD = dist;
-            best = i;
-          }
-        });
-        found = best;
-      }
+      if (found < 0) found = SLICES.findIndex((zone) => zone.id === 'body');
       owner[p] = found;
     }
   }
@@ -999,7 +1035,7 @@ function sliceCutout(cutout) {
   const rigOut = {};
   const joints = {};
   SLICES.forEach((slice) => {
-    joints[slice.id] = { x: slice.jx * sw, y: slice.jy * sh };
+    joints[slice.id] = { x: Math.round(slice.jx * sw), y: Math.round(slice.jy * sh) };
   });
   SLICES.forEach((slice, index) => {
     const piece = document.createElement('canvas');
