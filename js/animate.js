@@ -34,30 +34,19 @@ const FIT = {
   paw: { w: 30 },
 };
 
-const KINDS = [
-  ['puppy', 'Puppy', 'a puppy'],
-  ['kitten', 'Kitten', 'a kitten'],
-  ['bunny', 'Bunny', 'a bunny'],
-  ['fox', 'Fox', 'a fox'],
-  ['bear', 'Bear', 'a bear cub'],
-  ['bird', 'Bird', 'a small bird'],
-  ['dragon', 'Dragon', 'a small dragon'],
-  ['robot', 'Robot', 'a friendly robot'],
-];
-
-const STYLES = [
-  ['paper', 'Paper', 'flat paper cut-out'],
-  ['marker', 'Marker', 'thick marker cartoon'],
-  ['crayon', 'Crayon', 'crayon cartoon'],
-  ['felt', 'Felt', 'felt puppet'],
-];
-
-const PALETTES = [
-  ['honey', 'Honey', 'honey, cream, and warm brown colors'],
-  ['teal', 'Teal', 'teal, cream, and dark teal colors'],
-  ['berry', 'Berry', 'berry pink, cream, and plum colors'],
-  ['sunny', 'Sunny', 'sunny yellow, orange, and brown colors'],
-  ['leaf', 'Leaf', 'leaf green, cream, and forest colors'],
+const SLICES = [
+  { id: 'ear', parent: 'head', x0: 0.52, y0: 0, x1: 0.84, y1: 0.22, jx: 0.68, jy: 0.2 },
+  { id: 'tail', parent: 'body', x0: 0, y0: 0.1, x1: 0.26, y1: 0.5, jx: 0.24, jy: 0.34 },
+  { id: 'frontShin', parent: 'frontLeg', x0: 0.5, y0: 0.76, x1: 0.76, y1: 1, jx: 0.62, jy: 0.78 },
+  { id: 'backShin', parent: 'backLeg', x0: 0.16, y0: 0.76, x1: 0.42, y1: 1, jx: 0.3, jy: 0.78 },
+  { id: 'frontFore', parent: 'frontArm', x0: 0.66, y0: 0.38, x1: 0.9, y1: 0.6, jx: 0.68, jy: 0.42 },
+  { id: 'backFore', parent: 'backArm', x0: 0.08, y0: 0.4, x1: 0.32, y1: 0.62, jx: 0.28, jy: 0.44 },
+  { id: 'frontLeg', parent: 'body', x0: 0.48, y0: 0.56, x1: 0.74, y1: 0.8, jx: 0.6, jy: 0.58 },
+  { id: 'backLeg', parent: 'body', x0: 0.16, y0: 0.56, x1: 0.42, y1: 0.8, jx: 0.3, jy: 0.58 },
+  { id: 'frontArm', parent: 'body', x0: 0.5, y0: 0.24, x1: 0.72, y1: 0.46, jx: 0.58, jy: 0.3 },
+  { id: 'backArm', parent: 'body', x0: 0.24, y0: 0.26, x1: 0.46, y1: 0.48, jx: 0.36, jy: 0.32 },
+  { id: 'head', parent: 'body', x0: 0.6, y0: 0.04, x1: 1, y1: 0.5, jx: 0.64, jy: 0.34 },
+  { id: 'body', parent: null, x0: 0.2, y0: 0.2, x1: 0.66, y1: 0.62, jx: 0.42, jy: 0.44 },
 ];
 
 const COATS = {
@@ -85,7 +74,7 @@ const LIMITS = {
   body: [-0.4, 0.4],
   head: [-0.8, 0.6],
   ear: [-0.6, 0.8],
-  tail: [1.2, 2.8],
+  tail: [-2.8, 2.8],
   frontArm: [-2.8, 1.4],
   frontFore: [-1.4, 1.6],
   backArm: [-1.4, 2.2],
@@ -124,6 +113,8 @@ let saveTimer = 0;
 let drag = null;
 let cast = [];
 let sprites = null;
+let rig = null;
+let footDrop = 70;
 let activeId = null;
 let making = false;
 const undos = [];
@@ -139,6 +130,32 @@ function clone(pose) {
     flip: pose.flip,
     angles: { ...pose.angles },
   };
+}
+
+function currentRest() {
+  const pose = restPose();
+  if (!rig) return pose;
+  Object.keys(pose.angles).forEach((key) => {
+    pose.angles[key] = 0;
+  });
+  pose.y = Math.max(110, Math.min(210, 258 - footDrop));
+  return pose;
+}
+
+function standFlat() {
+  const standing = currentRest();
+  frames.forEach((frame) => {
+    frame.y = standing.y;
+    frame.angles = { ...standing.angles };
+  });
+}
+
+function standPuppy() {
+  const standing = restPose();
+  frames.forEach((frame) => {
+    frame.y = standing.y;
+    frame.angles = { ...standing.angles };
+  });
 }
 
 function restPose() {
@@ -166,6 +183,16 @@ function restPose() {
 function wavePoses() {
   const arms = [-0.3, -2.05, -1.15, -2.35, -0.85, -0.25];
   const hands = [0.3, -0.4, 0.5, -0.55, 0.35, 0.2];
+  if (rig) {
+    return arms.map((arm, i) => {
+      const pose = currentRest();
+      pose.angles.frontArm = arm;
+      pose.angles.frontFore = hands[i];
+      pose.angles.head = i % 2 ? 0.2 : -0.15;
+      pose.y -= (i % 2) * 6;
+      return pose;
+    });
+  }
   return arms.map((arm, i) => {
     const pose = restPose();
     pose.angles.frontArm = arm;
@@ -194,7 +221,8 @@ function compute(current) {
     world[id] = { x: ox, y: oy, angle };
     PARTS.forEach((part) => {
       if (part.parent !== id) return;
-      const joint = rot(part.x, part.y, angle);
+      const spot = rig && rig[part.id] ? rig[part.id] : part;
+      const joint = rot(spot.x, spot.y, angle);
       walk(part.id, angle, ox + joint.x, oy + joint.y);
     });
   }
@@ -232,6 +260,11 @@ function drawSprite(ctx, id, sprite) {
 }
 
 function drawPart(ctx, id) {
+  if (rig && sprites && sprites[id]) {
+    const spot = rig[id];
+    ctx.drawImage(sprites[id], -spot.ax, -spot.ay);
+    return;
+  }
   if (sprites && sprites.whole) {
     if (id !== 'body') return;
     const sprite = sprites.whole;
@@ -523,7 +556,7 @@ function deleteFrame() {
   stop();
   if (frames.length === 1) {
     snapshot();
-    frames[0] = restPose();
+    frames[0] = currentRest();
     frames[0].flip = false;
     paintThumb(0);
     render();
@@ -543,7 +576,7 @@ function deleteFrame() {
 function fresh() {
   if ((hadSave || dirty) && !window.confirm('Erase this cartoon and start again?')) return;
   stop();
-  frames = [restPose()];
+  frames = [currentRest()];
   index = 0;
   undos.length = 0;
   rebuildStrip();
@@ -586,6 +619,14 @@ function hits(id, point, world) {
   const s = Math.sin(node.angle);
   const lx = dx * c + dy * s;
   const ly = -dx * s + dy * c;
+  if (rig && sprites && sprites[id] && sprites[id]._alpha) {
+    const spot = rig[id];
+    const sx = Math.round(lx + spot.ax);
+    const sy = Math.round(ly + spot.ay);
+    const sprite = sprites[id];
+    if (sx < 0 || sy < 0 || sx >= sprite.width || sy >= sprite.height) return false;
+    return sprite._alpha[sy * sprite.width + sx] > 20;
+  }
   if (spec.blob) {
     const cx = spec.blob.x;
     const cy = spec.blob.y;
@@ -654,7 +695,7 @@ function onMove(event) {
   const at = toRig(screen, current);
   if (drag.mode === 'move') {
     current.x = Math.max(90, Math.min(550, screen.x - drag.sx));
-    current.y = Math.max(120, Math.min(220, screen.y - drag.sy));
+    current.y = Math.max(80, Math.min(240, screen.y - drag.sy));
   } else {
     const world = compute(current);
     const joint = world[drag.id];
@@ -753,17 +794,6 @@ async function saveVideo() {
   }
 }
 
-function fillSelect(id, options) {
-  const select = document.getElementById(id);
-  options.forEach(([value, label, phrase]) => {
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = label;
-    option.dataset.phrase = phrase;
-    select.append(option);
-  });
-}
-
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -819,18 +849,22 @@ function extractPieces(img) {
   const data = image.data;
   const w = canvas.width;
   const h = canvas.height;
-  const original = new Uint8ClampedArray(data);
-  knockBackground(data, w, h, 32);
-  let clear = 0;
-  for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
-  if (clear / (w * h) < 0.08) {
-    data.set(original);
-    knockBackground(data, w, h, 58);
-    clear = 0;
+  let transparent = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 16) transparent += 1;
+  if (transparent / (w * h) < 0.05) {
+    const original = new Uint8ClampedArray(data);
+    knockBackground(data, w, h, 32);
+    let clear = 0;
     for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
-  }
-  if (clear / (w * h) < 0.08) {
-    throw new Error('That picture had no empty background. Try Make again.');
+    if (clear / (w * h) < 0.08) {
+      data.set(original);
+      knockBackground(data, w, h, 58);
+      clear = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
+    }
+    if (clear / (w * h) < 0.08) {
+      throw new Error('That picture had no empty background. Try Make again.');
+    }
   }
   const labels = new Int32Array(w * h);
   const blobs = [];
@@ -907,49 +941,118 @@ function extractPieces(img) {
     return piece;
   }
 
-  if (pieces.length >= 6) {
-    const sorted = pieces.slice().sort((a, b) => a.cy - b.cy);
-    let split = 1;
-    let gap = 0;
-    for (let i = 1; i < sorted.length; i += 1) {
-      const space = sorted[i].cy - sorted[i - 1].cy;
-      if (space > gap) {
-        gap = space;
-        split = i;
+  const biggest = pieces.slice().sort((a, b) => b.area - a.area)[0];
+  return sliceCutout(crop(biggest));
+}
+
+function sliceCutout(cutout) {
+  const targetH = 210;
+  const scale = targetH / cutout.height;
+  const sw = Math.max(1, Math.round(cutout.width * scale));
+  const sh = targetH;
+  const source = document.createElement('canvas');
+  source.width = sw;
+  source.height = sh;
+  const sourceCtx = source.getContext('2d', { willReadFrequently: true });
+  sourceCtx.drawImage(cutout, 0, 0, sw, sh);
+  const pixels = sourceCtx.getImageData(0, 0, sw, sh);
+  const pd = pixels.data;
+  const owner = new Int16Array(sw * sh);
+  owner.fill(-1);
+  let any = false;
+  let bottom = 0;
+  for (let y = 0; y < sh; y += 1) {
+    for (let x = 0; x < sw; x += 1) {
+      const p = y * sw + x;
+      if (pd[p * 4 + 3] < 16) continue;
+      any = true;
+      if (y > bottom) bottom = y;
+      const fx = x / sw;
+      const fy = y / sh;
+      let found = -1;
+      for (let i = 0; i < SLICES.length; i += 1) {
+        const zone = SLICES[i];
+        if (fx >= zone.x0 && fx < zone.x1 && fy >= zone.y0 && fy < zone.y1) {
+          found = i;
+          break;
+        }
       }
-    }
-    const top = sorted.slice(0, split).sort((a, b) => a.cx - b.cx);
-    const bottom = sorted.slice(split).sort((a, b) => a.cx - b.cx);
-    if (top.length >= 2 && bottom.length >= 2) {
-      const parts = {};
-      top.slice(0, 4).forEach((blob, i) => {
-        parts[['head', 'body', 'tail', 'ear'][i]] = crop(blob);
-      });
-      bottom.slice(0, 4).forEach((blob, i) => {
-        parts[['arm', 'hand', 'leg', 'paw'][i]] = crop(blob);
-      });
-      if (parts.head && parts.body) return parts;
+      if (found < 0) {
+        let best = 0;
+        let bestD = Infinity;
+        SLICES.forEach((zone, i) => {
+          const dx = fx - zone.jx;
+          const dy = fy - zone.jy;
+          const dist = dx * dx + dy * dy;
+          if (dist < bestD) {
+            bestD = dist;
+            best = i;
+          }
+        });
+        found = best;
+      }
+      owner[p] = found;
     }
   }
+  if (!any) throw new Error('That picture had no puppet to cut out. Try Make again.');
+  const spritesOut = {};
+  const rigOut = {};
+  const joints = {};
+  SLICES.forEach((slice) => {
+    joints[slice.id] = { x: slice.jx * sw, y: slice.jy * sh };
+  });
+  SLICES.forEach((slice, index) => {
+    const piece = document.createElement('canvas');
+    piece.width = sw;
+    piece.height = sh;
+    const out = piece.getContext('2d').createImageData(sw, sh);
+    const alpha = new Uint8Array(sw * sh);
+    for (let p = 0; p < owner.length; p += 1) {
+      if (owner[p] !== index) continue;
+      const src = p * 4;
+      out.data[src] = pd[src];
+      out.data[src + 1] = pd[src + 1];
+      out.data[src + 2] = pd[src + 2];
+      out.data[src + 3] = pd[src + 3];
+      alpha[p] = pd[src + 3];
+    }
+    piece.getContext('2d').putImageData(out, 0, 0);
+    piece._alpha = alpha;
+    spritesOut[slice.id] = piece;
+    const joint = joints[slice.id];
+    const parent = slice.parent ? joints[slice.parent] : joint;
+    rigOut[slice.id] = {
+      x: slice.parent ? joint.x - parent.x : 0,
+      y: slice.parent ? joint.y - parent.y : 0,
+      ax: joint.x,
+      ay: joint.y,
+    };
+  });
+  return {
+    sprites: spritesOut,
+    rig: rigOut,
+    footDrop: bottom - joints.body.y,
+    source,
+  };
+}
 
-  const biggest = pieces.slice().sort((a, b) => b.area - a.area)[0];
-  return { whole: crop(biggest) };
+function ideaText() {
+  return document.getElementById('idea').value.replace(/\s+/g, ' ').trim().slice(0, 180);
+}
+
+function puppetName(idea) {
+  return idea.length > 24 ? `${idea.slice(0, 23)}…` : idea;
 }
 
 function buildPrompt() {
-  const kind = document.getElementById('kind').selectedOptions[0].dataset.phrase;
-  const colors = document.getElementById('palette').selectedOptions[0].dataset.phrase;
-  const style = document.getElementById('style').selectedOptions[0].dataset.phrase;
-  const extra = document.getElementById('extra').value.replace(/[^\w\s,.'-]/g, '').trim().slice(0, 80);
   return [
-    `one original ${kind}, full body, side view facing right, standing`,
-    style,
-    colors,
-    extra,
-    'thick dark outline, solid flat colors, simple paper puppet',
+    ideaText(),
+    'one character, full body, side view facing right, standing',
+    'it has a head, two ears, a body, a tail, two arms, two hands, two legs, and two paws',
+    'simple paper cut-out, thick dark outline, flat solid colors',
     'centered on a plain pure white background, no ground, no shadow, no scenery, no text',
     'family-friendly',
-  ].filter(Boolean).join(', ');
+  ].join(', ');
 }
 
 function waitLeft() {
@@ -979,15 +1082,18 @@ function paintCast() {
     btn.setAttribute('aria-label', item.name);
     const img = document.createElement('img');
     img.alt = '';
-    img.src = item.parts.head || item.parts.whole || item.parts.body || '';
+    img.src = item.parts.source || item.parts.head || item.parts.whole || item.parts.body || '';
     btn.append(img);
     btn.addEventListener('click', () => {
-      applyCast(item.id).then(() => {
+      applyCast(item.id).then((kind) => {
+        if (kind === 'rig') standFlat();
         render();
         rebuildStrip();
         scheduleSave();
         sync();
-        setStatus(`${item.name} is on the stage. Drag the parts.`);
+        setStatus(kind === 'whole'
+          ? `${item.name} is on the stage. Drag it to move it.`
+          : `${item.name} is ready. Drag the head, a leg, or the tail.`);
       }).catch(() => {
         setStatus('That puppet could not be opened.');
       });
@@ -1026,26 +1132,33 @@ async function applyCast(id) {
   const item = cast.find((entry) => entry.id === id);
   if (!item) {
     sprites = null;
+    rig = null;
     activeId = null;
-    return;
+    return 'none';
   }
+  if (item.parts.source) {
+    const built = await Promise.resolve(loadImage(item.parts.source)).then((img) => extractPieces(img));
+    sprites = built.sprites;
+    rig = built.rig;
+    footDrop = built.footDrop;
+    activeId = id;
+    selected = 'frontArm';
+    return 'rig';
+  }
+  rig = null;
   sprites = await spritesFromParts(item.parts);
   activeId = id;
   if (sprites.whole) selected = 'body';
-}
-
-function surpriseChoices() {
-  const pick = (id, list) => {
-    document.getElementById(id).value = list[Math.floor(Math.random() * list.length)][0];
-  };
-  pick('kind', KINDS);
-  pick('style', STYLES);
-  pick('palette', PALETTES);
-  document.getElementById('extra').value = '';
+  return sprites.whole ? 'whole' : 'parts';
 }
 
 async function generatePuppet() {
   if (making) return;
+  const idea = ideaText();
+  if (!idea) {
+    setStatus('Type what the puppet is. It can be anything.');
+    return;
+  }
   const left = Math.ceil(waitLeft() / 1000);
   if (left > 0) {
     setStatus(`The picture maker needs a rest. Try again in ${left} seconds.`);
@@ -1078,27 +1191,28 @@ async function generatePuppet() {
     } finally {
       URL.revokeObjectURL(blobUrl);
     }
-    const parts = extractPieces(sheet);
-    const urls = {};
-    Object.entries(parts).forEach(([name, canvas]) => {
-      urls[name] = canvas.toDataURL('image/png');
-    });
-    const name = document.getElementById('kind').selectedOptions[0].textContent;
-    const item = { id: String(Date.now()), name, parts: urls };
+    const built = extractPieces(sheet);
+    const name = puppetName(idea);
+    const item = {
+      id: String(Date.now()),
+      name,
+      parts: { source: built.source.toDataURL('image/png') },
+    };
     cast.push(item);
     cast = cast.slice(-MAX_CAST);
-    sprites = parts;
+    sprites = built.sprites;
+    rig = built.rig;
+    footDrop = built.footDrop;
     activeId = item.id;
-    if (parts.whole) selected = 'body';
+    selected = 'frontArm';
+    standFlat();
     saveCast();
     paintCast();
     render();
     rebuildStrip();
     scheduleSave();
     sync();
-    setStatus(parts.whole
-      ? `${name} is on the stage. Drag the puppet to move it. Copy a frame, then move it again.`
-      : `${name} is on the stage. Drag the parts.`);
+    setStatus(`${name} is ready. Drag the head, a leg, or the tail.`);
   } catch (error) {
     if (!sent) localStorage.removeItem(NEXT_KEY);
     setStatus(error.message || 'The puppet could not be made.');
@@ -1110,20 +1224,16 @@ async function generatePuppet() {
 }
 
 function bindMaker() {
-  fillSelect('kind', KINDS);
-  fillSelect('style', STYLES);
-  fillSelect('palette', PALETTES);
   document.getElementById('maker').addEventListener('submit', (event) => {
     event.preventDefault();
     generatePuppet();
   });
-  document.getElementById('surprise').addEventListener('click', () => {
-    surpriseChoices();
-    generatePuppet();
-  });
   document.getElementById('drawn').addEventListener('click', () => {
+    const wasGenerated = Boolean(sprites);
     sprites = null;
+    rig = null;
     activeId = null;
+    if (wasGenerated) standPuppy();
     render();
     rebuildStrip();
     scheduleSave();
@@ -1296,9 +1406,11 @@ async function init() {
     if (savedId) await applyCast(savedId);
   } catch {
     sprites = null;
+    rig = null;
     activeId = null;
   }
-  if (!hadSave) setStatus('Make a puppet, or drag the drawn puppy. Copy the frame to make the next pose.');
+  if (!hadSave) setStatus('Describe any puppet and press Make. Or drag the drawn puppy.');
+  else if (rig) setStatus('Your puppet is back. Drag the head, a leg, or the tail.');
   else if (sprites && sprites.whole) setStatus('Your puppet is back. Drag it to move it.');
   else if (sprites) setStatus('Your puppet is back. Drag the parts.');
   rebuildStrip();

@@ -285,7 +285,7 @@ button.primary {
 }
 
 .maker textarea {
-  min-height: 48px;
+  min-height: 84px;
   resize: vertical;
   line-height: 1.6;
 }

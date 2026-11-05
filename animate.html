@@ -17,27 +17,17 @@
     <header class="page-header">
       <p class="kicker">Games and Things</p>
       <h1>Animation</h1>
-      <p class="lede">Make a puppet, then turn the pieces. Copy a frame, change the pose, and press play.</p>
+      <p class="lede">Describe any puppet. It gets a head, ears, body, tail, arms, and legs you can turn.</p>
     </header>
 
     <div class="studio">
       <aside class="tools" aria-label="Puppet controls">
         <p class="box-label">Make a puppet</p>
         <form id="maker" class="maker">
-          <label>Creature
-            <select id="kind"></select>
-          </label>
-          <label>Style
-            <select id="style"></select>
-          </label>
-          <label>Colors
-            <select id="palette"></select>
-          </label>
-          <label>Extra
-            <textarea id="extra" maxlength="80" placeholder="tiny hat, freckles"></textarea>
+          <label>What is it?
+            <textarea id="idea" maxlength="180" placeholder="anything you want"></textarea>
           </label>
           <div class="row">
-            <button type="button" id="surprise">Surprise</button>
             <button type="submit" id="generate" class="primary">Make</button>
           </div>
         </form>
@@ -89,7 +79,7 @@
           </label>
         </div>
         <div id="strip" class="strip" aria-label="Frames"></div>
-        <p class="hint">Make a puppet, then drag a part to turn it. Copy the frame, change the pose, and press play. Space plays. Arrows change frames.</p>
+        <p class="hint">Type anything and press Make. Drag the head, a leg, or the tail. Copy the frame and press play. Space plays. Arrows change frames.</p>
         <p id="status" class="status" role="status"></p>
       </div>
     </div>
