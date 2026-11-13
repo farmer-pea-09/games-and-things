@@ -34,20 +34,35 @@ const FIT = {
   paw: { w: 30 },
 };
 
-const SLICES = [
-  { id: 'ear', parent: 'head', x0: 0.6, y0: 0, x1: 0.78, y1: 0.16, jx: 0.68, jy: 0.15 },
-  { id: 'tail', parent: 'body', x0: 0, y0: 0.2, x1: 0.18, y1: 0.46, jx: 0.16, jy: 0.34 },
-  { id: 'frontShin', parent: 'frontLeg', x0: 0.56, y0: 0.84, x1: 0.7, y1: 1, jx: 0.62, jy: 0.84 },
-  { id: 'backShin', parent: 'backLeg', x0: 0.3, y0: 0.84, x1: 0.44, y1: 1, jx: 0.36, jy: 0.84 },
-  { id: 'frontFore', parent: 'frontArm', x0: 0.7, y0: 0.36, x1: 0.84, y1: 0.52, jx: 0.72, jy: 0.38 },
-  { id: 'backFore', parent: 'backArm', x0: 0.18, y0: 0.38, x1: 0.32, y1: 0.54, jx: 0.3, jy: 0.4 },
-  { id: 'frontLeg', parent: 'body', x0: 0.54, y0: 0.64, x1: 0.68, y1: 0.86, jx: 0.6, jy: 0.64 },
-  { id: 'backLeg', parent: 'body', x0: 0.28, y0: 0.64, x1: 0.42, y1: 0.86, jx: 0.34, jy: 0.64 },
-  { id: 'frontArm', parent: 'body', x0: 0.58, y0: 0.28, x1: 0.72, y1: 0.46, jx: 0.62, jy: 0.3 },
-  { id: 'backArm', parent: 'body', x0: 0.32, y0: 0.3, x1: 0.46, y1: 0.48, jx: 0.38, jy: 0.32 },
-  { id: 'head', parent: 'body', x0: 0.7, y0: 0.02, x1: 1, y1: 0.38, jx: 0.72, jy: 0.26 },
-  { id: 'body', parent: null, x0: 0, y0: 0, x1: 1, y1: 1, jx: 0.46, jy: 0.5 },
-];
+const STANDING = {
+  body: { x0: 0.12, y0: 0.24, x1: 0.88, y1: 0.64, shape: 'ellipse', w: 84, h: 96, dx: -36, dy: -44 },
+  head: { x0: 0.22, y0: 0, x1: 0.9, y1: 0.28, shape: 'ellipse', w: 68, h: 62, dx: -18, dy: -32 },
+  ear: { x0: 0.08, y0: 0.04, x1: 0.42, y1: 0.24, shape: 'ellipse', w: 24, h: 30, dx: -14, dy: -26 },
+  tail: { x0: 0, y0: 0.28, x1: 0.32, y1: 0.55, shape: 'limb', w: 20, h: 28, dx: -10, dy: 0, turn: true },
+  backLeg: { x0: 0.12, y0: 0.55, x1: 0.48, y1: 0.82, shape: 'limb', w: 20, h: 40, dx: -10, dy: 0 },
+  backShin: { x0: 0.12, y0: 0.74, x1: 0.5, y1: 1, shape: 'limb', w: 18, h: 28, dx: -9, dy: 0 },
+  backArm: { x0: 0.02, y0: 0.3, x1: 0.4, y1: 0.52, shape: 'limb', w: 16, h: 28, dx: -8, dy: 0 },
+  backFore: { x0: 0, y0: 0.42, x1: 0.36, y1: 0.58, shape: 'limb', w: 16, h: 16, dx: -8, dy: 0 },
+  frontLeg: { x0: 0.42, y0: 0.55, x1: 0.82, y1: 0.84, shape: 'limb', w: 20, h: 40, dx: -10, dy: 0 },
+  frontShin: { x0: 0.45, y0: 0.74, x1: 0.88, y1: 1, shape: 'limb', w: 18, h: 28, dx: -9, dy: 0 },
+  frontArm: { x0: 0.48, y0: 0.26, x1: 1, y1: 0.52, shape: 'limb', w: 16, h: 32, dx: -8, dy: 0 },
+  frontFore: { x0: 0.68, y0: 0.4, x1: 1, y1: 0.6, shape: 'limb', w: 16, h: 16, dx: -8, dy: 0 },
+};
+
+const PIECES = {
+  body: { x0: 0.24, y0: 0.3, x1: 0.68, y1: 0.68, shape: 'ellipse', w: 136, h: 70, dx: -58, dy: -28 },
+  head: { x0: 0.6, y0: 0.02, x1: 1, y1: 0.42, shape: 'ellipse', w: 86, h: 72, dx: -8, dy: -32 },
+  ear: { x0: 0.62, y0: 0, x1: 0.82, y1: 0.2, shape: 'ellipse', w: 28, h: 40, dx: -14, dy: -36 },
+  tail: { x0: 0, y0: 0.16, x1: 0.28, y1: 0.48, shape: 'limb', w: 22, h: 36, dx: -11, dy: 0, turn: true },
+  backLeg: { x0: 0.26, y0: 0.55, x1: 0.42, y1: 0.82, shape: 'limb', w: 22, h: 36, dx: -11, dy: 0 },
+  backShin: { x0: 0.28, y0: 0.76, x1: 0.44, y1: 1, shape: 'limb', w: 20, h: 26, dx: -10, dy: 0 },
+  backArm: { x0: 0.3, y0: 0.32, x1: 0.46, y1: 0.52, shape: 'limb', w: 18, h: 26, dx: -9, dy: 0 },
+  backFore: { x0: 0.18, y0: 0.4, x1: 0.34, y1: 0.56, shape: 'limb', w: 16, h: 16, dx: -8, dy: 0 },
+  frontLeg: { x0: 0.48, y0: 0.55, x1: 0.66, y1: 0.84, shape: 'limb', w: 22, h: 36, dx: -11, dy: 0 },
+  frontShin: { x0: 0.5, y0: 0.76, x1: 0.68, y1: 1, shape: 'limb', w: 20, h: 24, dx: -10, dy: 0 },
+  frontArm: { x0: 0.54, y0: 0.24, x1: 0.72, y1: 0.48, shape: 'limb', w: 18, h: 30, dx: -9, dy: 0 },
+  frontFore: { x0: 0.66, y0: 0.36, x1: 0.84, y1: 0.54, shape: 'limb', w: 16, h: 16, dx: -8, dy: 0 },
+};
 
 const COATS = {
   honey: { fur: '#f0b56a', dark: '#d9924a', belly: '#fff6e4' },
@@ -132,7 +147,40 @@ function clone(pose) {
   };
 }
 
+function personPose() {
+  return {
+    x: 318,
+    y: 186,
+    flip: false,
+    angles: {
+      body: 0,
+      head: -0.12,
+      ear: 0.15,
+      tail: 1.05,
+      frontArm: -0.45,
+      frontFore: 0.2,
+      backArm: 0.35,
+      backFore: 0.1,
+      frontLeg: 0.06,
+      frontShin: 0.04,
+      backLeg: -0.06,
+      backShin: 0.06,
+    },
+  };
+}
+
+function standPerson() {
+  const standing = personPose();
+  frames.forEach((frame) => {
+    frame.x = standing.x;
+    frame.y = standing.y;
+    frame.flip = false;
+    frame.angles = { ...standing.angles };
+  });
+}
+
 function currentRest() {
+  if (rig && rig.pose === 'person') return personPose();
   const pose = restPose();
   if (!rig) return pose;
   Object.keys(pose.angles).forEach((key) => {
@@ -260,9 +308,15 @@ function drawSprite(ctx, id, sprite) {
 }
 
 function drawPart(ctx, id) {
-  if (rig && sprites && sprites[id]) {
+  const fitted = sprites && sprites[id];
+  if (fitted && fitted._fit) {
+    const fit = fitted._fit;
+    ctx.drawImage(fitted, fit.dx, fit.dy, fit.w, fit.h);
+    return;
+  }
+  if (rig && fitted) {
     const spot = rig[id];
-    ctx.drawImage(sprites[id], -spot.ax, -spot.ay);
+    ctx.drawImage(fitted, -spot.ax, -spot.ay);
     return;
   }
   if (sprites && sprites.whole) {
@@ -619,6 +673,14 @@ function hits(id, point, world) {
   const s = Math.sin(node.angle);
   const lx = dx * c + dy * s;
   const ly = -dx * s + dy * c;
+  const sprite = sprites && sprites[id];
+  if (sprite && sprite._fit && sprite._alpha) {
+    const fit = sprite._fit;
+    const sx = Math.round(((lx - fit.dx) / fit.w) * sprite.width);
+    const sy = Math.round(((ly - fit.dy) / fit.h) * sprite.height);
+    if (sx < 0 || sy < 0 || sx >= sprite.width || sy >= sprite.height) return false;
+    return sprite._alpha[sy * sprite.width + sx] > 20;
+  }
   if (rig && sprites && sprites[id] && sprites[id]._alpha) {
     const spot = rig[id];
     const sx = Math.round(lx + spot.ax);
@@ -839,6 +901,31 @@ function knockBackground(data, w, h, limit) {
   }
 }
 
+function clearLightBackdrop(data, w, h) {
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (let x = 0; x < w; x += 1) stack.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 1) stack.push(y * w, y * w + w - 1);
+  while (stack.length) {
+    const p = stack.pop();
+    if (seen[p]) continue;
+    seen[p] = 1;
+    const i = p * 4;
+    if (data[i + 3] >= 16) {
+      const max = Math.max(data[i], data[i + 1], data[i + 2]);
+      const min = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (max - min > 34 || max < 168) continue;
+      data[i + 3] = 0;
+    }
+    const x = p % w;
+    const y = Math.floor(p / w);
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (y > 0) stack.push(p - w);
+    if (y < h - 1) stack.push(p + w);
+  }
+}
+
 function floodShadows(data, w, h) {
   const seen = new Uint8Array(w * h);
   const stack = [];
@@ -910,7 +997,14 @@ function extractPieces(img) {
       for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
     }
     if (clear / (w * h) < 0.08) {
-      throw new Error('That picture had no empty background. Try Make again.');
+      data.set(original);
+      knockBackground(data, w, h, 86);
+      clearLightBackdrop(data, w, h);
+      clear = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] < 16) clear += 1;
+    }
+    if (clear / (w * h) < 0.08) {
+      throw new Error('That picture had no empty background. Press Make again.');
     }
   }
   floodShadows(data, w, h);
@@ -994,6 +1088,65 @@ function extractPieces(img) {
   return sliceCutout(crop(biggest));
 }
 
+function tracePiece(ctx, zone) {
+  ctx.beginPath();
+  if (zone.shape === 'ellipse') {
+    ctx.ellipse(zone.w / 2, zone.h / 2, Math.max(1, zone.w / 2 - 2), Math.max(1, zone.h / 2 - 2), 0, 0, Math.PI * 2);
+    return;
+  }
+  ctx.roundRect(1, 0, Math.max(1, zone.w - 2), Math.max(1, zone.h - 1), Math.min(zone.w, zone.h) * 0.45);
+}
+
+function shapedPiece(source, zone) {
+  const canvas = document.createElement('canvas');
+  canvas.width = zone.w;
+  canvas.height = zone.h;
+  const ctx = canvas.getContext('2d');
+  const sx = zone.x0 * source.width;
+  const sy = zone.y0 * source.height;
+  const rw = Math.max(1, (zone.x1 - zone.x0) * source.width);
+  const rh = Math.max(1, (zone.y1 - zone.y0) * source.height);
+  tracePiece(ctx, zone);
+  ctx.save();
+  ctx.clip();
+  if (zone.turn) {
+    ctx.translate(zone.w / 2, zone.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(source, sx, sy, rw, rh, -zone.h / 2, -zone.w / 2, zone.h, zone.w);
+  } else {
+    ctx.drawImage(source, sx, sy, rw, rh, 0, 0, zone.w, zone.h);
+  }
+  ctx.restore();
+  tracePiece(ctx, zone);
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  const alpha = new Uint8Array(zone.w * zone.h);
+  const pixels = ctx.getImageData(0, 0, zone.w, zone.h).data;
+  for (let i = 0; i < alpha.length; i += 1) alpha[i] = pixels[i * 4 + 3];
+  canvas._alpha = alpha;
+  canvas._fit = { dx: zone.dx, dy: zone.dy, w: zone.w, h: zone.h };
+  return canvas;
+}
+
+function standingRig() {
+  return {
+    pose: 'person',
+    body: { x: 0, y: 0 },
+    head: { x: 10, y: -62 },
+    ear: { x: -6, y: -16 },
+    tail: { x: -32, y: -4 },
+    backLeg: { x: -12, y: 34 },
+    backShin: { x: 0, y: 38 },
+    backArm: { x: -16, y: -8 },
+    backFore: { x: 0, y: 26 },
+    frontLeg: { x: 14, y: 34 },
+    frontShin: { x: 0, y: 38 },
+    frontArm: { x: 22, y: -10 },
+    frontFore: { x: 0, y: 30 },
+  };
+}
+
 function sliceCutout(cutout) {
   const targetH = 210;
   const scale = targetH / cutout.height;
@@ -1002,72 +1155,17 @@ function sliceCutout(cutout) {
   const source = document.createElement('canvas');
   source.width = sw;
   source.height = sh;
-  const sourceCtx = source.getContext('2d', { willReadFrequently: true });
-  sourceCtx.drawImage(cutout, 0, 0, sw, sh);
-  const pixels = sourceCtx.getImageData(0, 0, sw, sh);
-  const pd = pixels.data;
-  const owner = new Int16Array(sw * sh);
-  owner.fill(-1);
-  let any = false;
-  let bottom = 0;
-  for (let y = 0; y < sh; y += 1) {
-    for (let x = 0; x < sw; x += 1) {
-      const p = y * sw + x;
-      if (pd[p * 4 + 3] < 16) continue;
-      any = true;
-      if (y > bottom) bottom = y;
-      const fx = x / sw;
-      const fy = y / sh;
-      let found = -1;
-      for (let i = 0; i < SLICES.length; i += 1) {
-        const zone = SLICES[i];
-        if (fx >= zone.x0 && fx < zone.x1 && fy >= zone.y0 && fy < zone.y1) {
-          found = i;
-          break;
-        }
-      }
-      if (found < 0) found = SLICES.findIndex((zone) => zone.id === 'body');
-      owner[p] = found;
-    }
-  }
-  if (!any) throw new Error('That picture had no puppet to cut out. Try Make again.');
+  source.getContext('2d').drawImage(cutout, 0, 0, sw, sh);
+  const standing = sh > sw * 1.15;
+  const layout = standing ? STANDING : PIECES;
   const spritesOut = {};
-  const rigOut = {};
-  const joints = {};
-  SLICES.forEach((slice) => {
-    joints[slice.id] = { x: Math.round(slice.jx * sw), y: Math.round(slice.jy * sh) };
-  });
-  SLICES.forEach((slice, index) => {
-    const piece = document.createElement('canvas');
-    piece.width = sw;
-    piece.height = sh;
-    const out = piece.getContext('2d').createImageData(sw, sh);
-    const alpha = new Uint8Array(sw * sh);
-    for (let p = 0; p < owner.length; p += 1) {
-      if (owner[p] !== index) continue;
-      const src = p * 4;
-      out.data[src] = pd[src];
-      out.data[src + 1] = pd[src + 1];
-      out.data[src + 2] = pd[src + 2];
-      out.data[src + 3] = pd[src + 3];
-      alpha[p] = pd[src + 3];
-    }
-    piece.getContext('2d').putImageData(out, 0, 0);
-    piece._alpha = alpha;
-    spritesOut[slice.id] = piece;
-    const joint = joints[slice.id];
-    const parent = slice.parent ? joints[slice.parent] : joint;
-    rigOut[slice.id] = {
-      x: slice.parent ? joint.x - parent.x : 0,
-      y: slice.parent ? joint.y - parent.y : 0,
-      ax: joint.x,
-      ay: joint.y,
-    };
+  Object.entries(layout).forEach(([id, zone]) => {
+    spritesOut[id] = shapedPiece(source, zone);
   });
   return {
     sprites: spritesOut,
-    rig: rigOut,
-    footDrop: bottom - joints.body.y,
+    rig: standing ? standingRig() : null,
+    footDrop: standing ? 100 : 66,
     source,
   };
 }
@@ -1080,13 +1178,22 @@ function puppetName(idea) {
   return idea.length > 24 ? `${idea.slice(0, 23)}…` : idea;
 }
 
+function isPerson(idea) {
+  return /\b(human|humans|person|people|man|woman|boy|girl|kid|child|baby|guy|lady|someone|toddler)\b/i.test(idea);
+}
+
 function buildPrompt() {
+  const idea = ideaText();
+  const subject = `a ${idea}`;
+  const body = isPerson(idea)
+    ? 'clothed cartoon human, round head, hair, one visible ear, torso, two arms, two hands, two legs, two shoes, and a short coat tail behind'
+    : 'it has a head, two ears, a body, a tail, two arms, two hands, two legs, and two paws';
   return [
-    ideaText(),
-    'one character, full body, side view facing right, standing',
-    'it has a head, two ears, a body, a tail, two arms, two hands, two legs, and two paws',
-    'simple paper cut-out, thick dark outline, flat solid colors',
-    'centered on a plain pure white background, no ground, no shadow, no scenery, no text',
+    `paper puppet of ${subject}`,
+    `${subject}, full body, side view facing right, standing, large in the frame`,
+    body,
+    'big simple shapes, thick dark outline, flat solid colors',
+    'centered on a plain pure white background, no photo, no close-up, no portrait, no ground, no shadow, no scenery, no text',
     'family-friendly',
   ].join(', ');
 }
@@ -1122,7 +1229,8 @@ function paintCast() {
     btn.append(img);
     btn.addEventListener('click', () => {
       applyCast(item.id).then((kind) => {
-        if (kind === 'rig') standFlat();
+        if (kind === 'person') standPerson();
+        else if (kind === 'shaped') standPuppy();
         render();
         rebuildStrip();
         scheduleSave();
@@ -1179,7 +1287,7 @@ async function applyCast(id) {
     footDrop = built.footDrop;
     activeId = id;
     selected = 'frontArm';
-    return 'rig';
+    return built.rig && built.rig.pose === 'person' ? 'person' : 'shaped';
   }
   rig = null;
   sprites = await spritesFromParts(item.parts);
@@ -1204,11 +1312,11 @@ async function generatePuppet() {
   making = true;
   button.disabled = true;
   button.textContent = 'Making';
-  setStatus('Making the puppet pieces. This can take a little while.');
+  setStatus(`Making a ${puppetName(idea)}. This can take a little while.`);
   let sent = false;
   try {
     const seed = Math.floor(Math.random() * 1e9);
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(buildPrompt())}?width=512&height=512&seed=${seed}&nologo=true&safe=true&model=flux`;
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(buildPrompt())}?width=768&height=768&seed=${seed}&nologo=true&safe=true&enhance=true&model=flux`;
     const res = await fetch(url);
     sent = true;
     if (res.status === 402) {
@@ -1241,7 +1349,8 @@ async function generatePuppet() {
     footDrop = built.footDrop;
     activeId = item.id;
     selected = 'frontArm';
-    standFlat();
+    if (built.rig && built.rig.pose === 'person') standPerson();
+    else standPuppy();
     saveCast();
     paintCast();
     render();
@@ -1260,6 +1369,12 @@ async function generatePuppet() {
 }
 
 function bindMaker() {
+  const idea = document.getElementById('idea');
+  idea.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.shiftKey) return;
+    event.preventDefault();
+    generatePuppet();
+  });
   document.getElementById('maker').addEventListener('submit', (event) => {
     event.preventDefault();
     generatePuppet();
@@ -1445,7 +1560,13 @@ async function init() {
     rig = null;
     activeId = null;
   }
-  if (!hadSave) setStatus('Describe any puppet and press Make. Or drag the drawn puppy.');
+  if (sprites && !sprites.whole) {
+    const flat = frames.every((frame) => Object.values(frame.angles).every((angle) => Math.abs(angle) < 0.08));
+    const puppyTail = frames.some((frame) => Math.abs((frame.angles.tail || 0) - 2.35) < 0.25);
+    if (rig && rig.pose === 'person' && (flat || puppyTail)) standPerson();
+    else if (!rig && flat) standPuppy();
+  }
+  if (!hadSave) setStatus('Describe any puppet and press Enter. Or drag the drawn puppy.');
   else if (rig) setStatus('Your puppet is back. Drag the head, a leg, or the tail.');
   else if (sprites && sprites.whole) setStatus('Your puppet is back. Drag it to move it.');
   else if (sprites) setStatus('Your puppet is back. Drag the parts.');

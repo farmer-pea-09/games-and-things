@@ -79,7 +79,7 @@
           </label>
         </div>
         <div id="strip" class="strip" aria-label="Frames"></div>
-        <p class="hint">Type anything and press Make. Drag the head, a leg, or the tail. Copy the frame and press play. Space plays. Arrows change frames.</p>
+        <p class="hint">Type anything and press Enter. Drag the head, a leg, or the tail. Copy the frame and press play. Space plays. Arrows change frames.</p>
         <p id="status" class="status" role="status"></p>
       </div>
     </div>
@@ -87,7 +87,7 @@
   <script type="module">
     import { gateGame } from './js/room-code.js';
     if (gateGame('animate')) {
-      await import('./js/animate.js');
+      await import('./js/animate.js?v=human2');
     }
   </script>
 </body>
