@@ -51,6 +51,7 @@
         </div>
         <div class="row">
           <button type="button" id="flip">Turn</button>
+          <button type="button" id="draw" aria-pressed="false">Draw</button>
         </div>
         <p class="box-label">Keep</p>
         <div class="row">
@@ -79,7 +80,7 @@
           </label>
         </div>
         <div id="strip" class="strip" aria-label="Frames"></div>
-        <p class="hint">Type anything and press Enter. Drag the head, a leg, or the tail. Copy the frame and press play. Space plays. Arrows change frames.</p>
+        <p class="hint">Press Draw, then scribble on the puppet. Drag a part to pose it. Copy the frame and press play. Space plays. Arrows change frames.</p>
         <p id="status" class="status" role="status"></p>
       </div>
     </div>
@@ -87,7 +88,7 @@
   <script type="module">
     import { gateGame } from './js/room-code.js';
     if (gateGame('animate')) {
-      await import('./js/animate.js?v=human2');
+      await import('./js/animate.js?v=draw');
     }
   </script>
 </body>

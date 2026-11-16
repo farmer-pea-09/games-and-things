@@ -126,6 +126,11 @@ let hadSave = false;
 let saving = false;
 let saveTimer = 0;
 let drag = null;
+let drawing = false;
+let inks = {};
+let pendingInks = null;
+const INK = 280;
+const INK_ORIGIN = 140;
 let cast = [];
 let sprites = null;
 let rig = null;
@@ -410,6 +415,7 @@ function drawPuppet(ctx, current, ghost) {
     ctx.translate(node.x, node.y);
     ctx.rotate(node.angle);
     drawPart(ctx, part.id);
+    drawInk(ctx, part.id);
     ctx.restore();
   });
   if (!ghost && !playing) {
@@ -476,6 +482,9 @@ function sync() {
   onionBtn.classList.toggle('active', onion);
   onionBtn.setAttribute('aria-pressed', onion ? 'true' : 'false');
   document.getElementById('flip').classList.toggle('active', Boolean(pose()?.flip));
+  const drawBtn = document.getElementById('draw');
+  drawBtn.classList.toggle('active', drawing);
+  drawBtn.setAttribute('aria-pressed', drawing ? 'true' : 'false');
   document.querySelectorAll('#parts button').forEach((btn) => {
     btn.classList.toggle('on', btn.dataset.part === selected);
   });
@@ -557,11 +566,24 @@ function snapshot() {
 
 function undo() {
   const item = undos.pop();
-  if (!item || !frames[item.index]) {
+  if (!item) {
     setStatus('Nothing to undo.');
     return;
   }
   stop();
+  if (item.ink) {
+    inks[item.ink.id] = item.ink.before;
+    paintThumb(index);
+    render();
+    sync();
+    scheduleSave();
+    setStatus('Took back the last line.');
+    return;
+  }
+  if (!frames[item.index]) {
+    setStatus('Nothing to undo.');
+    return;
+  }
   index = item.index;
   frames[index] = item.pose;
   paintThumb(index);
@@ -587,6 +609,7 @@ function saveNow() {
       coat,
       activeId,
       frames,
+      inks: inkPayload(),
     }));
   } catch {
     setStatus('This cartoon is too big to keep in the browser.');
@@ -633,6 +656,7 @@ function fresh() {
   frames = [currentRest()];
   index = 0;
   undos.length = 0;
+  clearInks();
   rebuildStrip();
   render();
   scheduleSave();
@@ -649,6 +673,86 @@ function loadExample() {
   render();
   scheduleSave();
   setStatus('A wave. Copy a frame and bend the arm somewhere new.');
+}
+
+function clearInks() {
+  inks = {};
+}
+
+function inkPad(id) {
+  if (!inks[id]) {
+    const canvas = document.createElement('canvas');
+    canvas.width = INK;
+    canvas.height = INK;
+    inks[id] = canvas;
+  }
+  return inks[id];
+}
+
+function drawInk(ctx, id) {
+  const pad = inks[id];
+  if (!pad || !pad._dirty) return;
+  ctx.drawImage(pad, -INK_ORIGIN, -INK_ORIGIN);
+}
+
+function inkPayload() {
+  const out = {};
+  Object.entries(inks).forEach(([id, canvas]) => {
+    if (canvas._dirty) out[id] = canvas.toDataURL('image/png');
+  });
+  return out;
+}
+
+async function loadInks(saved) {
+  inks = {};
+  if (!saved) return;
+  await Promise.all(Object.entries(saved).map(async ([id, url]) => {
+    if (!SPEC[id] || typeof url !== 'string') return;
+    const img = await loadImage(url);
+    const canvas = inkPad(id);
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    canvas._dirty = true;
+  }));
+}
+
+function localOf(id, point, world) {
+  const node = world[id];
+  const dx = point.x - node.x;
+  const dy = point.y - node.y;
+  const c = Math.cos(node.angle);
+  const s = Math.sin(node.angle);
+  return { x: dx * c + dy * s, y: -dx * s + dy * c };
+}
+
+function rememberInk(id) {
+  const pad = inks[id];
+  const before = document.createElement('canvas');
+  before.width = INK;
+  before.height = INK;
+  if (pad && pad._dirty) before.getContext('2d').drawImage(pad, 0, 0);
+  before._dirty = Boolean(pad && pad._dirty);
+  undos.push({ ink: { id, before } });
+  if (undos.length > 20) undos.shift();
+}
+
+function strokeInk(id, from, to) {
+  const pad = inkPad(id);
+  const ctx = pad.getContext('2d');
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#d23b4a';
+  ctx.fillStyle = '#d23b4a';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  if (Math.hypot(to.x - from.x, to.y - from.y) < 1) {
+    ctx.arc(to.x + INK_ORIGIN, to.y + INK_ORIGIN, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.moveTo(from.x + INK_ORIGIN, from.y + INK_ORIGIN);
+    ctx.lineTo(to.x + INK_ORIGIN, to.y + INK_ORIGIN);
+    ctx.stroke();
+  }
+  pad._dirty = true;
 }
 
 function pointer(event) {
@@ -732,20 +836,34 @@ function onDown(event) {
   const screen = pointer(event);
   const at = toRig(screen, current);
   const world = compute(current);
-  const id = pickPart(at, world) || selected;
-  selected = id;
-  snapshot();
-  if (id === 'body') {
-    drag = { mode: 'move', sx: screen.x - current.x, sy: screen.y - current.y };
+  if (drawing) {
+    const id = pickPart(at, world);
+    if (!id) {
+      setStatus('Draw on the puppet.');
+      return;
+    }
+    selected = id;
+    rememberInk(id);
+    const local = localOf(id, at, world);
+    strokeInk(id, local, local);
+    drag = { mode: 'ink', id, local };
+    setStatus(`Drawing on the ${SPEC[id].name.toLowerCase()}.`);
   } else {
-    drag = { mode: 'rot', id };
+    const id = pickPart(at, world) || selected;
+    selected = id;
+    snapshot();
+    if (id === 'body') {
+      drag = { mode: 'move', sx: screen.x - current.x, sy: screen.y - current.y };
+    } else {
+      drag = { mode: 'rot', id };
+    }
+    setStatus(`Posing the ${SPEC[id].name.toLowerCase()}.`);
   }
   try {
     view.setPointerCapture?.(event.pointerId);
   } catch {
     /* Some browsers refuse capture. */
   }
-  setStatus(`Posing the ${SPEC[id].name.toLowerCase()}.`);
   render();
   sync();
 }
@@ -755,7 +873,12 @@ function onMove(event) {
   const current = pose();
   const screen = pointer(event);
   const at = toRig(screen, current);
-  if (drag.mode === 'move') {
+  if (drag.mode === 'ink') {
+    const world = compute(current);
+    const local = localOf(drag.id, at, world);
+    strokeInk(drag.id, drag.local, local);
+    drag.local = local;
+  } else if (drag.mode === 'move') {
     current.x = Math.max(90, Math.min(550, screen.x - drag.sx));
     current.y = Math.max(80, Math.min(240, screen.y - drag.sy));
   } else {
@@ -1228,6 +1351,7 @@ function paintCast() {
     img.src = item.parts.source || item.parts.head || item.parts.whole || item.parts.body || '';
     btn.append(img);
     btn.addEventListener('click', () => {
+      if (item.id !== activeId) clearInks();
       applyCast(item.id).then((kind) => {
         if (kind === 'person') standPerson();
         else if (kind === 'shaped') standPuppy();
@@ -1344,6 +1468,7 @@ async function generatePuppet() {
     };
     cast.push(item);
     cast = cast.slice(-MAX_CAST);
+    clearInks();
     sprites = built.sprites;
     rig = built.rig;
     footDrop = built.footDrop;
@@ -1381,6 +1506,7 @@ function bindMaker() {
   });
   document.getElementById('drawn').addEventListener('click', () => {
     const wasGenerated = Boolean(sprites);
+    if (wasGenerated) clearInks();
     sprites = null;
     rig = null;
     activeId = null;
@@ -1467,6 +1593,14 @@ function bind() {
   document.getElementById('undo').addEventListener('click', undo);
   document.getElementById('fresh').addEventListener('click', fresh);
   document.getElementById('example').addEventListener('click', loadExample);
+  document.getElementById('draw').addEventListener('click', () => {
+    stop();
+    drawing = !drawing;
+    sync();
+    setStatus(drawing
+      ? 'Draw is on. Scribble on the puppet. Press Draw again to pose.'
+      : 'Draw is off. Drag a part to pose it.');
+  });
   document.getElementById('flip').addEventListener('click', () => {
     snapshot();
     pose().flip = !pose().flip;
@@ -1532,6 +1666,7 @@ function restore(data) {
   onion = data.onion !== false;
   if (COATS[data.coat]) coat = data.coat;
   activeId = typeof data.activeId === 'string' ? data.activeId : null;
+  pendingInks = data.inks && typeof data.inks === 'object' ? data.inks : null;
   fpsSelect.value = String(fps);
   hadSave = true;
 }
@@ -1559,6 +1694,11 @@ async function init() {
     sprites = null;
     rig = null;
     activeId = null;
+  }
+  try {
+    await loadInks(pendingInks);
+  } catch {
+    inks = {};
   }
   if (sprites && !sprites.whole) {
     const flat = frames.every((frame) => Object.values(frame.angles).every((angle) => Math.abs(angle) < 0.08));
